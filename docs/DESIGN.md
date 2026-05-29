@@ -40,17 +40,13 @@ Anchored to **wake time** (default ~10:00 AM; “Just woke up” sets anchor to 
 
 **Buffer line:** On workdays, the UI shows minutes free before 8:00 PM or warns if the day is over-packed.
 
-## Friday (weekend study day)
+## Friday & Saturday (weekend days)
 
-- No work shift
-- Workout **after breakfast** (light study warm-up first)
-- Longer deep study + evening practice exam
-- Free evening when blocks end
-
-## Saturday (prep day)
-
-- Batch meal prep block (feeds workday banner)
-- Study, chores, free evening
+- No work shift — sleep when ready
+- **Night before:** use “Plan day” to list activities (gym, PMP, meal prep, hobby, dinner ~7, read, etc.)
+- Agent packs your list from wake time with **open time** gaps between items (for sudden tasks)
+- Legacy templates still apply if you have not saved a plan yet
+- Saturday batch meal prep still feeds the workday meal-prep banner when logged
 
 ## Flexible controls
 
@@ -59,7 +55,8 @@ Anchored to **wake time** (default ~10:00 AM; “Just woke up” sets anchor to 
 | Wake time / “Just woke up” | Recomputes all block start times downstream |
 | Day type (Auto / Workday / Friday / Saturday) | Auto uses weekday; override for swapped days |
 | Workout: Gym / Home / Skip | Home = 45m; Skip removes block; Wed auto-skip on workdays |
-| + Task | Inserts sudden task; downstream times shift |
+| Sudden tasks | Anytime or fixed window; today vs future rules; displaces into open time |
+| Weekend plan | Night before: build Friday/Saturday activity list; schedule packs from wake |
 | Edit block lengths | Permanent default per day type (saved in `templateDur`) |
 | To-do list | Rolls over until done; optional due dates; most urgent surfaces in Quick Glance |
 

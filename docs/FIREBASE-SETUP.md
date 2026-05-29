@@ -46,13 +46,20 @@ Commit and push so GitHub Pages serves the same config.
 2. Paste the contents of **`firestore.rules`** from this repo (only the signed-in user can read/write their own doc)
 3. **Publish**
 
-## 7. Authorized domains (required for GitHub Pages + phone)
+## 7. Authorized domains (required — fixes “requested action is invalid”)
 
 1. **Authentication** → **Settings** → **Authorized domains**
-2. Ensure these exist (add if missing):
+2. Click **Add domain** and ensure ALL of these exist:
    - `localhost`
-   - `YOUR_GITHUB_USERNAME.github.io`
-   - Your Firebase domains (`PROJECT_ID.firebaseapp.com`, etc.)
+   - `127.0.0.1` (add manually if missing)
+   - `YOUR_GITHUB_USERNAME.github.io` (for phone later)
+3. Do **not** include `http://` or port numbers — only the hostname.
+
+If sign-in still fails on your Mac, open the dashboard at exactly:
+
+`http://localhost:8765/life-dashboard.html`
+
+(not the Desktop `.app` file, not `file://`)
 
 ## 8. Test locally
 
