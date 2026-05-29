@@ -1,10 +1,10 @@
-// Replace with your Firebase web app config (Firebase Console → Project settings → Your apps).
-// Safe to commit: web apiKey is public; access is controlled by Auth + Firestore rules.
+// Firebase web config — scheduler-d003a
 window.FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAUoTg8CUdsU2CZJIRNgqxJMxaRbZ3Bpoc",
+  authDomain: "scheduler-d003a.firebaseapp.com",
+  projectId: "scheduler-d003a",
+  storageBucket: "scheduler-d003a.firebasestorage.app",
+  messagingSenderId: "93263530978",
+  appId: "1:93263530978:web:3ae200bcbcce5e2ffa87bb",
+  measurementId: "G-354QYY3GE6"
 };
