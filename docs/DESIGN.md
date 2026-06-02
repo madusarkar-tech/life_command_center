@@ -19,26 +19,38 @@ This document captures the real-world constraints that shaped the dashboard. It 
 3. **Operations are capped.** Animals, garden, meals, and workouts use fixed blocks — not unlimited time sinks.
 4. **Meal prep is batched.** Saturday batch prep feeds weekday “reheat” lunches; workdays show a banner if last Saturday’s prep was skipped.
 
-## Workday template (Sun–Thu)
+## Workday template (Sun–Thu) — flowchart model
 
-Anchored to **wake time** (default ~10:00 AM; “Just woke up” sets anchor to now).
+Day starts at **logged wake time**. Three layers: sudden tasks → fixed clock blocks → variable blocks in gaps → one non-fixed pick.
 
-| Block | Typical duration | Notes |
-|-------|------------------|-------|
-| Wake & animals | 60m | Coffee, dogs, chickens, breakfast |
-| PMP deep study | 120m | Sharpest window after coffee |
-| Workout | 120m gym / 45m home / skip | **Wednesday defaults to skip** |
-| Shower & lunch | 60m | Reheat from batch prep |
-| PMP flashcards | 30m | Light review |
-| Dog walk + dinner | 45m | 4:30–5:15 PM window |
-| Garden & chickens | 45m | Golden hour |
-| Your dinner | 60m | 6:00–7:00 PM |
-| Dog walk #2 | 20m | ~7:00 PM |
-| Pre-shift nap | 40m | ~25 min max + transition |
-| **Work** | 8h | **8:00 PM** start (pinned wall) |
-| **Sleep** | — | **4:00 AM** protected block |
+### Fixed (clock or wake-anchored)
 
-**Buffer line:** On workdays, the UI shows minutes free before 8:00 PM or warns if the day is over-packed.
+| Block | When | Duration |
+|-------|------|----------|
+| Breakfast | From wake | 60m |
+| Dinner prep | 3:30–4:00 PM | 30m |
+| Dog walk & feed | 4:45–5:30 PM | 45m |
+| Dinner | 6:00–7:30 PM | 90m |
+| Garden & chickens | 7:30–8:00 PM | 30m |
+| **Work** | 8:00 PM–3:00 AM | 7h (Bangkok 7a–3p) |
+| **Sleep** | ~4:00 AM | Protected block |
+
+### Variable (agent places in morning gaps before 3:30 PM)
+
+| Block | Rules |
+|-------|--------|
+| Gym | If ≥1h15 free after layout: gym + 30m commute each way; else home workout (≥45m). Slot ≥1h after breakfast. Wed default skip. |
+| PMP deep study | 2h until **June 22, 2026**, then slot freed |
+| Job applications | ≥30m/day · checking the block marks **Job applications** habit |
+| Shower | 30m after workout, before shift |
+
+### Non-fixed (one per day if time remains)
+
+Pick one: Read, Do AI work, or QGIS — **Extra** control (Auto / manual / Skip). Auto rotates by date.
+
+**Late wake:** Fixed clock blocks never move. Overlapping blocks show an OVERLAP tag; banner explains what could not fit.
+
+**Buffer line:** Minutes free before 8:00 PM work start, or over-packed warning.
 
 ## Friday & Saturday (weekend days)
 
@@ -54,17 +66,18 @@ Anchored to **wake time** (default ~10:00 AM; “Just woke up” sets anchor to 
 |---------|----------|
 | Wake time / “Just woke up” | Recomputes all block start times downstream |
 | Day type (Auto / Workday / Friday / Saturday) | Auto uses weekday; override for swapped days |
-| Workout: Gym / Home / Skip | Home = 45m; Skip removes block; Wed auto-skip on workdays |
+| Workout: Gym / Home / Skip | Auto: gym if ≥1h15 free (+ commute); else home ≥45m. Manual override. Wed auto-skip |
 | Sudden tasks | Anytime or fixed window; today vs future rules; displaces into open time |
 | Weekend plan | Night before: build Friday/Saturday activity list; schedule packs from wake |
 | Edit block lengths | Permanent default per day type (saved in `templateDur`) |
 | To-do list | Rolls over until done; optional due dates; most urgent surfaces in Quick Glance |
 
-## Dog & meal windows (fixed in template)
+## Dog & meal windows (workday flowchart)
 
-- Dog walk #1 + dinner: **4:30–5:15 PM** (45m block)
-- Your dinner: **6:00–7:00 PM**
-- Dog walk #2: **~7:00 PM** (20m)
+- Dinner prep: **3:30–4:00 PM**
+- Dog walk & feed: **4:45–5:30 PM**
+- Dinner: **6:00–7:30 PM**
+- Garden: **7:30–8:00 PM**
 
 ## What the dashboard does *not* do (yet)
 

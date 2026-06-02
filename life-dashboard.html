@@ -263,6 +263,8 @@
   .blk:not(.info):not(.work){cursor:default}
   .suddentag{font-size:10px;background:var(--terra);color:#fff;font-weight:800;padding:2px 7px;border-radius:20px;letter-spacing:.06em;margin-left:6px;vertical-align:middle}
   .displacedtag{font-size:10px;background:rgba(184,74,50,.2);color:var(--terra);font-weight:800;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle}
+  .overflowtag{font-size:10px;background:rgba(184,120,12,.22);color:var(--gold);font-weight:800;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle}
+  .blk.overflow{border-color:rgba(184,120,12,.45);background:rgba(184,120,12,.06)}
   .conflict-banner{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-radius:11px;font-size:13px;font-weight:600;margin-bottom:12px;border:1px solid rgba(184,74,50,.4);background:rgba(184,74,50,.08);color:var(--terra)}
   .weekend-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:11px;margin-bottom:12px;border:1px solid rgba(61,109,143,.35);background:rgba(61,109,143,.08);font-size:13px;font-weight:600;color:var(--sky);flex-wrap:wrap}
   .sudden-panel{border-top:1px solid var(--line-soft);padding-top:12px;margin-top:4px}
@@ -379,6 +381,17 @@
             <button data-w="skip">Skip</button>
           </div>
           <span class="wed-note" id="wedNote"></span>
+        </div>
+        <div class="ctl-row" id="nonFixedRow" style="display:none">
+          <span class="lbl2">Extra</span>
+          <div class="seg" id="segNonFixed">
+            <button type="button" data-nf="auto">Auto</button>
+            <button type="button" data-nf="read">Read</button>
+            <button type="button" data-nf="aiwork">AI</button>
+            <button type="button" data-nf="qgis">QGIS</button>
+            <button type="button" data-nf="none">Skip</button>
+          </div>
+          <span class="wed-note" id="nonFixedNote"></span>
         </div>
         <div class="ctl-row">
           <span class="statusline" id="statusLine"></span>
@@ -685,14 +698,26 @@ const JOB=new Date('2026-08-01T00:00:00');
 const PMP_START=new Date('2026-05-27T00:00:00');
 const JOB_START=new Date('2026-05-27T00:00:00');
 const DAY_ROLLOVER_HOUR=4;
-const SCHEDULE_BLOCK_IDS=new Set(['wake','breakfast','study1','study2','gym','lunch','review','dog1','dog2','garden','dinner','nap','mealprep','chores']);
-const BLOCK_TO_HABIT={wake:'animals',study1:'study',study2:'study',review:'study',gym:'gym',dog1:'dogs',dog2:'dogs',garden:'garden',dinner:'meals',mealprep:'meals'};
-const WORKDAY_MORNING=['wake','study1','gym','lunch','review'];
-const WORKDAY_ANCHORS=[
-  {id:'dog1',start:16*60+30},
-  {id:'dinner',start:17*60+30},
-  {id:'dog2',start:19*60},
-  {id:'garden',start:19*60+15}
+const SCHEDULE_BLOCK_IDS=new Set(['wake','breakfast','study1','study2','gym','lunch','review','dog1','dog2','garden','dinner','dinnerprep','shower','jobapps','nap','mealprep','chores','read','aiwork','qgis','work']);
+const BLOCK_TO_HABIT={wake:'animals',breakfast:'animals',study1:'study',study2:'study',review:'study',gym:'gym',dog1:'dogs',dog2:'dogs',garden:'garden',dinner:'meals',dinnerprep:'meals',mealprep:'meals',jobapps:'jobsearch'};
+const WORKDAY_CLOCK_IDS=new Set(['dinnerprep','dog1','dinner','garden']);
+const WORKDAY_CLOCK={
+  dinnerPrep:[15*60+30,16*60],
+  dog:[16*60+45,17*60+30],
+  dinner:[18*60,19*60+30],
+  garden:[19*60+30,20*60]
+};
+const GYM_COMMUTE_EACH=30;
+const GYM_THRESHOLD=76;
+const GYM_MIN=45;
+const GYM_MAX=120;
+const PMP_BLOCK_MIN=120;
+const JOB_APPS_MIN=30;
+const SHOWER_MIN=30;
+const NON_FIXED_POOL=[
+  {id:'read',ico:'📖',lab:'Read',sub:'Non-fixed · one pick per day',dur:45},
+  {id:'aiwork',ico:'🤖',lab:'Do AI work',sub:'Non-fixed · one pick per day',dur:60},
+  {id:'qgis',ico:'🗺️',lab:'QGIS',sub:'Non-fixed · one pick per day',dur:60}
 ];
 function todayKey(){const d=new Date();return dateKeyOf(d);}
 function activeDayKey(){
@@ -769,16 +794,18 @@ function toggleBlockDone(blockId){
 // Day-type templates. gym block is special (workout state swaps duration/labels).
 const TEMPLATES={
   workday:[
-    {id:'wake',ico:'☕',lab:'Wake & animals',sub:'Coffee · dogs out · chickens · breakfast',dur:60},
-    {id:'study1',ico:'📘',lab:'PMP deep study',sub:'Sharpest window — practice exams',dur:120},
-    {id:'gym',ico:'🏋️',lab:'Gym + commute',sub:'Your 2-hour block',dur:120},
-    {id:'lunch',ico:'🍽️',lab:'Shower & lunch',sub:'Reheat from batch prep',dur:60},
-    {id:'review',ico:'🃏',lab:'PMP flashcards',sub:'Light review',dur:30},
-    {id:'dog1',ico:'🐕',lab:'Dog walk #1',sub:'Walk & feed the dog · anchored 4:30–5:00pm',dur:30},
-    {id:'dinner',ico:'🍲',lab:'Your dinner',sub:'Anchored 5:30–6:30pm',dur:60},
-    {id:'dog2',ico:'🦮',lab:'Dog walk #2',sub:'Anchored 7:00–7:15pm',dur:15},
-    {id:'garden',ico:'🌱',lab:'Garden & chickens',sub:'Anchored 7:15–7:45pm',dur:30},
-    {id:'nap',ico:'🛌',lab:'Pre-shift wind-down',sub:'Before 8pm work',dur:15}
+    {id:'breakfast',ico:'🍳',lab:'Breakfast',sub:'1h from wake · animals & coffee',dur:60},
+    {id:'study1',ico:'📘',lab:'PMP deep study',sub:'2h in morning gap · until exam',dur:120},
+    {id:'gym',ico:'🏋️',lab:'Gym + commute',sub:'Agent picks gym vs home from open time',dur:120},
+    {id:'jobapps',ico:'💼',lab:'Job applications',sub:'At least 30m · weekdays',dur:30},
+    {id:'shower',ico:'🚿',lab:'Shower',sub:'After workout · before shift',dur:30},
+    {id:'dinnerprep',ico:'🍱',lab:'Dinner prep',sub:'Fixed 3:30–4:00pm',dur:30},
+    {id:'dog1',ico:'🐕',lab:'Dog walk & feed',sub:'Fixed 4:45–5:30pm',dur:45},
+    {id:'dinner',ico:'🍲',lab:'Dinner',sub:'Fixed 6:00–7:30pm',dur:90},
+    {id:'garden',ico:'🌱',lab:'Garden & chickens',sub:'Fixed 7:30–8:00pm',dur:30},
+    {id:'read',ico:'📖',lab:'Read',sub:'Non-fixed pool',dur:45},
+    {id:'aiwork',ico:'🤖',lab:'Do AI work',sub:'Non-fixed pool',dur:60},
+    {id:'qgis',ico:'🗺️',lab:'QGIS',sub:'Non-fixed pool',dur:60}
   ],
   friday:[
     {id:'wake',ico:'☕',lab:'Wake & animals',sub:'Coffee · dogs out · chickens',dur:45},
@@ -812,6 +839,7 @@ const HABITS=[
   {id:'sleep7',ico:'😴',nm:'7+ hrs sleep',sub:'One solid block'},
   {id:'gym',ico:'🏋️',nm:'Workout',sub:'Gym, home, or active rest'},
   {id:'study',ico:'📘',nm:'PMP study',sub:'At least one focused session'},
+  {id:'jobsearch',ico:'💼',nm:'Job applications',sub:'At least 30m on workdays'},
   {id:'dogs',ico:'🐕',nm:'Dogs walked & fed',sub:'Both walks + dinner'},
   {id:'animals',ico:'🐔',nm:'Chickens checked',sub:'Food, water, eggs'},
   {id:'garden',ico:'🌱',nm:'Garden tended',sub:'Water & quick check'},
@@ -828,10 +856,11 @@ function cfg(){
   return dayCfg(k);
 }
 function dayCfg(k){
-  if(!DATA.dayConfig[k])DATA.dayConfig[k]={wake:'10:00',workout:null,tasks:[],suddenTasks:[],weekendPlan:null,dayType:null,wakeLocked:false};
+  if(!DATA.dayConfig[k])DATA.dayConfig[k]={wake:'10:00',workout:null,nonFixedPick:null,tasks:[],suddenTasks:[],weekendPlan:null,dayType:null,wakeLocked:false};
   const c=DATA.dayConfig[k];
   if(c.dayType===undefined)c.dayType=null;
   if(c.wakeLocked===undefined)c.wakeLocked=false;
+  if(c.nonFixedPick===undefined)c.nonFixedPick=null;
   if(!c.suddenTasks)c.suddenTasks=[];
   if(c.weekendPlan===undefined)c.weekendPlan=null;
   return c;
@@ -906,13 +935,118 @@ function addSuddenTask(opts){
   save();
 }
 
-function workdayBlockDef(id,ws,ov){
-  const b=TEMPLATES.workday.find(x=>x.id===id);
-  if(!b)return null;
-  if(id==='gym'&&ws==='skip')return null;
-  const base=ov[id]!=null?ov[id]:b.dur;
-  if(id==='gym'&&ws==='home')return {...b,dur:45,lab:'Home workout',sub:'Quick session at home'};
-  return {...b,dur:base};
+function dateFromKey(k){
+  const p=k.split('-').map(Number);
+  return new Date(p[0],p[1]-1,p[2]);
+}
+function workdayReserved(seq){
+  return seq.filter(b=>!b.flex).map(b=>({s:b.start,e:b.end})).sort((a,b)=>a.s-b.s);
+}
+function mergeReservedIntervals(reserved){
+  if(!reserved.length)return [];
+  const sorted=[...reserved].sort((a,b)=>a.s-b.s);
+  const out=[{s:sorted[0].s,e:sorted[0].e}];
+  for(let i=1;i<sorted.length;i++){
+    const last=out[out.length-1];
+    if(sorted[i].s<=last.e)last.e=Math.max(last.e,sorted[i].e);
+    else out.push({s:sorted[i].s,e:sorted[i].e});
+  }
+  return out;
+}
+function findGapsInWindow(reserved,from,to){
+  const gaps=[];let cur=from;
+  mergeReservedIntervals(reserved).forEach(r=>{
+    if(r.e<=from||r.s>=to)return;
+    const rs=Math.max(r.s,from),re=Math.min(r.e,to);
+    if(rs>cur)gaps.push({start:cur,end:rs});
+    cur=Math.max(cur,re);
+  });
+  if(cur<to)gaps.push({start:cur,end:to});
+  return gaps.filter(g=>g.end-g.start>=5);
+}
+function blocksOverlapEach(a,b){
+  return a.start<b.end&&b.start<a.end;
+}
+function overlapsAnyBlock(seq,start,end){
+  return seq.some(b=>!b.flex&&blocksOverlap(b,start,end));
+}
+function workdayBlockPriority(b){
+  if(WORKDAY_CLOCK_IDS.has(b.id))return 3;
+  if(b.id==='breakfast')return 2;
+  return 1;
+}
+function annotateWorkdayOverlaps(seq){
+  const warnings=[];
+  const blocks=seq.filter(b=>!b.flex);
+  for(let i=0;i<blocks.length;i++){
+    for(let j=i+1;j<blocks.length;j++){
+      const a=blocks[i],b=blocks[j];
+      if(!blocksOverlapEach(a,b))continue;
+      const loser=workdayBlockPriority(a)>=workdayBlockPriority(b)?b:a;
+      const winner=loser===a?b:a;
+      loser.overflow=true;
+      const note=' · overlaps '+winner.lab;
+      if(!(loser.sub||'').includes(note))loser.sub=(loser.sub||'')+note;
+      const msg='“'+loser.lab+'” overlaps “'+winner.lab+'” — wake earlier or shorten blocks.';
+      if(!warnings.some(w=>w.msg===msg))warnings.push({msg});
+    }
+  }
+  return warnings;
+}
+function bestGap(gaps,minLen,earliest){
+  let best=null;
+  gaps.forEach(g=>{
+    const s=Math.max(g.start,earliest);
+    const len=g.end-s;
+    if(len>=minLen&&(!best||len>best.len))best={start:s,end:g.end,len};
+  });
+  return best;
+}
+function addWorkdayClock(seq,ov){
+  const defs={
+    dinnerprep:{ico:'🍱',lab:'Dinner prep',sub:'Fixed 3:30–4:00pm'},
+    dog1:{ico:'🐕',lab:'Dog walk & feed',sub:'Fixed 4:45–5:30pm'},
+    dinner:{ico:'🍲',lab:'Dinner',sub:'Fixed 6:00–7:30pm'},
+    garden:{ico:'🌱',lab:'Garden & chickens',sub:'Fixed 7:30–8:00pm'}
+  };
+  const clocks=[
+    {id:'dinnerprep',s:WORKDAY_CLOCK.dinnerPrep[0],e:WORKDAY_CLOCK.dinnerPrep[1]},
+    {id:'dog1',s:WORKDAY_CLOCK.dog[0],e:WORKDAY_CLOCK.dog[1]},
+    {id:'dinner',s:WORKDAY_CLOCK.dinner[0],e:WORKDAY_CLOCK.dinner[1]},
+    {id:'garden',s:WORKDAY_CLOCK.garden[0],e:WORKDAY_CLOCK.garden[1]}
+  ];
+  clocks.forEach(c=>{
+    const d=defs[c.id];
+    const baseDur=c.e-c.s;
+    const dur=ov[c.id]!=null?Math.min(ov[c.id],baseDur):baseDur;
+    seq.push({id:c.id,...d,dur,start:c.s,end:c.s+dur,anchored:true});
+  });
+}
+function pickNonFixed(dayKey,c){
+  if(c.nonFixedPick==='none')return null;
+  if(c.nonFixedPick){
+    const hit=NON_FIXED_POOL.find(x=>x.id===c.nonFixedPick);
+    if(hit)return hit;
+  }
+  let h=0;
+  for(let i=0;i<dayKey.length;i++)h=(h*31+dayKey.charCodeAt(i))|0;
+  return NON_FIXED_POOL[Math.abs(h)%NON_FIXED_POOL.length];
+}
+function nonFixedPickLabel(c){
+  if(c.nonFixedPick==='none')return 'Skipped today';
+  if(c.nonFixedPick){
+    const hit=NON_FIXED_POOL.find(x=>x.id===c.nonFixedPick);
+    return hit?hit.lab:'';
+  }
+  return 'Auto (rotates by date)';
+}
+function placeInGapIfClear(seq,gap,block){
+  const dur=block.dur;
+  const start=gap.start;
+  const end=start+dur;
+  if(overlapsAnyBlock(seq,start,end))return false;
+  seq.push({...block,start,end,dur});
+  return true;
 }
 function pushFlexGap(out,from,to,sub){
   if(to-from<5)return;
@@ -1024,38 +1158,85 @@ function applySuddenTasks(seq,tasks,scheduleDayKey,dt){
   });
   return {seq:result,conflicts};
 }
-function buildWorkdaySeq(c,ws,ov){
-  const out=[];
-  WORKDAY_MORNING.forEach(id=>{
-    const b=workdayBlockDef(id,ws,ov);
-    if(b)out.push({...b});
+function buildWorkdaySeq(c,ws,ov,dayKey){
+  const wakeMin=toMin(c.wake);
+  const seq=[];
+  const overlapWarnings=[];
+  const skipped=[];
+  const bfDur=ov.breakfast!=null?ov.breakfast:60;
+  const bfEnd=wakeMin+bfDur;
+  seq.push({id:'breakfast',ico:'🍳',lab:'Breakfast',sub:'Animals · coffee · eat · 1h from wake',dur:bfDur,start:wakeMin,end:bfEnd,anchored:true});
+  addWorkdayClock(seq,ov);
+  const morningEnd=WORKDAY_CLOCK.dinnerPrep[0];
+  const earliestVar=bfEnd+60;
+  if(bfEnd>morningEnd){
+    overlapWarnings.push({msg:'Late wake — breakfast runs into fixed afternoon blocks (from '+fmt12(minToTime(morningEnd))+').'});
+  }
+  if(earliestVar>=morningEnd){
+    overlapWarnings.push({msg:'Late wake — less than 1h after breakfast before fixed blocks; morning workout/study may not fit.'});
+  }
+  let gymEnd=null;
+  if(ws!=='skip'){
+    const gaps=findGapsInWindow(workdayReserved(seq),wakeMin,morningEnd);
+    const gap=bestGap(gaps,GYM_MIN,earliestVar);
+    if(gap){
+      const useGym=ws==='gym'||(ws!=='home'&&gap.len>=GYM_THRESHOLD);
+      let placed=false;
+      if(useGym){
+        const workout=Math.min(Math.max(gap.len-GYM_COMMUTE_EACH*2,GYM_MIN),GYM_MAX);
+        const dur=workout+GYM_COMMUTE_EACH*2;
+        placed=placeInGapIfClear(seq,gap,{id:'gym',ico:'🏋️',lab:'Gym + commute',sub:'30m each way · '+workout+'m workout',dur});
+      }else if(gap.len>=GYM_MIN){
+        const dur=Math.min(gap.len,GYM_MAX);
+        placed=placeInGapIfClear(seq,gap,{id:'gym',ico:'🏠',lab:'Home workout',sub:'Under 1h15 free · '+dur+'m at home',dur});
+      }
+      if(placed){
+        const g=seq.find(b=>b.id==='gym'&&!b.flex);
+        if(g)gymEnd=g.end;
+      }else skipped.push('workout');
+    }else skipped.push('workout');
+  }
+  const schedDay=dateFromKey(dayKey||activeDayKey());
+  if(schedDay<PMP){
+    const gaps=findGapsInWindow(workdayReserved(seq),wakeMin,morningEnd);
+    const pmpDur=ov.study1!=null?ov.study1:PMP_BLOCK_MIN;
+    const gap=bestGap(gaps,pmpDur,earliestVar);
+    if(gap&&placeInGapIfClear(seq,gap,{id:'study1',ico:'📘',lab:'PMP deep study',sub:'2h in morning gap · exam '+PMP.toLocaleDateString('en-US',{month:'short',day:'numeric'}),dur:pmpDur})){}
+    else skipped.push('PMP study');
+  }
+  const jobDur=ov.jobapps!=null?ov.jobapps:JOB_APPS_MIN;
+  const jGap=bestGap(findGapsInWindow(workdayReserved(seq),wakeMin,morningEnd),jobDur,earliestVar);
+  if(jGap&&placeInGapIfClear(seq,jGap,{id:'jobapps',ico:'💼',lab:'Job applications',sub:'At least 30m today',dur:jobDur})){}
+  else skipped.push('job applications');
+  const showerDur=ov.shower!=null?ov.shower:SHOWER_MIN;
+  const showerAfter=gymEnd||earliestVar;
+  const sGap=bestGap(findGapsInWindow(workdayReserved(seq),wakeMin,WORK_START),showerDur,showerAfter);
+  if(sGap&&placeInGapIfClear(seq,sGap,{id:'shower',ico:'🚿',lab:'Shower',sub:gymEnd?'After workout · before shift':'Before shift',dur:showerDur})){}
+  else skipped.push('shower');
+  const nf=pickNonFixed(dayKey||activeDayKey(),c);
+  if(nf){
+    const nfDur=ov[nf.id]!=null?ov[nf.id]:nf.dur;
+    const need=Math.min(nfDur,30);
+    const nGap=bestGap(findGapsInWindow(workdayReserved(seq),wakeMin,morningEnd),need,earliestVar);
+    if(nGap&&placeInGapIfClear(seq,nGap,{id:nf.id,ico:nf.ico,lab:nf.lab,sub:nf.sub,dur:Math.min(nGap.len,nfDur),nonFixed:true})){}
+    else skipped.push(nf.lab);
+  }
+  if(skipped.length){
+    const uniq=[...new Set(skipped)];
+    overlapWarnings.push({msg:'No open morning slot for: '+uniq.join(', ')+'. Fixed evening blocks stay on the clock.'});
+  }
+  sortSeqByStart(seq);
+  overlapWarnings.push(...annotateWorkdayOverlaps(seq));
+  const withFlex=[];
+  let cur=wakeMin;
+  seq.filter(b=>!b.flex).sort((a,b)=>a.start-b.start).forEach(b=>{
+    if(b.start>cur+4)pushFlexGap(withFlex,cur,b.start,'Open time');
+    withFlex.push(b);
+    cur=Math.max(cur,b.end);
   });
-  let cur=toMin(c.wake);
-  const morning=[];
-  out.forEach(b=>{
-    b.start=cur;b.end=cur+b.dur;cur=b.end;
-    morning.push(b);
-  });
-  const seq=[...morning];
-  const firstAnchor=WORKDAY_ANCHORS[0].start;
-  if(cur<firstAnchor)pushFlexGap(seq,cur,firstAnchor,'Before dog walk #1');
-  else if(cur>firstAnchor)morning.forEach(b=>{if(b.end>firstAnchor)b.overflow=true;});
-  let prevEnd=firstAnchor;
-  WORKDAY_ANCHORS.forEach(a=>{
-    const def=TEMPLATES.workday.find(x=>x.id===a.id);
-    const dur=ov[a.id]!=null?ov[a.id]:def.dur;
-    const start=a.start;
-    if(start>prevEnd+5)pushFlexGap(seq,prevEnd,start,'Open time');
-    const end=start+dur;
-    seq.push({...def,dur,start,end,anchored:true});
-    prevEnd=end;
-  });
-  const napDef=TEMPLATES.workday.find(x=>x.id==='nap');
-  const napDur=ov.nap!=null?ov.nap:napDef.dur;
-  const napStart=prevEnd;
-  const napEnd=Math.min(WORK_START,napStart+napDur);
-  if(napEnd>napStart)seq.push({...napDef,dur:napEnd-napStart,start:napStart,end:napEnd,anchored:true});
-  return {seq,endMin:Math.max(napEnd||prevEnd,prevEnd)};
+  if(cur<WORK_START)pushFlexGap(withFlex,cur,WORK_START,'Before work');
+  const endMin=seq.reduce((m,b)=>Math.max(m,b.end||0),WORKDAY_CLOCK.garden[1]);
+  return {seq:withFlex,endMin,overlapWarnings};
 }
 function buildWeekendSeq(c,plan){
   const seq=[];
@@ -1100,13 +1281,14 @@ function buildSeq(){
   const dt=dayType();
   const ov=DATA.templateDur[dt]||{};
   let base;
-  if(dt==='workday')base=buildWorkdaySeq(c,ws,ov);
+  if(dt==='workday')base=buildWorkdaySeq(c,ws,ov,dayKey);
   else if((dt==='friday'||dt==='saturday')&&c.weekendPlan&&c.weekendPlan.length)base=buildWeekendSeq(c,c.weekendPlan);
   else base=buildLegacyWeekendSeq(c,ws,dt,ov);
   const applied=applySuddenTasks(base.seq,c.suddenTasks||[],dayKey,dt);
-  lastScheduleConflicts=applied.conflicts;
+  const mergedConflicts=[...(base.overlapWarnings||[]),...applied.conflicts];
+  lastScheduleConflicts=mergedConflicts;
   const endMin=applied.seq.reduce((m,b)=>Math.max(m,b.end||0),base.endMin||0);
-  return {seq:applied.seq,endMin,conflicts:applied.conflicts};
+  return {seq:applied.seq,endMin,conflicts:mergedConflicts};
 }
 
 function renderClocks(){
@@ -1285,6 +1467,12 @@ function renderSched(){
   dayLabel.textContent=DAYNAMES[dt];
   document.querySelectorAll('#segWorkout button').forEach(b=>b.classList.toggle('on',b.dataset.w===ws));
   wedNote.textContent=isWednesday()?'Wednesday — workout off by default':'';
+  const nfRow=document.getElementById('nonFixedRow');
+  const nfNote=document.getElementById('nonFixedNote');
+  if(nfRow)nfRow.style.display=isWorkday()?'flex':'none';
+  const nfSel=c.nonFixedPick||'auto';
+  document.querySelectorAll('#segNonFixed button').forEach(b=>b.classList.toggle('on',b.dataset.nf===nfSel));
+  if(nfNote&&isWorkday())nfNote.textContent=nonFixedPickLabel(c);
   wakeTime.value=c.wake;
   wakeTime.disabled=!!c.wakeLocked;
   const wLbl=document.getElementById('wakeLockedLbl');
@@ -1306,8 +1494,10 @@ function renderSched(){
   // status line
   if(isWorkday()){
     const gap=WORK_START-endMin;
-    if(gap>=0){statusLine.className='statusline ok';statusLine.textContent='✓ '+gap+' min buffer before work (8pm)';}
-    else{statusLine.className='statusline over';statusLine.textContent='⚠ Over by '+(-gap)+' min — trim a block or shorten the workout';}
+    const overlapN=(conflicts||[]).filter(x=>x.msg&&(x.msg.includes('Late wake')||x.msg.includes('overlaps')||x.msg.includes('No open morning'))).length;
+    if(gap<0){statusLine.className='statusline over';statusLine.textContent='⚠ Over by '+(-gap)+' min — trim a block or shorten the workout';}
+    else if(overlapN){statusLine.className='statusline over';statusLine.textContent='⚠ '+overlapN+' scheduling conflict'+(overlapN>1?'s':'')+' — see banner below';}
+    else{statusLine.className='statusline ok';statusLine.textContent='✓ '+gap+' min buffer before work (8pm)';}
   } else {
     statusLine.className='statusline off';statusLine.textContent='🌙 Day wraps around '+fmt12(minToTime(endMin))+' — no shift, sleep when ready';
   }
@@ -1325,7 +1515,7 @@ function renderSched(){
   seq.forEach(b=>{
     const startHH=minToTime(b.start);const done=!!checks[b.id];const now=!done&&nowMin()>=b.start&&nowMin()<b.end;
     const isFlex=!!b.flex;
-    const el=document.createElement('div');el.className='blk'+(done?' done':'')+(now?' now':'')+(editMode?' info':'')+(isFlex?' flex info':'')+(b.anchored?' anchored':'');
+    const el=document.createElement('div');el.className='blk'+(done?' done':'')+(now?' now':'')+(editMode?' info':'')+(isFlex?' flex info':'')+(b.anchored?' anchored':'')+(b.overflow?' overflow':'');
     let rightHTML;
     if(editMode&&!isFlex){
       rightHTML=`<span class="stepper"><button data-step="-1">−</button><span class="val">${b.dur}m</span><button data-step="1">+</button></span>${(b.custom||b.sudden)?'<span class="delx">✕</span>':''}`;
@@ -1334,7 +1524,7 @@ function renderSched(){
     } else rightHTML='';
     const endLbl=b.end!=null?fmt12(minToTime(b.end)):'';
     el.innerHTML=`<div class="time">${fmt12(startHH)}${endLbl?'<br><span style="font-size:11px;color:var(--muted2)">→ '+endLbl+'</span>':''}</div>
-      <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.custom&&!b.sudden?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.sub} · ${b.dur}m</small></span></div>
+      <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.overflow?'<span class="overflowtag">OVERLAP</span>':''}${b.custom&&!b.sudden?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.nonFixed?'<span class="custag">PICK</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.sub} · ${b.dur}m</small></span></div>
       <div class="right">${rightHTML}</div>`;
     if(editMode&&!isFlex){
       el.querySelectorAll('.stepper button').forEach(btn=>btn.onclick=(e)=>{
@@ -1358,7 +1548,7 @@ function renderSched(){
   if(isWorkday()){
     const wn=nowMin();const workNow=wn>=WORK_START||wn<240;
     const work=document.createElement('div');work.className='blk work'+(workNow?' now':'');
-    work.innerHTML=`<div class="time">${fmt12('20:00')}</div><div class="body"><span class="ico">💻</span><span class="lab">Work (Bangkok 7a–3p)${workNow?'<span class="nowtag">NOW</span>':''}<small>Wrap fully before logoff · 8h</small></span></div><div class="right"></div>`;
+    work.innerHTML=`<div class="time">${fmt12('20:00')}</div><div class="body"><span class="ico">💻</span><span class="lab">Work (Bangkok 7a–3p)${workNow?'<span class="nowtag">NOW</span>':''}<small>8pm–3am · wrap before logoff</small></span></div><div class="right"></div>`;
     sched.appendChild(work);
     const sleepNow=wn>=240&&wn<toMin(c.wake);
     const sleep=document.createElement('div');sleep.className='blk'+(sleepNow?' now':'');
@@ -1790,6 +1980,11 @@ function wire(){
   resetDur.onclick=()=>{delete DATA.templateDur[dayType()];save();renderSched();renderGlance();};
   document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;save();renderClocks();renderSched();renderNowBanner();renderGlance();});
   document.querySelectorAll('#segWorkout button').forEach(b=>b.onclick=()=>{cfg().workout=b.dataset.w;save();renderSched();renderNowBanner();renderGlance();});
+  document.querySelectorAll('#segNonFixed button').forEach(b=>b.onclick=()=>{
+    const v=b.dataset.nf;
+    cfg().nonFixedPick=v==='auto'?null:v;
+    save();renderSched();renderNowBanner();renderGlance();
+  });
   const tWhen=document.getElementById('tWhen');
   const tDate=document.getElementById('tDate');
   const tMode=document.getElementById('tMode');
