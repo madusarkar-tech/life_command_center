@@ -377,7 +377,7 @@
           <span class="lbl2">Workout</span>
           <div class="seg" id="segWorkout">
             <button data-w="gym">Gym</button>
-            <button data-w="home">Home · 45m</button>
+            <button data-w="home">Home · 20m+</button>
             <button data-w="skip">Skip</button>
           </div>
           <span class="wed-note" id="wedNote"></span>
@@ -708,9 +708,10 @@ const WORKDAY_CLOCK={
   garden:[19*60+30,20*60]
 };
 const GYM_COMMUTE_EACH=30;
-const GYM_THRESHOLD=76;
-const GYM_MIN=45;
+const GYM_THRESHOLD=75;
+const GYM_MIN=20;
 const GYM_MAX=120;
+const WAKE_LATE_BREAKFAST=10*60+30;
 const PMP_BLOCK_MIN=120;
 const JOB_APPS_MIN=30;
 const SHOWER_MIN=30;
@@ -1002,6 +1003,47 @@ function bestGap(gaps,minLen,earliest){
   });
   return best;
 }
+function workdayBreakfastMinutes(wakeMin,ov){
+  if(ov.breakfast!=null)return ov.breakfast;
+  return wakeMin<WAKE_LATE_BREAKFAST?60:30;
+}
+function workdayBreakfastSub(wakeMin,bfDur){
+  const base='Animals · coffee · eat';
+  if(bfDur===60&&wakeMin<WAKE_LATE_BREAKFAST)return base+' · 1h from wake (before 10:30)';
+  if(bfDur===30&&wakeMin>=WAKE_LATE_BREAKFAST)return base+' · 30m from wake (10:30 or later)';
+  return base+' · '+bfDur+'m from wake';
+}
+function gapAdjacentBefore(gaps,blockStart,earliest){
+  let best=null;
+  gaps.forEach(g=>{
+    const s=Math.max(g.start,earliest);
+    const len=g.end-s;
+    if(len<5||g.end>blockStart+2||blockStart-g.end>5)return;
+    if(!best||len>best.len)best={start:s,end:g.end,len};
+  });
+  return best;
+}
+function gapFitsGym(gap,ws){
+  if(ws==='skip')return false;
+  if(ws==='home')return gap.len>=GYM_MIN;
+  if(ws==='gym')return gap.len>=GYM_COMMUTE_EACH*2+GYM_MIN;
+  return gap.len>=GYM_MIN;
+}
+function shouldPlaceGymBeforePmp(gaps,ws,earliest,pmpDur){
+  if(ws==='skip')return false;
+  const pmpGap=bestGap(gaps,pmpDur,earliest);
+  if(!pmpGap)return false;
+  const preGap=gapAdjacentBefore(gaps,pmpGap.start,earliest);
+  if(!preGap||preGap.len<60||preGap.len>=pmpDur||!gapFitsGym(preGap,ws))return false;
+  return !gaps.some(g=>{
+    const s=Math.max(g.start,earliest);
+    const len=g.end-s;
+    if(len<GYM_MIN)return false;
+    if(Math.abs(s-preGap.start)<2&&Math.abs(g.end-preGap.end)<2)return false;
+    if(s>=pmpGap.start-2&&g.end<=pmpGap.end+2)return false;
+    return gapFitsGym({start:s,end:g.end,len},ws);
+  });
+}
 function addWorkdayClock(seq,ov){
   const defs={
     dinnerprep:{ico:'🍱',lab:'Dinner prep',sub:'Fixed 3:30–4:00pm'},
@@ -1041,8 +1083,10 @@ function nonFixedPickLabel(c){
   return 'Auto (rotates by date)';
 }
 function placeInGapIfClear(seq,gap,block){
-  const dur=block.dur;
   const start=gap.start;
+  const maxDur=gap.end-start;
+  const dur=Math.min(block.dur,maxDur);
+  if(dur<5)return false;
   const end=start+dur;
   if(overlapsAnyBlock(seq,start,end))return false;
   seq.push({...block,start,end,dur});
@@ -1054,7 +1098,9 @@ function workdayGaps(seq,wakeMin,to){
 function placeGymBlock(seq,gap,ws){
   const useGym=ws==='gym'||(ws!=='home'&&gap.len>=GYM_THRESHOLD);
   if(useGym){
-    const workout=Math.min(Math.max(gap.len-GYM_COMMUTE_EACH*2,GYM_MIN),GYM_MAX);
+    const maxWorkout=gap.len-GYM_COMMUTE_EACH*2;
+    if(maxWorkout<GYM_MIN)return false;
+    const workout=Math.min(Math.max(GYM_MIN,maxWorkout),GYM_MAX);
     const dur=workout+GYM_COMMUTE_EACH*2;
     return placeInGapIfClear(seq,gap,{id:'gym',ico:'🏋️',lab:'Gym + commute',sub:'30m each way · '+workout+'m workout',dur});
   }
@@ -1179,34 +1225,47 @@ function buildWorkdaySeq(c,ws,ov,dayKey){
   const seq=[];
   const overlapWarnings=[];
   const skipped=[];
-  const bfDur=ov.breakfast!=null?ov.breakfast:60;
+  const bfDur=workdayBreakfastMinutes(wakeMin,ov);
   const bfEnd=wakeMin+bfDur;
-  seq.push({id:'breakfast',ico:'🍳',lab:'Breakfast',sub:'Animals · coffee · eat · 1h from wake',dur:bfDur,start:wakeMin,end:bfEnd,anchored:true});
+  seq.push({id:'breakfast',ico:'🍳',lab:'Breakfast',sub:workdayBreakfastSub(wakeMin,bfDur),dur:bfDur,start:wakeMin,end:bfEnd,anchored:true});
   addWorkdayClock(seq,ov);
   const morningEnd=WORKDAY_CLOCK.dinnerPrep[0];
-  const earliestVar=bfEnd+60;
+  const earliestVar=bfEnd;
   const schedDay=dateFromKey(dayKey||activeDayKey());
   const beforePmpExam=schedDay<PMP;
   if(bfEnd>morningEnd){
     overlapWarnings.push({msg:'Late wake — breakfast runs into fixed afternoon blocks (from '+fmt12(minToTime(morningEnd))+').'});
   }
-  if(earliestVar>=morningEnd){
-    overlapWarnings.push({msg:'Late wake — less than 1h after breakfast before fixed blocks; morning blocks may not fit.'});
-  }
   const morningGaps=()=>workdayGaps(seq,wakeMin,morningEnd);
   const dayGaps=()=>workdayGaps(seq,wakeMin,WORK_START);
-  // Priority 1: PMP (2h) before gym/job — flowchart
-  if(beforePmpExam){
-    const pmpDur=ov.study1!=null?ov.study1:PMP_BLOCK_MIN;
-    const gap=bestGap(morningGaps(),pmpDur,earliestVar);
-    if(gap&&placeInGapIfClear(seq,gap,{id:'study1',ico:'📘',lab:'PMP deep study',sub:'Priority 1 · 2h · exam '+PMP.toLocaleDateString('en-US',{month:'short',day:'numeric'}),dur:pmpDur})){}
-    else skipped.push('PMP study');
-  }
-  // Priority 2: gym (+ shower after gym, before work)
+  const pmpDur=ov.study1!=null?ov.study1:PMP_BLOCK_MIN;
+  const pmpBlock={id:'study1',ico:'📘',lab:'PMP deep study',sub:'Priority 1 · 2h · exam '+PMP.toLocaleDateString('en-US',{month:'short',day:'numeric'}),dur:pmpDur};
   let gymEnd=null;
-  if(ws!=='skip'){
-    const gap=bestGap(morningGaps(),GYM_MIN,earliestVar);
-    if(gap&&placeGymBlock(seq,gap,ws)){
+  const gymFirst=beforePmpExam&&shouldPlaceGymBeforePmp(morningGaps(),ws,earliestVar,pmpDur);
+  if(gymFirst){
+    const pmpSlot=bestGap(morningGaps(),pmpDur,earliestVar);
+    const preGap=gapAdjacentBefore(morningGaps(),pmpSlot.start,earliestVar);
+    if(preGap&&placeGymBlock(seq,preGap,ws)){
+      const g=seq.find(b=>b.id==='gym'&&!b.flex);
+      if(g)gymEnd=g.end;
+    }else skipped.push('workout');
+    const pmpGap=bestGap(morningGaps(),pmpDur,earliestVar);
+    if(pmpGap&&placeInGapIfClear(seq,pmpGap,pmpBlock)){}
+    else skipped.push('PMP study');
+  }else if(beforePmpExam){
+    const gap=bestGap(morningGaps(),pmpDur,earliestVar);
+    if(gap&&placeInGapIfClear(seq,gap,pmpBlock)){}
+    else skipped.push('PMP study');
+    if(ws!=='skip'){
+      const gGap=bestGap(morningGaps(),GYM_MIN,earliestVar);
+      if(gGap&&placeGymBlock(seq,gGap,ws)){
+        const g=seq.find(b=>b.id==='gym'&&!b.flex);
+        if(g)gymEnd=g.end;
+      }else skipped.push('workout');
+    }
+  }else if(ws!=='skip'){
+    const gGap=bestGap(morningGaps(),GYM_MIN,earliestVar);
+    if(gGap&&placeGymBlock(seq,gGap,ws)){
       const g=seq.find(b=>b.id==='gym'&&!b.flex);
       if(g)gymEnd=g.end;
     }else skipped.push('workout');

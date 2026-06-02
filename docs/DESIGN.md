@@ -33,7 +33,7 @@ Day starts at **logged wake time**. Build order matches the flowchart:
 
 | Block | When | Duration |
 |-------|------|----------|
-| Breakfast | From wake | 60m |
+| Breakfast | From wake | **60m** if wake before **10:30 AM**; **30m** if wake at or after 10:30 |
 | Dinner prep | 3:30–4:00 PM | 30m |
 | Dog walk & feed | 4:45–5:30 PM | 45m |
 | Dinner | 6:00–7:30 PM | 90m |
@@ -46,7 +46,7 @@ Day starts at **logged wake time**. Build order matches the flowchart:
 | Priority | Block | Rules |
 |----------|-------|--------|
 | 1 | PMP deep study | One **2h** block in the largest morning gap; until **June 22, 2026**, then skipped |
-| 2 | Gym + shower | Gym: ≥1h15 → gym + 30m commute each way; else home ≥45m; ≥1h after breakfast. Wed default skip. Shower: 30m after gym, before shift |
+| 2 | Gym + shower | Gym: ≥1h15 → gym + 30m commute each way (duration clipped to gap); else home **≥20m** (up to 2h). Variables start **right after breakfast** (no extra buffer hour). If the only **60m** gap sits immediately before PMP’s 2h slot, gym may use it and PMP takes the next largest gap. Wed default skip. Shower: 30m after gym, before shift |
 | 3 | Job applications | ≥30m/day anywhere before work; checking the block marks **Job applications** habit |
 
 ### Non-fixed (one per day if time remains)
@@ -71,7 +71,7 @@ Pick one: Read, Do AI work, or QGIS — **Extra** control (Auto / manual / Skip)
 |---------|----------|
 | Wake time / “Just woke up” | Recomputes all block start times downstream |
 | Day type (Auto / Workday / Friday / Saturday) | Auto uses weekday; override for swapped days |
-| Workout: Gym / Home / Skip | Auto: gym if ≥1h15 free (+ commute); else home ≥45m. Manual override. Wed auto-skip |
+| Workout: Gym / Home / Skip | Auto: gym if ≥1h15 free (+ commute); else home ≥20m. Manual override. Wed auto-skip |
 | Sudden tasks | Anytime or fixed window; today vs future rules; displaces into open time |
 | Weekend plan | Night before: build Friday/Saturday activity list; schedule packs from wake |
 | Edit block lengths | Permanent default per day type (saved in `templateDur`) |
