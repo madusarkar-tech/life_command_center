@@ -21,7 +21,13 @@ This document captures the real-world constraints that shaped the dashboard. It 
 
 ## Workday template (Sun–Thu) — flowchart model
 
-Day starts at **logged wake time**. Three layers: sudden tasks → fixed clock blocks → variable blocks in gaps → one non-fixed pick.
+Day starts at **logged wake time**. Build order matches the flowchart:
+
+1. Sudden tasks (overlay)
+2. Fixed clock blocks (breakfast → evening anchors)
+3. **Variable blocks by priority** (before any open time): PMP (1) → gym + shower (2) → job apps (3)
+4. Non-fixed pick (one of Read / AI / QGIS) in leftover time
+5. **Open time** — only what remains, then deploy
 
 ### Fixed (clock or wake-anchored)
 
@@ -35,14 +41,13 @@ Day starts at **logged wake time**. Three layers: sudden tasks → fixed clock b
 | **Work** | 8:00 PM–3:00 AM | 7h (Bangkok 7a–3p) |
 | **Sleep** | ~4:00 AM | Protected block |
 
-### Variable (agent places in morning gaps before 3:30 PM)
+### Variable (placed in gaps before 3:30 PM / before work — **priority order**)
 
-| Block | Rules |
-|-------|--------|
-| Gym | If ≥1h15 free after layout: gym + 30m commute each way; else home workout (≥45m). Slot ≥1h after breakfast. Wed default skip. |
-| PMP deep study | 2h until **June 22, 2026**, then slot freed |
-| Job applications | ≥30m/day · checking the block marks **Job applications** habit |
-| Shower | 30m after workout, before shift |
+| Priority | Block | Rules |
+|----------|-------|--------|
+| 1 | PMP deep study | One **2h** block in the largest morning gap; until **June 22, 2026**, then skipped |
+| 2 | Gym + shower | Gym: ≥1h15 → gym + 30m commute each way; else home ≥45m; ≥1h after breakfast. Wed default skip. Shower: 30m after gym, before shift |
+| 3 | Job applications | ≥30m/day anywhere before work; checking the block marks **Job applications** habit |
 
 ### Non-fixed (one per day if time remains)
 

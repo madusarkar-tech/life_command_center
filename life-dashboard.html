@@ -1048,6 +1048,22 @@ function placeInGapIfClear(seq,gap,block){
   seq.push({...block,start,end,dur});
   return true;
 }
+function workdayGaps(seq,wakeMin,to){
+  return findGapsInWindow(workdayReserved(seq),wakeMin,to);
+}
+function placeGymBlock(seq,gap,ws){
+  const useGym=ws==='gym'||(ws!=='home'&&gap.len>=GYM_THRESHOLD);
+  if(useGym){
+    const workout=Math.min(Math.max(gap.len-GYM_COMMUTE_EACH*2,GYM_MIN),GYM_MAX);
+    const dur=workout+GYM_COMMUTE_EACH*2;
+    return placeInGapIfClear(seq,gap,{id:'gym',ico:'🏋️',lab:'Gym + commute',sub:'30m each way · '+workout+'m workout',dur});
+  }
+  if(gap.len>=GYM_MIN){
+    const dur=Math.min(gap.len,GYM_MAX);
+    return placeInGapIfClear(seq,gap,{id:'gym',ico:'🏠',lab:'Home workout',sub:'Under 1h15 free · '+dur+'m at home',dur});
+  }
+  return false;
+}
 function pushFlexGap(out,from,to,sub){
   if(to-from<5)return;
   out.push({id:'flex_'+from+'_'+to,ico:'⏳',lab:'Open time',sub:sub||'Flex time',dur:to-from,start:from,end:to,flex:true});
@@ -1169,61 +1185,55 @@ function buildWorkdaySeq(c,ws,ov,dayKey){
   addWorkdayClock(seq,ov);
   const morningEnd=WORKDAY_CLOCK.dinnerPrep[0];
   const earliestVar=bfEnd+60;
+  const schedDay=dateFromKey(dayKey||activeDayKey());
+  const beforePmpExam=schedDay<PMP;
   if(bfEnd>morningEnd){
     overlapWarnings.push({msg:'Late wake — breakfast runs into fixed afternoon blocks (from '+fmt12(minToTime(morningEnd))+').'});
   }
   if(earliestVar>=morningEnd){
-    overlapWarnings.push({msg:'Late wake — less than 1h after breakfast before fixed blocks; morning workout/study may not fit.'});
+    overlapWarnings.push({msg:'Late wake — less than 1h after breakfast before fixed blocks; morning blocks may not fit.'});
   }
-  let gymEnd=null;
-  if(ws!=='skip'){
-    const gaps=findGapsInWindow(workdayReserved(seq),wakeMin,morningEnd);
-    const gap=bestGap(gaps,GYM_MIN,earliestVar);
-    if(gap){
-      const useGym=ws==='gym'||(ws!=='home'&&gap.len>=GYM_THRESHOLD);
-      let placed=false;
-      if(useGym){
-        const workout=Math.min(Math.max(gap.len-GYM_COMMUTE_EACH*2,GYM_MIN),GYM_MAX);
-        const dur=workout+GYM_COMMUTE_EACH*2;
-        placed=placeInGapIfClear(seq,gap,{id:'gym',ico:'🏋️',lab:'Gym + commute',sub:'30m each way · '+workout+'m workout',dur});
-      }else if(gap.len>=GYM_MIN){
-        const dur=Math.min(gap.len,GYM_MAX);
-        placed=placeInGapIfClear(seq,gap,{id:'gym',ico:'🏠',lab:'Home workout',sub:'Under 1h15 free · '+dur+'m at home',dur});
-      }
-      if(placed){
-        const g=seq.find(b=>b.id==='gym'&&!b.flex);
-        if(g)gymEnd=g.end;
-      }else skipped.push('workout');
-    }else skipped.push('workout');
-  }
-  const schedDay=dateFromKey(dayKey||activeDayKey());
-  if(schedDay<PMP){
-    const gaps=findGapsInWindow(workdayReserved(seq),wakeMin,morningEnd);
+  const morningGaps=()=>workdayGaps(seq,wakeMin,morningEnd);
+  const dayGaps=()=>workdayGaps(seq,wakeMin,WORK_START);
+  // Priority 1: PMP (2h) before gym/job — flowchart
+  if(beforePmpExam){
     const pmpDur=ov.study1!=null?ov.study1:PMP_BLOCK_MIN;
-    const gap=bestGap(gaps,pmpDur,earliestVar);
-    if(gap&&placeInGapIfClear(seq,gap,{id:'study1',ico:'📘',lab:'PMP deep study',sub:'2h in morning gap · exam '+PMP.toLocaleDateString('en-US',{month:'short',day:'numeric'}),dur:pmpDur})){}
+    const gap=bestGap(morningGaps(),pmpDur,earliestVar);
+    if(gap&&placeInGapIfClear(seq,gap,{id:'study1',ico:'📘',lab:'PMP deep study',sub:'Priority 1 · 2h · exam '+PMP.toLocaleDateString('en-US',{month:'short',day:'numeric'}),dur:pmpDur})){}
     else skipped.push('PMP study');
   }
-  const jobDur=ov.jobapps!=null?ov.jobapps:JOB_APPS_MIN;
-  const jGap=bestGap(findGapsInWindow(workdayReserved(seq),wakeMin,morningEnd),jobDur,earliestVar);
-  if(jGap&&placeInGapIfClear(seq,jGap,{id:'jobapps',ico:'💼',lab:'Job applications',sub:'At least 30m today',dur:jobDur})){}
-  else skipped.push('job applications');
+  // Priority 2: gym (+ shower after gym, before work)
+  let gymEnd=null;
+  if(ws!=='skip'){
+    const gap=bestGap(morningGaps(),GYM_MIN,earliestVar);
+    if(gap&&placeGymBlock(seq,gap,ws)){
+      const g=seq.find(b=>b.id==='gym'&&!b.flex);
+      if(g)gymEnd=g.end;
+    }else skipped.push('workout');
+  }
   const showerDur=ov.shower!=null?ov.shower:SHOWER_MIN;
   const showerAfter=gymEnd||earliestVar;
-  const sGap=bestGap(findGapsInWindow(workdayReserved(seq),wakeMin,WORK_START),showerDur,showerAfter);
+  const sGap=bestGap(dayGaps(),showerDur,showerAfter);
   if(sGap&&placeInGapIfClear(seq,sGap,{id:'shower',ico:'🚿',lab:'Shower',sub:gymEnd?'After workout · before shift':'Before shift',dur:showerDur})){}
-  else skipped.push('shower');
+  else if(ws!=='skip'||gymEnd)skipped.push('shower');
+  // Priority 3: job applications (daily; more room after PMP exam)
+  const jobDur=ov.jobapps!=null?ov.jobapps:JOB_APPS_MIN;
+  const jobSub=beforePmpExam?'Priority 3 · at least 30m today':'At least 30m · extra room after PMP exam';
+  const jGap=bestGap(dayGaps(),jobDur,earliestVar);
+  if(jGap&&placeInGapIfClear(seq,jGap,{id:'jobapps',ico:'💼',lab:'Job applications',sub:jobSub,dur:jobDur})){}
+  else skipped.push('job applications');
+  // Non-fixed: only in leftover time before work (after PMP/gym/job)
   const nf=pickNonFixed(dayKey||activeDayKey(),c);
   if(nf){
     const nfDur=ov[nf.id]!=null?ov[nf.id]:nf.dur;
     const need=Math.min(nfDur,30);
-    const nGap=bestGap(findGapsInWindow(workdayReserved(seq),wakeMin,morningEnd),need,earliestVar);
+    const nGap=bestGap(dayGaps(),need,earliestVar);
     if(nGap&&placeInGapIfClear(seq,nGap,{id:nf.id,ico:nf.ico,lab:nf.lab,sub:nf.sub,dur:Math.min(nGap.len,nfDur),nonFixed:true})){}
     else skipped.push(nf.lab);
   }
   if(skipped.length){
     const uniq=[...new Set(skipped)];
-    overlapWarnings.push({msg:'No open morning slot for: '+uniq.join(', ')+'. Fixed evening blocks stay on the clock.'});
+    overlapWarnings.push({msg:'No slot for: '+uniq.join(', ')+' — open time shows what remains. Fixed evening blocks stay on the clock.'});
   }
   sortSeqByStart(seq);
   overlapWarnings.push(...annotateWorkdayOverlaps(seq));
