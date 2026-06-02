@@ -1,0 +1,244 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="5H1RpEqk1S_blSqHO_Yj">
+    <mxGraphModel dx="1754" dy="893" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-9" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=13;verticalAlign=top;" target="yO8ztNF9SrLAGVCPVbxF-4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-10" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=13;verticalAlign=top;" target="yO8ztNF9SrLAGVCPVbxF-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-11" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=13;verticalAlign=top;" target="yO8ztNF9SrLAGVCPVbxF-3">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="80" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;weekday&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-my are Sunday-thursday&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="140" x="390" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-15" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontSize=13;verticalAlign=top;" target="yO8ztNF9SrLAGVCPVbxF-14" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-17" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;fontSize=13;verticalAlign=top;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="190" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-8" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" target="QWhCmEoeKmfQhMOu0N17-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;sudden tasks&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-these are tasks or appointments that suddenly come up&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="180" x="10" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-22" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=13;verticalAlign=top;" target="yO8ztNF9SrLAGVCPVbxF-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-10" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="QWhCmEoeKmfQhMOu0N17-4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="840" y="140" />
+              <mxPoint x="840" y="910" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;Fixed tasks&amp;nbsp;&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-these are tasks that have a fto be done everyday&lt;/div&gt;&lt;div&gt;-Have to do these everyday&lt;/div&gt;&lt;div&gt;-fixed tasks include both:&amp;nbsp;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;-fixed time (breakfast, dinner, prep, dog&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;-fixed everyday variable blocks (pmp, gym, job)&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="110" width="310" x="300" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-60" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-59" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-61" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-59" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-62" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-59" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-63" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-59" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-65" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-59" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-66" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-59" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-70" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="yO8ztNF9SrLAGVCPVbxF-68">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-26" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="QWhCmEoeKmfQhMOu0N17-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;Non fixed tasks&amp;nbsp;&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-agent picks one for tthe day based on the work load of the day&lt;/div&gt;&lt;div&gt;-if the day is completely filled with no open time, then agent ignores for the day&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="190" x="860" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-14" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;On the day&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-fixed appointment--agent readjusts the default of time slot to another time&lt;/div&gt;&lt;div&gt;-flexible taks-- agent finds the first open time slot&lt;/div&gt;" vertex="1">
+          <mxGeometry height="255" width="120" x="10" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-18" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;Future date&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-fixed appointment--agent readjusts the default of time slot to another time&lt;/div&gt;&lt;div&gt;-flexible taks-- agent finds the first open time slot&lt;/div&gt;&lt;div&gt;-agent keeps in memory to bring to the task list on that day&lt;/div&gt;" vertex="1">
+          <mxGeometry height="255" width="120" x="140" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-33" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-32" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-20" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;verticalAlign=top;" value="&lt;b&gt;Fixed time, fixed duration tasks&lt;/b&gt;&lt;br&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="45" width="115" x="290" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-23" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.571;entryY=-0.016;entryDx=0;entryDy=0;entryPerimeter=0;fontSize=13;verticalAlign=top;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="568.52" y="243.15999999999997" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-28" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;" value="Tasks for the day start based on wake up time logged" vertex="1">
+          <mxGeometry height="60" width="150" x="520" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-58" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-57" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-2" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" target="yO8ztNF9SrLAGVCPVbxF-49">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-29" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;verticalAlign=top;" value="&lt;b&gt;Variable time, Variable duration tasks&amp;nbsp;&lt;/b&gt;&lt;div&gt;&lt;b&gt;-defined by agent based on the parameters (prioritize before open time)&lt;/b&gt;&lt;div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="85" width="200" x="450" y="245" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-35" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-34" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-32" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;rounded=0;" value="Breakfast&lt;div&gt;Time duration of 1 hour from waking up&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="122.5" x="8.75" y="710" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-37" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-36" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-34" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;rounded=0;" value="Dinner prep&lt;div&gt;3.30-4.00pm&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="120" x="287.5" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-39" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-36" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-38" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-36" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;rounded=0;" value="Dog walk &amp;amp; feed&lt;div&gt;4.45-5.30pm&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="120" x="287.5" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-41" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-38" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-40" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-38" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;rounded=0;" value="Dinner&lt;div&gt;6-7.30pm&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="120" x="287.5" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-43" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="yO8ztNF9SrLAGVCPVbxF-42" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-40" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;rounded=0;" value="Garden&lt;div&gt;7.30-8pm&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="120" x="287.5" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-42" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;rounded=0;" value="Work&lt;div&gt;8pm-3am&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="287.5" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-49" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;Gym (priority 2)&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-atleast 45 minutes minimum to 2 hours maximum each day.&amp;nbsp;&lt;/div&gt;&lt;div&gt;-based on sudden tasks and fixed time fixed duration tasks.&amp;nbsp;&lt;/div&gt;&lt;div&gt;-if I have more than 1.15 hours, then I go to the gym where the commute time is half hour each way.&amp;nbsp;&lt;/div&gt;&lt;div&gt;-If I have less than 1.15 hours, agent chooses home workouts&lt;/div&gt;&lt;div&gt;-time slot should be somewhere atleast an hour after breakfast&lt;/div&gt;&lt;div&gt;&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;Shower tied to gym (priority 2)&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;- time duration is 30 minutes sometime after gym and before beginning work&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="450" width="120" x="570" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-57" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;rounded=0;" value="&lt;b&gt;Job applications (priority 3)&lt;/b&gt;&lt;div&gt;30 minutes atleast everyday&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="120" x="710" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-59" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;rounded=0;" value="Read" vertex="1">
+          <mxGeometry height="30" width="50" x="1080" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-68" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;rounded=0;" value="Do AI work" vertex="1">
+          <mxGeometry height="35" width="70" x="1080" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-71" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;rounded=0;" value="Qgis" vertex="1">
+          <mxGeometry height="35" width="70" x="1080" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-1" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="yO8ztNF9SrLAGVCPVbxF-52" value="">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="500" y="330" as="sourcePoint" />
+            <mxPoint x="853" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Asbc4W8R_7uDBVIC_qn3-5" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-52" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="Asbc4W8R_7uDBVIC_qn3-4" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-52" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;PMP (priority 1)&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-1 block of 2 hours of deep study&lt;/div&gt;&lt;div&gt;-Only pertinent until June 22, 2026 when I have to take the exam&lt;/div&gt;&lt;div&gt;-after June 22, 2026, this time slot is free&lt;/div&gt;" vertex="1">
+          <mxGeometry height="150" width="125" x="425" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-12" edge="1" parent="1" source="QWhCmEoeKmfQhMOu0N17-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="QWhCmEoeKmfQhMOu0N17-11" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="bGqQ-pAIcg2ufcpUP9rV-3" edge="1" parent="1" source="QWhCmEoeKmfQhMOu0N17-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;" target="QWhCmEoeKmfQhMOu0N17-17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Is all the time spent by sudden tasks and fixed tasks (sudden task + fixed tasks [clock+variable]?" vertex="1">
+          <mxGeometry height="110" width="135" x="270" y="830" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-7" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;" target="yO8ztNF9SrLAGVCPVbxF-14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-14" edge="1" parent="1" source="QWhCmEoeKmfQhMOu0N17-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="QWhCmEoeKmfQhMOu0N17-13" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-11" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="YES (no non-fixed time and no open time)" vertex="1">
+          <mxGeometry height="60" width="120" x="285" y="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-13" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="Deploy the schedule" vertex="1">
+          <mxGeometry height="60" width="120" x="485" y="1020" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-19" edge="1" parent="1" source="QWhCmEoeKmfQhMOu0N17-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="960" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-17" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="NO" vertex="1">
+          <mxGeometry height="60" width="120" x="580" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-20" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="After pmp/gym/job slots, deploy non-fixed tasks in the left over times" vertex="1">
+          <mxGeometry height="60" width="120" x="820" y="940" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-23" edge="1" parent="1" source="QWhCmEoeKmfQhMOu0N17-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="QWhCmEoeKmfQhMOu0N17-22" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-21" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="Is all the time spent by sudden tasks, fixed tasks and non fixed tasks?" vertex="1">
+          <mxGeometry height="60" width="120" x="990" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-25" edge="1" parent="1" source="QWhCmEoeKmfQhMOu0N17-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="QWhCmEoeKmfQhMOu0N17-24" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-28" edge="1" parent="1" source="QWhCmEoeKmfQhMOu0N17-22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="QWhCmEoeKmfQhMOu0N17-27" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-22" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="Yes" vertex="1">
+          <mxGeometry height="60" width="120" x="990" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-24" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="Deploy the schedule" vertex="1">
+          <mxGeometry height="60" width="120" x="990" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-30" edge="1" parent="1" source="QWhCmEoeKmfQhMOu0N17-27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="QWhCmEoeKmfQhMOu0N17-29" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-27" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="No" vertex="1">
+          <mxGeometry height="60" width="120" x="1190" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-32" edge="1" parent="1" source="QWhCmEoeKmfQhMOu0N17-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="QWhCmEoeKmfQhMOu0N17-31" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-29" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="Put time slot as open time" vertex="1">
+          <mxGeometry height="60" width="120" x="1390" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="QWhCmEoeKmfQhMOu0N17-31" parent="1" style="whiteSpace=wrap;html=1;rounded=0;" value="Deploy the schedule" vertex="1">
+          <mxGeometry height="60" width="120" x="1390" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="Asbc4W8R_7uDBVIC_qn3-4" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;rounded=0;" value="after June 22, 2026" vertex="1">
+          <mxGeometry height="60" width="120" x="427.5" y="635" as="geometry" />
+        </mxCell>
+        <mxCell id="Asbc4W8R_7uDBVIC_qn3-6" edge="1" parent="1" source="Asbc4W8R_7uDBVIC_qn3-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.575;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" target="yO8ztNF9SrLAGVCPVbxF-57">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="488" y="850" />
+              <mxPoint x="779" y="850" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
