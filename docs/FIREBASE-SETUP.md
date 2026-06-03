@@ -28,6 +28,25 @@ window.FIREBASE_CONFIG = {
 
 Commit and push so GitHub Pages serves the same config.
 
+## 3b. Web client ID (required for iPhone / GitHub Pages sign-in)
+
+Redirect sign-in does **not** work on iPhone Safari when the app is hosted on `github.io`. The app uses Google Identity Services instead, which needs your **Web client ID**:
+
+1. Firebase Console → **Authentication** → **Sign-in method** → **Google** → expand **Web SDK configuration**
+2. Copy **Web client ID** (ends in `.apps.googleusercontent.com`)
+3. Add to **`firebase-config.js`**:
+
+```javascript
+window.FIREBASE_CONFIG = {
+  apiKey: "...",
+  authDomain: "...",
+  // ...
+  googleWebClientId: "93263530978-xxxxxxxx.apps.googleusercontent.com"
+};
+```
+
+4. Commit and push. Also confirm **Google Cloud Console** → **Credentials** → that Web client → **Authorized JavaScript origins** includes `https://madusarkar-tech.github.io`
+
 ## 4. Enable Google sign-in
 
 1. Firebase Console → **Build** → **Authentication** → **Get started**

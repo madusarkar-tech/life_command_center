@@ -6,5 +6,5 @@ window.FIREBASE_CONFIG = {
   storageBucket: "scheduler-d003a.firebasestorage.app",
   messagingSenderId: "93263530978",
   appId: "1:93263530978:web:3ae200bcbcce5e2ffa87bb",
-  measurementId: "G-354QYY3GE6"
+  googleWebClientId: "", // iPhone sign-in: Firebase → Auth → Google → Web client ID (ends in .apps.googleusercontent.com)
 };
