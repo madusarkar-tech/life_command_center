@@ -2,6 +2,8 @@
 
 This document captures the real-world constraints that shaped the dashboard. It is the distilled “why” behind `life-dashboard.html`.
 
+**Weekday scheduling source of truth:** [`lifechart2.drawio`](../lifechart2.drawio) (see also `lifechart2.drawio.png`). The older `Lifecommand flowchart.drawio` priority model is retired for workdays.
+
 ## Context
 
 - **Location:** Tallahassee, FL (America/New_York)
@@ -19,21 +21,21 @@ This document captures the real-world constraints that shaped the dashboard. It 
 3. **Operations are capped.** Animals, garden, meals, and workouts use fixed blocks — not unlimited time sinks.
 4. **Meal prep is batched.** Saturday batch prep feeds weekday “reheat” lunches; workdays show a banner if last Saturday’s prep was skipped.
 
-## Workday template (Sun–Thu) — flowchart model
+## Workday template (Sun–Thu) — lifechart2 model
 
-Day starts at **logged wake time**. Build order matches the flowchart:
+Day starts at **logged wake time**. Build order:
 
-1. Sudden tasks (overlay)
-2. Fixed clock blocks (breakfast → evening anchors)
-3. **Variable blocks by priority** (before any open time): PMP (1) → gym + shower (2) → job apps (3)
-4. Non-fixed pick (one of Read / AI / QGIS) in leftover time
-5. **Open time** — only what remains, then deploy
+1. **Fixed** clock and wake-anchored blocks (breakfast, dinner prep, dog, dinner, garden)
+2. **Sudden tasks** (manual overlay — fixed window or flexible slot)
+3. **Flexible daily minimums** (equal bag — no ranking): PMP study, gym, job applications — bin-packed into daytime gaps before work
+4. **Non-fixed** pick (one of Read / AI / QGIS) if time remains
+5. **Open time** — remaining slack before deploy
 
 ### Fixed (clock or wake-anchored)
 
 | Block | When | Duration |
 |-------|------|----------|
-| Breakfast | From wake | **60m** if wake before **10:30 AM**; **30m** if wake at or after 10:30 |
+| Breakfast | **1 hour from logged wake** | 60m (today-only override via Edit) |
 | Dinner prep | 3:30–4:00 PM | 30m |
 | Dog walk & feed | 4:45–5:30 PM | 45m |
 | Dinner | 6:00–7:30 PM | 90m |
@@ -41,17 +43,27 @@ Day starts at **logged wake time**. Build order matches the flowchart:
 | **Work** | 8:00 PM–3:00 AM | 7h (Bangkok 7a–3p) |
 | **Sleep** | ~4:00 AM | Protected block |
 
-### Variable (placed in gaps before 3:30 PM / before work — **priority order**)
+### Flexible daily bag (equal requirements)
 
-| Priority | Block | Rules |
-|----------|-------|--------|
-| 1 | PMP deep study | One **2h** block in the largest morning gap; until **June 22, 2026**, then skipped |
-| 2 | Gym + shower | Gym: ≥1h15 → gym + 30m commute each way (duration clipped to gap); else home **≥20m** (up to 2h). Variables start **right after breakfast** (no extra buffer hour). If the only **60m** gap sits immediately before PMP’s 2h slot, gym may use it and PMP takes the next largest gap. Wed default skip. Shower: 30m after gym, before shift |
-| 3 | Job applications | ≥30m/day anywhere before work; checking the block marks **Job applications** habit |
+Schedule all three before work when physically possible. **No priority** between PMP, gym, and job — the agent tries gap layouts (permutations) until all fit.
+
+| Task | Rule |
+|------|------|
+| **PMP study** | **120 min/day** as two **60+60** blocks when possible; one **120m** block is OK if a single gap fits. Skipped after **June 22, 2026**. |
+| **Gym** | **≥20 min/day**; if gap **≥1h15** → gym + **30m commute each way** (workout clipped to gap); else home workout. Respects Workout **Gym / Home / Skip**; Wednesday default **Skip**. |
+| **Job applications** | **≥30 min/day** in a daytime gap. |
+
+If total free time is enough but no layout fits all three, the banner warns (e.g. **Couldn't fit: workout**) — gym is not silently dropped when Workout ≠ Skip and some gap has **≥20m**.
 
 ### Non-fixed (one per day if time remains)
 
 Pick one: Read, Do AI work, or QGIS — **Extra** control (Auto / manual / Skip). Auto rotates by date.
+
+### PMP habit / study tab
+
+- Daily target: mark **PMP study** complete when **≥120 minutes** total for `activeDayKey`.
+- Count **combined**: minutes from PMP Prep session log (`DATA.sessions` for today) **plus** completed scheduled study block durations (`study1` / `study2` when checked).
+- Does **not** require two separate block checkoffs for the habit.
 
 **Late wake:** Fixed clock blocks never move. Overlapping blocks show an OVERLAP tag; banner explains what could not fit.
 
@@ -77,7 +89,7 @@ Pick one: Read, Do AI work, or QGIS — **Extra** control (Auto / manual / Skip)
 | Edit block lengths | Today only (saved in `dayConfig[date].blockDur`) |
 | To-do list | Rolls over until done; optional due dates; most urgent surfaces in Quick Glance |
 
-## Dog & meal windows (workday flowchart)
+## Dog & meal windows (workday)
 
 - Dinner prep: **3:30–4:00 PM**
 - Dog walk & feed: **4:45–5:30 PM**
