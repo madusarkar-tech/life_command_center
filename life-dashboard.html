@@ -418,7 +418,7 @@
             </select>
             <input type="time" id="tWinStart" style="display:none" title="Start">
             <input type="time" id="tWinEnd" style="display:none" title="End">
-            <button type="button" class="btn sm" id="addSudden">Add</button>
+            <button type="button" class="btn sm" id="addSudden" title="Save sudden / planned task">Add task</button>
           </div>
           <div id="suddenList" class="sudden-list"></div>
         </div>
@@ -1007,6 +1007,7 @@ function addSuddenTask(opts){
     targetDayKey
   });
   save();
+  renderSuddenList();
 }
 
 function dateFromKey(k){
@@ -1568,7 +1569,7 @@ function renderSuddenList(){
   const hasToday=todayTasks.length>0;
   const hasUpcoming=upcoming.length>0;
   if(!hasToday&&!hasUpcoming){
-    wrap.innerHTML='<div class="sudden-empty">No sudden tasks yet — they appear here and on the timeline below.</div>';
+    wrap.innerHTML='<div class="sudden-empty">No sudden tasks yet. Choose <strong>Pick date…</strong> for a future day, then click <strong>Add task</strong> — it will show under <strong>Upcoming</strong> here (not on today\'s timeline).</div>';
     return;
   }
   const draw=(tasks,label)=>{
@@ -2254,7 +2255,8 @@ function wire(){
   if(tMode)tMode.onchange=syncSuddenMode;
   syncSuddenMode();
   const addSudden=document.getElementById('addSudden');
-  if(addSudden)addSudden.onclick=()=>{
+  if(addSudden)addSudden.addEventListener('click',()=>{
+    if(!DATA){flash('Still loading…');return;}
     if(!tName||!tMin)return;
     const n=tName.value.trim();
     const m=parseInt(tMin.value,10);
@@ -2266,18 +2268,23 @@ function wire(){
       targetDayKey=tDate.value;
     }
     const mode=tMode?tMode.value:'anytime';
-    if(mode==='window'){
-      if(!tWinStart||!tWinEnd||!tWinStart.value||!tWinEnd.value){flash('Set start & end time');return;}
-      if(toMin(tWinEnd)<=toMin(tWinStart)){flash('End must be after start');return;}
-      addSuddenTask({name:n,mins:m,mode:'window',windowStart:tWinStart.value,windowEnd:tWinEnd.value,targetDayKey});
-    }else addSuddenTask({name:n,mins:m,mode:'anytime',targetDayKey});
-    tName.value='';tMin.value='';
-    if(tWinStart)tWinStart.value='';
-    if(tWinEnd)tWinEnd.value='';
-    renderSched();renderGlance();
-    const planned=targetDayKey!==activeDayKey();
-    flash(planned?'Planned for '+formatDayKeyLabel(targetDayKey):'Sudden task added');
-  };
+    try{
+      if(mode==='window'){
+        if(!tWinStart||!tWinEnd||!tWinStart.value||!tWinEnd.value){flash('Set start & end time');return;}
+        if(toMin(tWinEnd.value)<=toMin(tWinStart.value)){flash('End must be after start');return;}
+        addSuddenTask({name:n,mins:m,mode:'window',windowStart:tWinStart.value,windowEnd:tWinEnd.value,targetDayKey});
+      }else addSuddenTask({name:n,mins:m,mode:'anytime',targetDayKey});
+      tName.value='';tMin.value='';
+      if(tWinStart)tWinStart.value='';
+      if(tWinEnd)tWinEnd.value='';
+      renderSched();renderGlance();
+      const planned=targetDayKey!==activeDayKey();
+      flash(planned?'Planned for '+formatDayKeyLabel(targetDayKey):'Sudden task added');
+    }catch(err){
+      console.error('Sudden add failed',err);
+      flash('Could not add — check times and try again');
+    }
+  });
   if(tMin&&addSudden)tMin.addEventListener('keydown',e=>{if(e.key==='Enter')addSudden.click();});
   const openWp=document.getElementById('openWeekendPlan');
   if(openWp)openWp.onclick=()=>openWeekendPlanner();
