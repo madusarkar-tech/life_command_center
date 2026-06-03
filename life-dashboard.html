@@ -646,7 +646,14 @@ const Store={
       if(snap.exists&&snap.data().data){
         const cloud=snap.data().data;
         const cloudTime=snap.data().updatedAt?.toMillis?.()||0;
-        if(!local||cloudTime>=localUpdatedAt()){writeLocal(cloud);return cloud;}
+        const localTime=localUpdatedAt();
+        if(!local){writeLocal(cloud);return cloud;}
+        if(cloudTime>=localTime){
+          const merged=mergeAppData(cloud,local);
+          writeLocal(merged);
+          return merged;
+        }
+        writeLocal(local);
         return local;
       }
     }catch(e){console.warn('Cloud load failed',e);}
@@ -900,6 +907,52 @@ function addDaysToKey(key,delta){
   const d=new Date(p[0],p[1]-1,p[2]);
   d.setDate(d.getDate()+delta);
   return dateKeyOf(d);
+}
+function formatDayKeyLabel(key){
+  if(!key)return '';
+  const p=key.split('-').map(Number);
+  const d=new Date(p[0],p[1]-1,p[2]);
+  return new Intl.DateTimeFormat('en-US',{weekday:'short',month:'short',day:'numeric'}).format(d);
+}
+function gatherSuddenForList(){
+  const today=activeDayKey();
+  const todayTasks=[];
+  const upcoming=[];
+  const seen=new Set();
+  const add=(t,storageKey)=>{
+    const target=(t.targetDayKey||storageKey||'').slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(target))return;
+    const uid=target+'::'+(t.id||t.name);
+    if(seen.has(uid))return;
+    seen.add(uid);
+    const entry={...t,storageKey:storageKey||target,displayDay:target};
+    if(target===today)todayTasks.push(entry);
+    else if(target>today)upcoming.push(entry);
+  };
+  Object.keys(DATA.dayConfig||{}).forEach(k=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
+    (dayCfg(k).suddenTasks||[]).forEach(t=>add(t,k));
+  });
+  upcoming.sort((a,b)=>a.displayDay.localeCompare(b.displayDay)||(a.recordedAt||'').localeCompare(b.recordedAt||''));
+  return {today,todayTasks,upcoming};
+}
+function mergeAppData(local,cloud){
+  if(!local)return cloud;
+  if(!cloud)return local;
+  const out=JSON.parse(JSON.stringify(cloud));
+  if(!out.dayConfig)out.dayConfig={};
+  Object.keys(local.dayConfig||{}).forEach(k=>{
+    const loc=local.dayConfig[k];
+    if(!loc)return;
+    if(!out.dayConfig[k]){out.dayConfig[k]=JSON.parse(JSON.stringify(loc));return;}
+    const locSud=loc.suddenTasks||[];
+    if(!locSud.length)return;
+    const outDay=out.dayConfig[k];
+    outDay.suddenTasks=outDay.suddenTasks||[];
+    const ids=new Set(outDay.suddenTasks.map(t=>t.id));
+    locSud.forEach(t=>{if(t.id&&!ids.has(t.id))outDay.suddenTasks.push(t);});
+  });
+  return out;
 }
 function guessIco(name){
   const n=(name||'').toLowerCase();
@@ -1510,14 +1563,7 @@ function renderMealBanner(){
 }
 function renderSuddenList(){
   const wrap=document.getElementById('suddenList');if(!wrap)return;
-  const today=activeDayKey();
-  const c=cfg();
-  const todayTasks=c.suddenTasks||[];
-  const upcoming=[];
-  Object.keys(DATA.dayConfig||{}).forEach(k=>{
-    if(k<=today)return;
-    (dayCfg(k).suddenTasks||[]).forEach(t=>upcoming.push({...t,dayKey:k}));
-  });
+  const {todayTasks,upcoming}=gatherSuddenForList();
   wrap.innerHTML='';
   const hasToday=todayTasks.length>0;
   const hasUpcoming=upcoming.length>0;
@@ -1525,18 +1571,19 @@ function renderSuddenList(){
     wrap.innerHTML='<div class="sudden-empty">No sudden tasks yet — they appear here and on the timeline below.</div>';
     return;
   }
-  const draw=(tasks,dayKey,label)=>{
+  const draw=(tasks,label)=>{
     tasks.forEach(t=>{
       const el=document.createElement('div');el.className='sudden-item';
       const meta=t.mode==='window'
         ?fmt12(t.windowStart)+'–'+fmt12(t.windowEnd)+' · '+Math.max(5,toMin(t.windowEnd)-toMin(t.windowStart))+'m'
         :'Anytime · '+t.mins+'m';
-      const prong=t.recordedDayKey<today?' · planned earlier':'';
-      const dayLbl=label?` · ${label}`:'';
-      el.innerHTML=`<span class="si-txt">⚡ ${t.name.replace(/</g,'&lt;')}</span><span class="si-meta">${meta}${dayLbl}${prong}</span><span class="si-del" title="Remove">✕</span>`;
+      const prong=t.recordedDayKey&&t.recordedDayKey<activeDayKey()?' · planned earlier':'';
+      const dayLbl=label||(t.displayDay!==activeDayKey()?formatDayKeyLabel(t.displayDay):'');
+      const planned=dayLbl?' · Planned '+dayLbl:'';
+      el.innerHTML=`<span class="si-txt">⚡ ${t.name.replace(/</g,'&lt;')}</span><span class="si-meta">${meta}${planned}${prong}</span><span class="si-del" title="Remove">✕</span>`;
       el.querySelector('.si-del').onclick=()=>{
-        const dc=dayCfg(dayKey||today);
-        dc.suddenTasks=dc.suddenTasks.filter(x=>x.id!==t.id);
+        const dc=dayCfg(t.storageKey||t.displayDay);
+        dc.suddenTasks=(dc.suddenTasks||[]).filter(x=>x.id!==t.id);
         save();renderSched();renderGlance();
       };
       wrap.appendChild(el);
@@ -1547,14 +1594,14 @@ function renderSuddenList(){
     hdr.className='sudden-hdr';
     hdr.textContent='Today';
     wrap.appendChild(hdr);
-    draw(todayTasks,today,null);
+    draw(todayTasks,null);
   }
   if(hasUpcoming){
     const hdr=document.createElement('div');
     hdr.className='sudden-hdr';
     hdr.textContent='Upcoming';
     wrap.appendChild(hdr);
-    upcoming.forEach(t=>draw([t],t.dayKey,t.dayKey));
+    draw(upcoming,null);
   }
 }
 function renderWeekendBanner(){
@@ -2194,7 +2241,14 @@ function wire(){
     const win=tMode&&tMode.value==='window';
     if(tWinStart)tWinStart.style.display=win?'':'none';
     if(tWinEnd)tWinEnd.style.display=win?'':'none';
-    if(tDate)tDate.style.display=tWhen&&tWhen.value==='pick'?'':'none';
+    const pick=tWhen&&tWhen.value==='pick';
+    if(tDate){
+      tDate.style.display=pick?'':'none';
+      if(pick){
+        tDate.min=activeDayKey();
+        if(!tDate.value)tDate.value=addDaysToKey(activeDayKey(),1);
+      }
+    }
   };
   if(tWhen)tWhen.onchange=syncSuddenMode;
   if(tMode)tMode.onchange=syncSuddenMode;
@@ -2218,8 +2272,11 @@ function wire(){
       addSuddenTask({name:n,mins:m,mode:'window',windowStart:tWinStart.value,windowEnd:tWinEnd.value,targetDayKey});
     }else addSuddenTask({name:n,mins:m,mode:'anytime',targetDayKey});
     tName.value='';tMin.value='';
+    if(tWinStart)tWinStart.value='';
+    if(tWinEnd)tWinEnd.value='';
     renderSched();renderGlance();
-    flash(targetDayKey===activeDayKey()?'Sudden task added':'Planned for '+targetDayKey);
+    const planned=targetDayKey!==activeDayKey();
+    flash(planned?'Planned for '+formatDayKeyLabel(targetDayKey):'Sudden task added');
   };
   if(tMin&&addSudden)tMin.addEventListener('keydown',e=>{if(e.key==='Enter')addSudden.click();});
   const openWp=document.getElementById('openWeekendPlan');
