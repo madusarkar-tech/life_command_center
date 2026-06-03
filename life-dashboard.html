@@ -611,6 +611,7 @@ let mem=null;
 let firebaseReady=false;
 let cloudSaveTimer=null;
 let appWired=false;
+let visibilityReloadTimer=null;
 
 function readLocal(){
   try{
@@ -642,8 +643,59 @@ function initFirebase(){
 }
 function userDoc(uid){return firebase.firestore().collection('users').doc(uid);}
 
+function touchDaySync(dayKey){
+  dayCfg(dayKey||activeDayKey())._syncAt=Date.now();
+}
+function mergeDayFields(older,newer){
+  const out=JSON.parse(JSON.stringify(newer));
+  out.suddenTasks=out.suddenTasks||[];
+  const ids=new Set(out.suddenTasks.map(t=>t.id));
+  (older.suddenTasks||[]).forEach(t=>{if(t.id&&!ids.has(t.id))out.suddenTasks.push(t);});
+  out._syncAt=Math.max(older._syncAt||0,newer._syncAt||0);
+  return out;
+}
+function mergeDayEntry(loc,clo,localTime,cloudTime){
+  if(!loc)return clo?JSON.parse(JSON.stringify(clo)):null;
+  if(!clo)return JSON.parse(JSON.stringify(loc));
+  const lt=loc._syncAt||0;
+  const ct=clo._syncAt||0;
+  let newer,older;
+  if(lt>ct){newer=loc;older=clo;}
+  else if(ct>lt){newer=clo;older=loc;}
+  else if(localTime>=cloudTime){newer=loc;older=clo;}
+  else{newer=clo;older=loc;}
+  return mergeDayFields(older,newer);
+}
+function mergeDayConfig(localCfg,cloudCfg,localTime,cloudTime){
+  const out={};
+  const keys=new Set([...Object.keys(localCfg||{}),...Object.keys(cloudCfg||{})]);
+  keys.forEach(k=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
+    const merged=mergeDayEntry(localCfg[k],cloudCfg[k],localTime,cloudTime);
+    if(merged)out[k]=merged;
+  });
+  return out;
+}
+function mergeAppData(local,cloud,localTime,cloudTime){
+  if(!local)return cloud?JSON.parse(JSON.stringify(cloud)):null;
+  if(!cloud)return JSON.parse(JSON.stringify(local));
+  const base=localTime>=cloudTime?local:cloud;
+  const other=localTime>=cloudTime?cloud:local;
+  const out=JSON.parse(JSON.stringify(base));
+  out.dayConfig=mergeDayConfig(local.dayConfig||{},cloud.dayConfig||{},localTime,cloudTime);
+  if(!out.scheduleChecks&&other.scheduleChecks)out.scheduleChecks=JSON.parse(JSON.stringify(other.scheduleChecks));
+  return out;
+}
+function dataSnapshotEqual(a,b){
+  try{return JSON.stringify(a)===JSON.stringify(b);}catch(e){return false;}
+}
+
 const Store={
-  async load(){
+  schedulePush(d,delay,silent){
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer=setTimeout(()=>Store.pushCloud(d,silent),delay||800);
+  },
+  async load(opts){
     const local=readLocal();
     const user=firebaseReady&&firebase.auth().currentUser;
     if(!user)return local;
@@ -654,13 +706,12 @@ const Store={
         const cloudTime=snap.data().updatedAt?.toMillis?.()||0;
         const localTime=localUpdatedAt();
         if(!local){writeLocal(cloud);return cloud;}
-        if(cloudTime>=localTime){
-          const merged=mergeAppData(cloud,local);
-          writeLocal(merged);
-          return merged;
+        const merged=mergeAppData(local,cloud,localTime,cloudTime);
+        writeLocal(merged);
+        if(!opts||!opts.skipCloudPush){
+          if(!dataSnapshotEqual(merged,cloud))Store.schedulePush(merged,800,true);
         }
-        writeLocal(local);
-        return local;
+        return merged;
       }
     }catch(e){console.warn('Cloud load failed',e);}
     return local;
@@ -670,11 +721,10 @@ const Store={
     const user=firebaseReady&&firebase.auth().currentUser;
     if(!user){flash('Saved');return;}
     setSyncDot('pending');
-    clearTimeout(cloudSaveTimer);
-    cloudSaveTimer=setTimeout(()=>Store.pushCloud(d),600);
+    Store.schedulePush(d,600);
     flash('Saving…');
   },
-  async pushCloud(d){
+  async pushCloud(d,silent){
     const user=firebase.auth().currentUser;
     if(!user||!firebaseReady)return;
     try{
@@ -683,11 +733,11 @@ const Store={
         updatedAt:firebase.firestore.FieldValue.serverTimestamp()
       },{merge:true});
       setSyncDot('on');
-      flash('Synced');
+      if(!silent)flash('Synced');
     }catch(e){
       console.error(e);
       setSyncDot('off');
-      flash('Sync failed');
+      if(!silent)flash('Sync failed');
     }
   },
   async seedCloudFromLocal(uid){
@@ -753,6 +803,7 @@ function migrateData(){
   }
   Object.keys(DATA.dayConfig||{}).forEach(k=>{
     const c=dayCfg(k);
+    if(!c._syncAt&&(c.wakeLocked||c.workout||c.wake!=='10:00'))c._syncAt=localUpdatedAt()||Date.now();
     if((c.tasks||[]).length){
       c.suddenTasks=c.suddenTasks||[];
       c.tasks.forEach(t=>{
@@ -942,24 +993,6 @@ function gatherSuddenForList(){
   upcoming.sort((a,b)=>a.displayDay.localeCompare(b.displayDay)||(a.recordedAt||'').localeCompare(b.recordedAt||''));
   return {today,todayTasks,upcoming};
 }
-function mergeAppData(local,cloud){
-  if(!local)return cloud;
-  if(!cloud)return local;
-  const out=JSON.parse(JSON.stringify(cloud));
-  if(!out.dayConfig)out.dayConfig={};
-  Object.keys(local.dayConfig||{}).forEach(k=>{
-    const loc=local.dayConfig[k];
-    if(!loc)return;
-    if(!out.dayConfig[k]){out.dayConfig[k]=JSON.parse(JSON.stringify(loc));return;}
-    const locSud=loc.suddenTasks||[];
-    if(!locSud.length)return;
-    const outDay=out.dayConfig[k];
-    outDay.suddenTasks=outDay.suddenTasks||[];
-    const ids=new Set(outDay.suddenTasks.map(t=>t.id));
-    locSud.forEach(t=>{if(t.id&&!ids.has(t.id))outDay.suddenTasks.push(t);});
-  });
-  return out;
-}
 function guessIco(name){
   const n=(name||'').toLowerCase();
   const map=[['gym','🏋️'],['pmp','📘'],['study','📘'],['dog','🐕'],['garden','🌱'],['dinner','🍲'],['meal','🍱'],['read','📖'],['leather','🧵'],['hobby','🎨'],['walk','🦮'],['nap','🛌'],['breakfast','🍳']];
@@ -974,6 +1007,7 @@ const PLAN_PRESETS=[
 let lastScheduleConflicts=[];
 let weekendPlanEditKey=null;
 function setWakeTime(hhmm,lock){
+  touchDaySync(activeDayKey());
   const c=cfg();
   c.wake=hhmm||'10:00';
   if(lock!==false)c.wakeLocked=true;
@@ -998,6 +1032,7 @@ function weekendPlanTargets(){
 }
 function addSuddenTask(opts){
   const targetDayKey=opts.targetDayKey;
+  touchDaySync(targetDayKey);
   const c=dayCfg(targetDayKey);
   const now=new Date();
   c.suddenTasks.push({
@@ -2450,12 +2485,28 @@ function mergeDefaults(){
 function renderAll(){
   renderClocks();renderCountdowns();renderNowBanner();renderSched();renderHabits();renderGlance();renderTodos();renderPMP();renderJobs();
 }
-async function reloadData(){
-  DATA=await Store.load();
+async function reloadData(opts){
+  const prevDay=DATA?JSON.stringify(cfg()):'';
+  DATA=await Store.load(opts);
   if(!DATA)DATA=defaults();
   mergeDefaults();
   migrateData();
   renderAll();
+  if(opts&&opts.fromVisibility&&JSON.stringify(cfg())!==prevDay)flash('Updated from sync');
+}
+function setupVisibilitySync(){
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState!=='visible')return;
+    if(!firebaseReady||!firebase.auth().currentUser)return;
+    clearTimeout(visibilityReloadTimer);
+    visibilityReloadTimer=setTimeout(()=>reloadData({fromVisibility:true}),400);
+  });
+  window.addEventListener('pageshow',e=>{
+    if(!e.persisted)return;
+    if(!firebaseReady||!firebase.auth().currentUser)return;
+    clearTimeout(visibilityReloadTimer);
+    visibilityReloadTimer=setTimeout(()=>reloadData({fromVisibility:true}),400);
+  });
 }
 
 document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
@@ -2469,10 +2520,11 @@ function wire(){
   addTodo.onclick=()=>{const v=todoInput.value.trim();if(!v){todoInput.focus();return;}DATA.todos.push({id:'td_'+Date.now(),text:v,done:false,created:todayKey(),due:todoDue.value||null});todoInput.value='';todoDue.value='';save();renderTodos();renderNowBanner();};
   todoInput.addEventListener('keydown',e=>{if(e.key==='Enter')addTodo.click();});
   clearDone.onclick=()=>{DATA.todos=DATA.todos.filter(t=>!t.done);save();renderTodos();renderNowBanner();};
-  resetDur.onclick=()=>{cfg().blockDur={};save();renderSched();renderGlance();};
-  document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;save();renderClocks();renderSched();renderNowBanner();renderGlance();});
-  document.querySelectorAll('#segWorkout button').forEach(b=>b.onclick=()=>{cfg().workout=b.dataset.w;save();renderSched();renderNowBanner();renderGlance();});
+  resetDur.onclick=()=>{touchDaySync(activeDayKey());cfg().blockDur={};save();renderSched();renderGlance();};
+  document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;save();renderClocks();renderSched();renderNowBanner();renderGlance();});
+  document.querySelectorAll('#segWorkout button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().workout=b.dataset.w;save();renderSched();renderNowBanner();renderGlance();});
   document.querySelectorAll('#segNonFixed button').forEach(b=>b.onclick=()=>{
+    touchDaySync(activeDayKey());
     const v=b.dataset.nf;
     cfg().nonFixedPick=v==='auto'?null:v;
     save();renderSched();renderNowBanner();renderGlance();
@@ -2640,6 +2692,7 @@ async function init(){
   mergeDefaults();
   migrateData();
   if(!appWired){wire();appWired=true;}
+  setupVisibilitySync();
   renderAll();
   let lastActiveDay=activeDayKey();
   setInterval(()=>{
