@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>Command Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2149,8 +2150,18 @@ function authHostHint(){
   if(!h||h==='localhost'||h==='127.0.0.1')return 'localhost';
   return h;
 }
+function urlHasAuthCallback(){
+  return /[?#].*(?:apiKey|authUser|state|code|oauth)/i.test(location.href);
+}
+function ensureDashboardAuthPath(){
+  if(location.protocol==='file:')return;
+  if(location.pathname.endsWith('life-dashboard.html'))return;
+  const m=location.pathname.match(/^(.*\/life_command_center)\/?/);
+  if(m)history.replaceState(null,'',location.origin+m[1]+'/life-dashboard.html');
+}
 function normalizeAuthPageUrl(){
   if(location.protocol==='file:')return;
+  if(urlHasAuthCallback())return;
   const clean=location.origin+location.pathname;
   if(location.href!==clean)history.replaceState(null,'',clean);
 }
@@ -2244,9 +2255,11 @@ async function signInGoogle(){
     return;
   }
   clearAuthError();
-  clearStaleFirebaseRedirectState();
+  if(!isMobileBrowser())clearStaleFirebaseRedirectState();
+  ensureDashboardAuthPath();
   normalizeAuthPageUrl();
   const provider=new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({prompt:'select_account'});
   const status=document.getElementById('authStatus');
   const auth=firebase.auth();
   try{
@@ -2272,39 +2285,75 @@ async function signOutUser(){
   try{await firebase.auth().signOut();}catch(e){console.warn(e);}
   clearStaleFirebaseRedirectState();
 }
+async function waitForAuthUser(auth,maxMs){
+  if(auth.currentUser)return auth.currentUser;
+  try{await auth.authStateReady();}catch(e){}
+  if(auth.currentUser)return auth.currentUser;
+  if(!urlHasAuthCallback()&&!Object.keys(sessionStorage).some(k=>/^firebase:redirect/i.test(k)))
+    return null;
+  return new Promise(resolve=>{
+    let done=false;
+    const finish=u=>{if(done)return;done=true;unsub();resolve(u||auth.currentUser);};
+    const unsub=auth.onAuthStateChanged(u=>{if(u)finish(u);});
+    setTimeout(()=>finish(auth.currentUser),maxMs||2500);
+  });
+}
+async function onSignedInUser(user){
+  if(!user)return;
+  clearAuthError();
+  updateAuthUI(user);
+  await Store.seedCloudFromLocal(user.uid);
+  await reloadData();
+}
 async function finishRedirectSignIn(){
   const status=document.getElementById('authStatus');
-  const hadRedirectState=Object.keys(sessionStorage).some(k=>/^firebase:redirect/i.test(k))||
-    /[?#].*(?:apiKey|authUser|state|code)=/i.test(location.href);
+  const auth=firebase.auth();
+  const returning=urlHasAuthCallback()||Object.keys(sessionStorage).some(k=>/^firebase:redirect/i.test(k));
   if(status){status.textContent='Finishing sign-in…';status.classList.remove('err');}
   try{
-    const result=await firebase.auth().getRedirectResult();
+    const result=await auth.getRedirectResult();
     if(result&&result.user){
-      clearAuthError();
       flash('Signed in');
       return result.user;
     }
-    if(hadRedirectState&&!firebase.auth().currentUser)
-      setAuthError({code:'auth/redirect-failed',message:'Redirect sign-in did not complete — use a stable bookmark (no ?v= in URL). On iPhone Safari, turn off Private Browsing or disable Prevent Cross-Site Tracking.'});
+    try{await auth.authStateReady();}catch(e){}
+    let user=auth.currentUser;
+    if(!user&&returning)
+      user=await waitForAuthUser(auth,isMobileBrowser()?3500:1200);
+    if(user){
+      clearAuthError();
+      flash('Signed in');
+      return user;
+    }
+    if(returning)
+      setAuthError({code:'auth/redirect-failed',message:'Redirect sign-in did not complete — bookmark life-dashboard.html (not the folder URL). On iPhone: Safari → Settings → turn off Block All Cookies, then try again.'});
   }catch(e){
     console.error('Redirect result',e);
     setAuthError(e);
   }
-  return firebase.auth().currentUser;
+  return auth.currentUser;
 }
 async function setupFirebaseAuth(){
+  ensureDashboardAuthPath();
+  const auth=firebase.auth();
   try{
-    await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   }catch(e){console.warn('Auth persistence',e);}
-  await finishRedirectSignIn();
-  if(location.protocol!=='file:')normalizeAuthPageUrl();
-  firebase.auth().onAuthStateChanged(async user=>{
+  let synced=false;
+  auth.onAuthStateChanged(async user=>{
     updateAuthUI(user);
-    if(user){
-      await Store.seedCloudFromLocal(user.uid);
-      await reloadData();
+    if(user&&!synced){
+      synced=true;
+      await onSignedInUser(user);
     }
   });
+  const user=await finishRedirectSignIn();
+  if(location.protocol!=='file:')normalizeAuthPageUrl();
+  try{await auth.authStateReady();}catch(e){}
+  if(user&&!synced){
+    synced=true;
+    await onSignedInUser(user);
+  }else updateAuthUI(auth.currentUser);
 }
 function mergeDefaults(){
   const d=defaults();
