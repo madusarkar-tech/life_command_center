@@ -2141,6 +2141,8 @@ function wire(){
     cfg().nonFixedPick=v==='auto'?null:v;
     save();renderSched();renderNowBanner();renderGlance();
   });
+  const tName=document.getElementById('tName');
+  const tMin=document.getElementById('tMin');
   const tWhen=document.getElementById('tWhen');
   const tDate=document.getElementById('tDate');
   const tMode=document.getElementById('tMode');
@@ -2157,6 +2159,7 @@ function wire(){
   syncSuddenMode();
   const addSudden=document.getElementById('addSudden');
   if(addSudden)addSudden.onclick=()=>{
+    if(!tName||!tMin)return;
     const n=tName.value.trim();
     const m=parseInt(tMin.value,10);
     if(!n){tName.focus();return;}
@@ -2176,7 +2179,7 @@ function wire(){
     renderSched();renderGlance();
     flash(targetDayKey===activeDayKey()?'Sudden task added':'Planned for '+targetDayKey);
   };
-  if(tMin)tMin.addEventListener('keydown',e=>{if(e.key==='Enter'&&addSudden)addSudden.click();});
+  if(tMin&&addSudden)tMin.addEventListener('keydown',e=>{if(e.key==='Enter')addSudden.click();});
   const openWp=document.getElementById('openWeekendPlan');
   if(openWp)openWp.onclick=()=>openWeekendPlanner();
   const closeWp=document.getElementById('closeWeekendPlan');
