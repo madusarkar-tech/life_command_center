@@ -74,7 +74,7 @@ Pick one: Read, Do AI work, or QGIS — **Extra** control (Auto / manual / Skip)
 | Workout: Gym / Home / Skip | Auto: gym if ≥1h15 free (+ commute); else home ≥20m. Manual override. Wed auto-skip |
 | Sudden tasks | Anytime or fixed window; today vs future rules; displaces into open time |
 | Weekend plan | Night before: build Friday/Saturday activity list; schedule packs from wake |
-| Edit block lengths | Permanent default per day type (saved in `templateDur`) |
+| Edit block lengths | Today only (saved in `dayConfig[date].blockDur`) |
 | To-do list | Rolls over until done; optional due dates; most urgent surfaces in Quick Glance |
 
 ## Dog & meal windows (workday flowchart)

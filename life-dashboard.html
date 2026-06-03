@@ -399,7 +399,7 @@
         <div class="ctl-row">
           <button class="ghostbtn" id="editBtn">⚙️ Edit block lengths</button>
           <span class="resetlink" id="resetDur" style="display:none">↺ reset this day's lengths</span>
-          <span class="edithint" id="editHint" style="display:none">Changes become your permanent default for this day type.</span>
+          <span class="edithint" id="editHint" style="display:none">Length changes apply to today only.</span>
         </div>
         <div class="sudden-panel">
           <div class="sudden-row">
@@ -758,6 +758,14 @@ function migrateData(){
       c.tasks=[];
     }
   });
+  const today=activeDayKey();
+  const tc=dayCfg(today);
+  if(DATA.templateDur&&typeof DATA.templateDur==='object'){
+    const dt=dayType();
+    const leg=DATA.templateDur[dt];
+    if(leg&&Object.keys(leg).length&&!Object.keys(tc.blockDur).length)Object.assign(tc.blockDur,leg);
+    delete DATA.templateDur;
+  }
 }
 function dayChecks(){
   const k=activeDayKey();
@@ -864,7 +872,11 @@ function dayCfg(k){
   if(c.nonFixedPick===undefined)c.nonFixedPick=null;
   if(!c.suddenTasks)c.suddenTasks=[];
   if(c.weekendPlan===undefined)c.weekendPlan=null;
+  if(!c.blockDur)c.blockDur={};
   return c;
+}
+function blockDurOv(dayKey){
+  return dayCfg(dayKey).blockDur||{};
 }
 function dayTypeForKey(k){
   const c=DATA.dayConfig[k];
@@ -1348,7 +1360,7 @@ function buildSeq(){
   const c=cfg();
   const ws=workoutState();
   const dt=dayType();
-  const ov=DATA.templateDur[dt]||{};
+  const ov=blockDurOv(dayKey);
   let base;
   if(dt==='workday')base=buildWorkdaySeq(c,ws,ov,dayKey);
   else if((dt==='friday'||dt==='saturday')&&c.weekendPlan&&c.weekendPlan.length)base=buildWeekendSeq(c,c.weekendPlan);
@@ -1573,7 +1585,7 @@ function renderSched(){
   // edit-mode chrome
   editBtn.classList.toggle('on',editMode);
   editBtn.textContent=editMode?'✓ Done editing':'⚙️ Edit block lengths';
-  const hasOv=DATA.templateDur[dt]&&Object.keys(DATA.templateDur[dt]).length;
+  const hasOv=Object.keys(blockDurOv(activeDayKey())).length;
   resetDur.style.display=(editMode&&hasOv)?'inline':'none';
   editHint.style.display=editMode?'inline':'none';
   // meal-prep banner (workdays only)
@@ -1601,7 +1613,7 @@ function renderSched(){
         if(b.sudden){const t=(c.suddenTasks||[]).find(x=>x.id===b.id);if(t)t.mins=Math.max(5,t.mins+delta);}
         else if(b.planned){const p=(c.weekendPlan||[]).find(x=>x.id===b.id);if(p)p.dur=Math.max(5,p.dur+delta);}
         else if(b.custom){const t=c.tasks.find(x=>x.id===b.id);if(t)t.mins=Math.max(5,t.mins+delta);}
-        else{const o=DATA.templateDur[dt]||(DATA.templateDur[dt]={});o[b.id]=Math.max(5,b.dur+delta);}
+        else{const c=cfg();c.blockDur[b.id]=Math.max(5,b.dur+delta);}
         save();renderSched();renderGlance();
       });
     } else if(!isFlex) {
@@ -2046,7 +2058,7 @@ function wire(){
   addTodo.onclick=()=>{const v=todoInput.value.trim();if(!v){todoInput.focus();return;}DATA.todos.push({id:'td_'+Date.now(),text:v,done:false,created:todayKey(),due:todoDue.value||null});todoInput.value='';todoDue.value='';save();renderTodos();renderNowBanner();};
   todoInput.addEventListener('keydown',e=>{if(e.key==='Enter')addTodo.click();});
   clearDone.onclick=()=>{DATA.todos=DATA.todos.filter(t=>!t.done);save();renderTodos();renderNowBanner();};
-  resetDur.onclick=()=>{delete DATA.templateDur[dayType()];save();renderSched();renderGlance();};
+  resetDur.onclick=()=>{cfg().blockDur={};save();renderSched();renderGlance();};
   document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;save();renderClocks();renderSched();renderNowBanner();renderGlance();});
   document.querySelectorAll('#segWorkout button').forEach(b=>b.onclick=()=>{cfg().workout=b.dataset.w;save();renderSched();renderNowBanner();renderGlance();});
   document.querySelectorAll('#segNonFixed button').forEach(b=>b.onclick=()=>{
