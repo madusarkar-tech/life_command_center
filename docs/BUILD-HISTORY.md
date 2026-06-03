@@ -49,7 +49,7 @@ User requests implemented:
 - **Sudden tasks** (+ Task row) that push later blocks
 - **Auto-rearranging times** from wake time; work pinned at 8 PM
 - **Workout modes:** Gym (2h), Home (45m), Skip
-- **Wednesday:** workout off by default
+- ~~Wednesday workout off by default~~ — removed; weekdays use lifechart2 only
 - **Buffer / overflow** status before shift
 
 ### 5. Real week + wake-driven days

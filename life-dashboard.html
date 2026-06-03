@@ -82,7 +82,7 @@
   input[type=time]{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--text);font-family:'Hanken Grotesk';font-size:14px}
   .wake-btn{background:var(--sage);color:#fff;border:none;border-radius:9px;padding:9px 13px;font-family:'Hanken Grotesk';font-weight:700;font-size:13px;cursor:pointer;transition:.15s}
   .wake-btn:hover{filter:brightness(1.08)}
-  .wed-note{font-size:12px;color:var(--gold);font-weight:600}
+  .ctl-note{font-size:12px;color:var(--muted);font-weight:600}
   .day-label{font-size:12px;color:var(--sky);font-weight:600}
   .addrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .addrow input,.addrow select{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:9px 11px;color:var(--text);font-family:'Hanken Grotesk';font-size:14px;outline:none}
@@ -380,7 +380,6 @@
             <button data-w="home">Home · 20m+</button>
             <button data-w="skip">Skip</button>
           </div>
-          <span class="wed-note" id="wedNote"></span>
         </div>
         <div class="ctl-row" id="nonFixedRow" style="display:none">
           <span class="lbl2">Extra</span>
@@ -391,7 +390,7 @@
             <button type="button" data-nf="qgis">QGIS</button>
             <button type="button" data-nf="none">Skip</button>
           </div>
-          <span class="wed-note" id="nonFixedNote"></span>
+          <span class="ctl-note" id="nonFixedNote"></span>
         </div>
         <div class="ctl-row">
           <span class="statusline" id="statusLine"></span>
@@ -715,7 +714,6 @@ const PMP_DAILY_MIN=120;
 const PMP_SEGMENT_MIN=60;
 const PMP_BLOCK_MIN=120;
 const JOB_APPS_MIN=30;
-const SHOWER_MIN=30;
 const NON_FIXED_POOL=[
   {id:'read',ico:'📖',lab:'Read',sub:'Non-fixed · one pick per day',dur:45},
   {id:'aiwork',ico:'🤖',lab:'Do AI work',sub:'Non-fixed · one pick per day',dur:60},
@@ -816,11 +814,11 @@ function toggleBlockDone(blockId){
 // Day-type templates. gym block is special (workout state swaps duration/labels).
 const TEMPLATES={
   workday:[
-    {id:'breakfast',ico:'🍳',lab:'Breakfast',sub:'1h from wake · animals & coffee',dur:60},
-    {id:'study1',ico:'📘',lab:'PMP deep study',sub:'2h in morning gap · until exam',dur:120},
-    {id:'gym',ico:'🏋️',lab:'Gym + commute',sub:'Agent picks gym vs home from open time',dur:120},
-    {id:'jobapps',ico:'💼',lab:'Job applications',sub:'At least 30m · weekdays',dur:30},
-    {id:'shower',ico:'🚿',lab:'Shower',sub:'After workout · before shift',dur:30},
+    {id:'breakfast',ico:'🍳',lab:'Breakfast',sub:'1h from wake',dur:60},
+    {id:'study1',ico:'📘',lab:'PMP study',sub:'Flexible minimum · 2h/day',dur:60},
+    {id:'study2',ico:'📘',lab:'PMP study',sub:'Flexible minimum · 2h/day',dur:60},
+    {id:'gym',ico:'🏋️',lab:'Gym',sub:'Flexible minimum · ≥20m/day',dur:20},
+    {id:'jobapps',ico:'💼',lab:'Job applications',sub:'Flexible minimum · ≥30m/day',dur:30},
     {id:'dinnerprep',ico:'🍱',lab:'Dinner prep',sub:'Fixed 3:30–4:00pm',dur:30},
     {id:'dog1',ico:'🐕',lab:'Dog walk & feed',sub:'Fixed 4:45–5:30pm',dur:45},
     {id:'dinner',ico:'🍲',lab:'Dinner',sub:'Fixed 6:00–7:30pm',dur:90},
@@ -927,8 +925,7 @@ function setWakeTime(hhmm,lock){
 function autoDayType(){const d=new Date().getDay();return d===5?'friday':d===6?'saturday':'workday';}
 function dayType(){const c=cfg();return c.dayType||autoDayType();}
 function isWorkday(){return dayType()==='workday';}
-function isWednesday(){return new Date().getDay()===3;}
-function workoutState(){const c=cfg();if(c.workout)return c.workout;return isWednesday()?'skip':'gym';}
+function workoutState(){const c=cfg();if(c.workout)return c.workout;return 'gym';}
 const DAYNAMES={workday:'Workday · shift at 8pm',friday:'Friday · your weekend',saturday:'Saturday · your weekend'};
 function weekendPlanTargets(){
   const today=activeDayKey();
@@ -1047,13 +1044,12 @@ function normWorkdayGaps(seq,wakeMin,to,earliest){
   }).filter(g=>g.len>=5);
 }
 function makePmpBlock(id,dur,partN,totalParts){
-  const exam=PMP.toLocaleDateString('en-US',{month:'short',day:'numeric'});
   const part=totalParts>1?' · part '+partN+'/'+totalParts:'';
   return {
     id,
     ico:'📘',
-    lab:totalParts>1?(id==='study2'?'PMP study (2/2)':'PMP study (1/2)'):'PMP deep study',
-    sub:'Daily minimum'+part+' · '+dur+'m · exam '+exam,
+    lab:totalParts>1?(id==='study2'?'PMP study (2/2)':'PMP study (1/2)'):'PMP study',
+    sub:'Flexible minimum · ≥2h/day'+part+' · '+dur+'m',
     dur
   };
 }
@@ -1065,8 +1061,7 @@ function permute(arr){
   });
   return out;
 }
-function pmpPiecePlans(ov,beforePmpExam){
-  if(!beforePmpExam)return [];
+function pmpPiecePlans(ov){
   const d1=ov.study1!=null?ov.study1:PMP_SEGMENT_MIN;
   const d2=ov.study2!=null?ov.study2:PMP_SEGMENT_MIN;
   const single=ov.study1!=null?ov.study1:PMP_DAILY_MIN;
@@ -1078,12 +1073,12 @@ function pmpPiecePlans(ov,beforePmpExam){
   if(single>=PMP_DAILY_MIN)plans.push([{kind:'pmp',block:makePmpBlock('study1',single,1,1)}]);
   return plans;
 }
-function buildBagPieceLists(ws,ov,beforePmpExam){
+function buildBagPieceLists(ws,ov){
   const jobDur=ov.jobapps!=null?ov.jobapps:JOB_APPS_MIN;
-  const jobPiece={kind:'job',block:{id:'jobapps',ico:'💼',lab:'Job applications',sub:'Daily minimum · '+jobDur+'m',dur:jobDur}};
+  const jobPiece={kind:'job',block:{id:'jobapps',ico:'💼',lab:'Job applications',sub:'Flexible minimum · ≥30m/day · '+jobDur+'m',dur:jobDur}};
   const gymPiece=ws==='skip'?null:{kind:'gym'};
   const lists=[];
-  pmpPiecePlans(ov,beforePmpExam).forEach(pmpPieces=>{
+  pmpPiecePlans(ov).forEach(pmpPieces=>{
     const base=[...pmpPieces];
     if(gymPiece)base.push(gymPiece);
     base.push(jobPiece);
@@ -1095,12 +1090,6 @@ function buildBagPieceLists(ws,ov,beforePmpExam){
       lists.push(pieces);
     });
   });
-  if(!beforePmpExam){
-    const base=[];
-    if(gymPiece)base.push(gymPiece);
-    base.push(jobPiece);
-    if(base.length)lists.push(base);
-  }
   return lists;
 }
 function placeBagPieces(seq,wakeMin,earliest,pieces,ws){
@@ -1136,9 +1125,9 @@ function bagPieceFitsAlone(seq,wakeMin,earliest,piece,ws){
     return false;
   });
 }
-function diagnoseBagSkipped(seq,wakeMin,earliest,ws,ov,beforePmpExam){
+function diagnoseBagSkipped(seq,wakeMin,earliest,ws,ov){
   const skipped=[];
-  const lists=buildBagPieceLists(ws,ov,beforePmpExam);
+  const lists=buildBagPieceLists(ws,ov);
   if(!lists.length)return skipped;
   const refList=lists[0];
   const totalFree=normWorkdayGaps(seq,wakeMin,WORK_START,earliest).reduce((a,g)=>a+g.len,0);
@@ -1167,22 +1156,20 @@ function diagnoseBagSkipped(seq,wakeMin,earliest,ws,ov,beforePmpExam){
     const trial=placeBagPieces(seq.map(b=>({...b})),wakeMin,earliest,refList,ws);
     if(!trial.ok){
       if(ws!=='skip'&&!skipped.includes('workout'))skipped.push('workout');
-      if(beforePmpExam&&!skipped.includes('PMP study')&&refList.some(p=>p.kind==='pmp'))skipped.push('PMP study');
+      if(!skipped.includes('PMP study')&&refList.some(p=>p.kind==='pmp'))skipped.push('PMP study');
       if(!skipped.includes('job applications'))skipped.push('job applications');
     }
   }
   return [...new Set(skipped)];
 }
-function placeWorkdayFlexibleBag(seq,wakeMin,earliest,ws,ov,dayKey){
-  const schedDay=dateFromKey(dayKey||activeDayKey());
-  const beforePmpExam=schedDay<PMP;
-  const lists=buildBagPieceLists(ws,ov,beforePmpExam);
+function placeWorkdayFlexibleBag(seq,wakeMin,earliest,ws,ov){
+  const lists=buildBagPieceLists(ws,ov);
   for(const pieces of lists){
     const trial=seq.map(b=>({...b}));
     const r=placeBagPieces(trial,wakeMin,earliest,pieces,ws);
     if(r.ok)return {seq:r.seq,skipped:[]};
   }
-  const skipped=diagnoseBagSkipped(seq,wakeMin,earliest,ws,ov,beforePmpExam);
+  const skipped=diagnoseBagSkipped(seq,wakeMin,earliest,ws,ov);
   return {seq,skipped};
 }
 function buildWorkdayFixedSeq(c,ov){
@@ -1380,7 +1367,7 @@ function buildWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
   const fixed=buildWorkdayFixedSeq(c,ov);
   const earliestVar=fixed.bfEnd;
   const applied=applySuddenTasks(fixed.seq,suddenTasks||[],dayKey||activeDayKey(),'workday');
-  const bag=placeWorkdayFlexibleBag(applied.seq,fixed.wakeMin,earliestVar,ws,ov,dayKey);
+  const bag=placeWorkdayFlexibleBag(applied.seq,fixed.wakeMin,earliestVar,ws,ov);
   const seq=bag.seq;
   const skipped=[...bag.skipped];
   const overlapWarnings=[...fixed.overlapWarnings];
@@ -1642,7 +1629,6 @@ function renderSched(){
   document.querySelectorAll('#segDay button').forEach(b=>b.classList.toggle('on',b.dataset.d===(c.dayType||'auto')));
   dayLabel.textContent=DAYNAMES[dt];
   document.querySelectorAll('#segWorkout button').forEach(b=>b.classList.toggle('on',b.dataset.w===ws));
-  wedNote.textContent=isWednesday()?'Wednesday — workout off by default':'';
   const nfRow=document.getElementById('nonFixedRow');
   const nfNote=document.getElementById('nonFixedNote');
   if(nfRow)nfRow.style.display=isWorkday()?'flex':'none';

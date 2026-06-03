@@ -14,18 +14,20 @@ This document captures the real-world constraints that shaped the dashboard. It 
   - Land a **new job by August 1, 2026** (primary off-work focus after exam)
   - Daily operations: gym, dogs, chickens, garden, proper meals
 
-## Non-negotiable principles
+## Non-negotiable principles (product context)
 
 1. **Sleep is the constraint.** One protected daytime sleep block (~4:00 AM – ~10:00 AM). Avoid split sleep (sleep → wake for work check → sleep again); wrap work before logoff when possible.
-2. **PMP until June 22.** Job search is background prep only until the exam; then job search owns the sharp afternoon block.
+2. **Goals:** PMP exam **June 22, 2026**; job target **August 1, 2026** — shown in countdowns, not used to skip weekday schedule blocks.
 3. **Operations are capped.** Animals, garden, meals, and workouts use fixed blocks — not unlimited time sinks.
 4. **Meal prep is batched.** Saturday batch prep feeds weekday “reheat” lunches; workdays show a banner if last Saturday’s prep was skipped.
+
+**Weekday block placement** follows **lifechart2 only** (no rules from `Lifecommand flowchart.drawio`).
 
 ## Workday template (Sun–Thu) — lifechart2 model
 
 Day starts at **logged wake time**. Build order:
 
-1. **Fixed** clock and wake-anchored blocks (breakfast, dinner prep, dog, dinner, garden)
+1. **Fixed** clock and wake-anchored blocks (breakfast; dog, dinner per chart; dinner prep & garden kept in app as extra fixed anchors)
 2. **Sudden tasks** (manual overlay — fixed window or flexible slot)
 3. **Flexible daily minimums** (equal bag — no ranking): PMP study, gym, job applications — bin-packed into daytime gaps before work
 4. **Non-fixed** pick (one of Read / AI / QGIS) if time remains
@@ -49,8 +51,8 @@ Schedule all three before work when physically possible. **No priority** between
 
 | Task | Rule |
 |------|------|
-| **PMP study** | **120 min/day** as two **60+60** blocks when possible; one **120m** block is OK if a single gap fits. Skipped after **June 22, 2026**. |
-| **Gym** | **≥20 min/day**; if gap **≥1h15** → gym + **30m commute each way** (workout clipped to gap); else home workout. Respects Workout **Gym / Home / Skip**; Wednesday default **Skip**. |
+| **PMP study** | **≥2h/day** (chart: “at least 2 hours”) as two **60+60** blocks when possible; one **120m** block if a single gap fits. |
+| **Gym** | **≥20 min/day**; if gap **≥1h15** → gym + **30m commute each way** (workout clipped to gap); else home workout. Respects Workout **Gym / Home / Skip** (manual only). |
 | **Job applications** | **≥30 min/day** in a daytime gap. |
 
 If total free time is enough but no layout fits all three, the banner warns (e.g. **Couldn't fit: workout**) — gym is not silently dropped when Workout ≠ Skip and some gap has **≥20m**.
@@ -83,7 +85,7 @@ Pick one: Read, Do AI work, or QGIS — **Extra** control (Auto / manual / Skip)
 |---------|----------|
 | Wake time / “Just woke up” | Recomputes all block start times downstream |
 | Day type (Auto / Workday / Friday / Saturday) | Auto uses weekday; override for swapped days |
-| Workout: Gym / Home / Skip | Auto: gym if ≥1h15 free (+ commute); else home ≥20m. Manual override. Wed auto-skip |
+| Workout: Gym / Home / Skip | Default **Gym** (auto): commute session if ≥1h15 free, else home ≥20m. **Skip** only when you tap it. |
 | Sudden tasks | Anytime or fixed window; today vs future rules; displaces into open time |
 | Weekend plan | Night before: build Friday/Saturday activity list; schedule packs from wake |
 | Edit block lengths | Today only (saved in `dayConfig[date].blockDur`) |
