@@ -260,6 +260,19 @@
   .quiz-disclosure .sum-hint{font-size:13px;font-weight:500;color:var(--muted)}
   .quiz-disclosure .quiz-body{padding:0 16px 16px;border-top:1px solid var(--line-soft)}
   .quiz-disclosure:not([open]) .quiz-body{display:none}
+  .scratch-disclosure{border:1px solid var(--line-soft);border-radius:12px;overflow:hidden;background:var(--bg2)}
+  .scratch-disclosure summary.scratch-summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;color:var(--text);user-select:none}
+  .scratch-disclosure summary.scratch-summary::-webkit-details-marker{display:none}
+  .scratch-disclosure summary.scratch-summary::marker{content:''}
+  .scratch-disclosure .tri{width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid var(--sage);flex-shrink:0;transition:transform .2s ease}
+  .scratch-disclosure[open] .tri{transform:rotate(90deg)}
+  .scratch-disclosure .sum-txt{flex:0 0 auto}
+  .scratch-disclosure .sum-hint{font-size:12px;font-weight:500;color:var(--muted);flex:1;min-width:0;text-align:right}
+  .scratch-disclosure .scratch-body{padding:0 16px 16px;border-top:1px solid var(--line-soft)}
+  .scratch-disclosure:not([open]) .scratch-body{display:none}
+  .scratch-disclosure textarea{width:100%;min-height:120px;border:1px solid var(--line-soft);border-radius:11px;background:var(--bg2);padding:12px 14px;font-family:'Hanken Grotesk';font-size:14px;line-height:1.55;color:var(--text);resize:vertical;outline:none;transition:border-color .15s}
+  .scratch-disclosure textarea:focus{border-color:var(--line)}
+  .scratch-disclosure textarea::placeholder{color:var(--muted2)}
   .blk .chk{cursor:pointer}
   .blk .body,.blk .time{cursor:default}
   .blk:not(.info):not(.work){cursor:default}
@@ -471,6 +484,18 @@
           <button class="ghostbtn" id="clearDone" style="display:none">Clear done</button>
         </div>
         <div id="todoList"></div>
+      </div>
+      <div class="card">
+        <details class="scratch-disclosure" id="scratchDisclosure">
+          <summary class="scratch-summary">
+            <span class="tri" aria-hidden="true"></span>
+            <span class="sum-txt">📋 Scratchpad</span>
+            <span class="sum-hint">Tap to open</span>
+          </summary>
+          <div class="scratch-body">
+            <textarea id="todayScratch" placeholder="Jot down anything for today — reminders, ideas, quick lists…"></textarea>
+          </div>
+        </details>
       </div>
     </div>
   </div>
@@ -790,7 +815,7 @@ const Store={
   }
 };
 let DATA=null;
-function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',pmpQuiz:{},quizPanelOpen:false};}
+function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false};}
 let editMode=false;
 
 const PMP=new Date('2026-06-22T00:00:00');
@@ -2527,7 +2552,13 @@ function mergeDefaults(){
   if(!DATA.pmpQuiz)DATA.pmpQuiz={};
 }
 function renderAll(){
-  renderClocks();renderCountdowns();renderNowBanner();renderSched();renderHabits();renderGlance();renderTodos();renderPMP();renderJobs();
+  renderClocks();renderCountdowns();renderNowBanner();renderSched();renderHabits();renderGlance();renderTodos();renderScratchpad();renderPMP();renderJobs();
+}
+function renderScratchpad(){
+  const el=document.getElementById('todayScratch');
+  const disc=document.getElementById('scratchDisclosure');
+  if(el&&document.activeElement!==el&&el.value!==(DATA.todayNotes||''))el.value=DATA.todayNotes||'';
+  if(disc&&disc.open!==!!DATA.scratchpadOpen)disc.open=!!DATA.scratchpadOpen;
 }
 async function reloadData(opts){
   const prevDay=DATA?JSON.stringify(cfg()):'';
@@ -2709,6 +2740,21 @@ function wire(){
     jobNotesEl.addEventListener('input',()=>{
       clearTimeout(jobNotesTimer);
       jobNotesTimer=setTimeout(()=>{DATA.jobNotes=jobNotesEl.value;save();},400);
+    });
+  }
+  const scratchDisclosure=document.getElementById('scratchDisclosure');
+  if(scratchDisclosure&&!scratchDisclosure.dataset.wired){
+    scratchDisclosure.dataset.wired='1';
+    scratchDisclosure.addEventListener('toggle',()=>{DATA.scratchpadOpen=scratchDisclosure.open;save();});
+  }
+  if(scratchDisclosure)scratchDisclosure.open=!!DATA.scratchpadOpen;
+  let todayScratchTimer;
+  const todayScratchEl=document.getElementById('todayScratch');
+  if(todayScratchEl){
+    todayScratchEl.value=DATA.todayNotes||'';
+    todayScratchEl.addEventListener('input',()=>{
+      clearTimeout(todayScratchTimer);
+      todayScratchTimer=setTimeout(()=>{DATA.todayNotes=todayScratchEl.value;save();},400);
     });
   }
   const checkQuizBtn=document.getElementById('checkQuiz');
