@@ -83,6 +83,7 @@ Sign in on a second browser (or phone) with the **same Google account** — data
 | Issue | Fix |
 |-------|-----|
 | “Local only — add firebase-config.js” | Fill in `firebase-config.js` (not placeholders) |
-| Popup blocked on phone | App falls back to redirect sign-in automatically |
+| Popup blocked on phone | Redirect sign-in; use a stable URL (no `?v=` query) |
+| Sign-in loops back to “Sign in to sync…” | Add `YOUR_USERNAME.github.io` in Authorized domains; on iPhone disable Private Browsing / cross-site tracking |
 | `auth/unauthorized-domain` | Add your `*.github.io` domain in Authorized domains |
 | Permission denied in Firestore | Publish `firestore.rules` from this repo |

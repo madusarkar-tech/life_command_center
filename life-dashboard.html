@@ -29,6 +29,7 @@
   .header-right{display:flex;flex-direction:column;align-items:flex-end;gap:12px}
   .auth-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
   .auth-status{font-size:13px;color:var(--muted);max-width:min(280px,70vw);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .auth-status.err{color:var(--terra);white-space:normal;line-height:1.35;max-width:min(320px,85vw)}
   .auth-bar .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted2);flex-shrink:0}
   .auth-bar .sync-dot.on{background:var(--sage)}
   .auth-bar .sync-dot.pending{background:var(--gold);animation:pulse 1s ease infinite}
@@ -2131,35 +2132,81 @@ function renderJobs(){
 
 function save(){Store.save(DATA);}
 let flashT,flashDefault='Saved';
-function flash(msg){
+function flash(msg,duration){
   const f=document.getElementById('flash');if(!f)return;
   f.textContent=msg||flashDefault;
   f.classList.add('show');
   clearTimeout(flashT);
-  flashT=setTimeout(()=>{f.classList.remove('show');f.textContent=flashDefault;},1100);
+  flashT=setTimeout(()=>{f.classList.remove('show');f.textContent=flashDefault;},duration||1100);
 }
 function setSyncDot(state){
   const dot=document.getElementById('syncDot');if(!dot)return;
   dot.className='sync-dot'+(state==='on'?' on':state==='pending'?' pending':'');
+}
+let lastAuthError=null;
+function authHostHint(){
+  const h=location.hostname||'';
+  if(!h||h==='localhost'||h==='127.0.0.1')return 'localhost';
+  return h;
+}
+function normalizeAuthPageUrl(){
+  if(location.protocol==='file:')return;
+  const clean=location.origin+location.pathname;
+  if(location.href!==clean)history.replaceState(null,'',clean);
+}
+function clearStaleFirebaseRedirectState(){
+  try{
+    Object.keys(sessionStorage).forEach(k=>{
+      if(/^firebase:redirect/i.test(k)||/^firebase:pendingredirect/i.test(k))
+        sessionStorage.removeItem(k);
+    });
+  }catch(e){}
+}
+function setAuthError(e){
+  lastAuthError=authErrorHelp(e);
+  const status=document.getElementById('authStatus');
+  if(status){
+    status.textContent=lastAuthError;
+    status.classList.add('err');
+    status.title=lastAuthError;
+  }
+  flash('Sign-in failed — see message above',3200);
+}
+function clearAuthError(){
+  lastAuthError=null;
+  const status=document.getElementById('authStatus');
+  if(status){
+    status.classList.remove('err');
+    status.removeAttribute('title');
+  }
 }
 function updateAuthUI(user){
   const status=document.getElementById('authStatus');
   const signIn=document.getElementById('btnSignIn');
   const signOut=document.getElementById('btnSignOut');
   if(!isFirebaseConfigured()){
-    if(status)status.textContent='Local only — add firebase-config.js for sync';
+    if(status){status.textContent='Local only — add firebase-config.js for sync';status.classList.remove('err');}
     if(signIn)signIn.style.display='none';
     if(signOut)signOut.style.display='none';
     setSyncDot('off');
     return;
   }
   if(user){
+    clearAuthError();
     if(status)status.textContent=user.displayName||user.email||'Signed in';
     if(signIn)signIn.style.display='none';
     if(signOut)signOut.style.display='inline-block';
     setSyncDot('on');
   }else{
-    if(status)status.textContent='Sign in to sync Mac & phone';
+    if(status){
+      if(lastAuthError){
+        status.textContent=lastAuthError;
+        status.classList.add('err');
+      }else{
+        status.textContent='Sign in to sync Mac & phone';
+        status.classList.remove('err');
+      }
+    }
     if(signIn)signIn.style.display='inline-flex';
     if(signOut)signOut.style.display='none';
     setSyncDot('off');
@@ -2168,13 +2215,25 @@ function updateAuthUI(user){
 function authErrorHelp(e){
   const code=e&&e.code||'';
   const msg=(e&&e.message)||'';
+  const host=authHostHint();
   if(code==='auth/unauthorized-domain'||/invalid/i.test(msg))
-    return 'Add “localhost” in Firebase → Authentication → Settings → Authorized domains.';
+    return 'Add “'+host+'” in Firebase → Authentication → Settings → Authorized domains (and localhost for Mac).';
   if(code==='auth/operation-not-allowed')
     return 'Turn on Google in Firebase → Authentication → Sign-in method.';
   if(code==='auth/invalid-api-key')
     return 'Wrong API key in firebase-config.js — copy from Firebase Project settings.';
-  return msg.replace(/^Firebase:\s*/i,'').replace(/^Error\s*\([^)]+\)\.\s*/i,'')||'Sign-in failed — use http://localhost:8765 (not the Desktop file).';
+  if(code==='auth/web-storage-unsupported'||/storage/i.test(msg))
+    return 'Safari blocked sign-in storage — turn off Private Browsing, or Settings → Safari → disable “Prevent Cross-Site Tracking” and try again.';
+  if(code==='auth/redirect-cancelled-by-user')
+    return 'Sign-in cancelled.';
+  if(/redirect/i.test(msg)||code==='auth/invalid-credential')
+    return 'Redirect sign-in failed — use the same bookmark URL every time (no ?v= in the link), then try again.';
+  if(location.protocol==='file:')
+    return 'Open http://localhost:8765/life-dashboard.html (not the Desktop file).';
+  return msg.replace(/^Firebase:\s*/i,'').replace(/^Error\s*\([^)]+\)\.\s*/i,'')||'Sign-in failed — try again or use Safari/Chrome (not Private).';
+}
+function isMobileBrowser(){
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent||'');
 }
 async function signInGoogle(){
   if(!firebaseReady){flash('Firebase not ready');return;}
@@ -2184,18 +2243,68 @@ async function signInGoogle(){
     flash('Open via localhost');
     return;
   }
+  clearAuthError();
+  clearStaleFirebaseRedirectState();
+  normalizeAuthPageUrl();
   const provider=new firebase.auth.GoogleAuthProvider();
   const status=document.getElementById('authStatus');
+  const auth=firebase.auth();
   try{
-    if(status)status.textContent='Redirecting to Google…';
-    await firebase.auth().signInWithRedirect(provider);
+    if(status){status.textContent='Redirecting to Google…';status.classList.remove('err');}
+    if(!isMobileBrowser()){
+      try{
+        await auth.signInWithPopup(provider);
+        flash('Signed in');
+        return;
+      }catch(popErr){
+        if(popErr&&popErr.code!=='auth/popup-blocked'&&popErr.code!=='auth/popup-closed-by-user')
+          throw popErr;
+      }
+    }
+    await auth.signInWithRedirect(provider);
   }catch(e){
-    console.error(e);
-    if(status)status.textContent=authErrorHelp(e);
-    flash('Sign-in failed');
+    console.error('Sign-in',e);
+    setAuthError(e);
   }
 }
-function signOutUser(){firebase.auth().signOut();}
+async function signOutUser(){
+  clearAuthError();
+  try{await firebase.auth().signOut();}catch(e){console.warn(e);}
+  clearStaleFirebaseRedirectState();
+}
+async function finishRedirectSignIn(){
+  const status=document.getElementById('authStatus');
+  const hadRedirectState=Object.keys(sessionStorage).some(k=>/^firebase:redirect/i.test(k));
+  if(status){status.textContent='Finishing sign-in…';status.classList.remove('err');}
+  try{
+    const result=await firebase.auth().getRedirectResult();
+    if(result&&result.user){
+      clearAuthError();
+      flash('Signed in');
+      return result.user;
+    }
+    if(hadRedirectState&&!firebase.auth().currentUser)
+      setAuthError({code:'auth/redirect-failed',message:'Redirect sign-in did not complete — use a stable bookmark (no ?v= in URL). On iPhone Safari, turn off Private Browsing or disable Prevent Cross-Site Tracking.'});
+  }catch(e){
+    console.error('Redirect result',e);
+    setAuthError(e);
+  }
+  return firebase.auth().currentUser;
+}
+async function setupFirebaseAuth(){
+  try{
+    await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+  }catch(e){console.warn('Auth persistence',e);}
+  if(location.protocol!=='file:')normalizeAuthPageUrl();
+  await finishRedirectSignIn();
+  firebase.auth().onAuthStateChanged(async user=>{
+    updateAuthUI(user);
+    if(user){
+      await Store.seedCloudFromLocal(user.uid);
+      await reloadData();
+    }
+  });
+}
 function mergeDefaults(){
   const d=defaults();
   for(const k in d)if(DATA[k]===undefined)DATA[k]=d[k];
@@ -2384,20 +2493,7 @@ async function init(){
       const s=document.getElementById('authStatus');
       if(s)s.textContent='Sign-in needs localhost — see README';
     }
-    try{
-      const result=await firebase.auth().getRedirectResult();
-      if(result.user)flash('Signed in');
-    }catch(e){
-      console.error(e);
-      const s=document.getElementById('authStatus');
-      if(s)s.textContent=authErrorHelp(e);
-      flash('Sign-in failed');
-    }
-    firebase.auth().onAuthStateChanged(async user=>{
-      updateAuthUI(user);
-      if(user)await Store.seedCloudFromLocal(user.uid);
-      await reloadData();
-    });
+    await setupFirebaseAuth();
   }else{
     updateAuthUI(null);
   }
