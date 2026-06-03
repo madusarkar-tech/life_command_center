@@ -2274,7 +2274,8 @@ async function signOutUser(){
 }
 async function finishRedirectSignIn(){
   const status=document.getElementById('authStatus');
-  const hadRedirectState=Object.keys(sessionStorage).some(k=>/^firebase:redirect/i.test(k));
+  const hadRedirectState=Object.keys(sessionStorage).some(k=>/^firebase:redirect/i.test(k))||
+    /[?#].*(?:apiKey|authUser|state|code)=/i.test(location.href);
   if(status){status.textContent='Finishing sign-in…';status.classList.remove('err');}
   try{
     const result=await firebase.auth().getRedirectResult();
@@ -2295,8 +2296,8 @@ async function setupFirebaseAuth(){
   try{
     await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
   }catch(e){console.warn('Auth persistence',e);}
-  if(location.protocol!=='file:')normalizeAuthPageUrl();
   await finishRedirectSignIn();
+  if(location.protocol!=='file:')normalizeAuthPageUrl();
   firebase.auth().onAuthStateChanged(async user=>{
     updateAuthUI(user);
     if(user){
