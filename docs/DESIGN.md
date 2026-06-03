@@ -27,7 +27,7 @@ This document captures the real-world constraints that shaped the dashboard. It 
 
 Day starts at **logged wake time**. Build order:
 
-1. **Fixed** clock and wake-anchored blocks (breakfast; dog, dinner per chart; dinner prep & garden kept in app as extra fixed anchors)
+1. **Fixed** clock and wake-anchored blocks (breakfast from wake; dog & dinner per chart — nothing else auto-scheduled as fixed)
 2. **Sudden tasks** (manual overlay — fixed window or flexible slot)
 3. **Flexible daily minimums** (equal bag — no ranking): PMP study, gym, job applications — bin-packed into daytime gaps before work
 4. **Non-fixed** pick (one of Read / AI / QGIS) if time remains
@@ -38,10 +38,8 @@ Day starts at **logged wake time**. Build order:
 | Block | When | Duration |
 |-------|------|----------|
 | Breakfast | **1 hour from logged wake** | 60m (today-only override via Edit) |
-| Dinner prep | 3:30–4:00 PM | 30m |
 | Dog walk & feed | 4:45–5:30 PM | 45m |
 | Dinner | 6:00–7:30 PM | 90m |
-| Garden & chickens | 7:30–8:00 PM | 30m |
 | **Work** | 8:00 PM–3:00 AM | 7h (Bangkok 7a–3p) |
 | **Sleep** | ~4:00 AM | Protected block |
 
@@ -91,12 +89,12 @@ Pick one: Read, Do AI work, or QGIS — **Extra** control (Auto / manual / Skip)
 | Edit block lengths | Today only (saved in `dayConfig[date].blockDur`) |
 | To-do list | Rolls over until done; optional due dates; most urgent surfaces in Quick Glance |
 
-## Dog & meal windows (workday)
+## Dog & dinner windows (workday — lifechart2)
 
-- Dinner prep: **3:30–4:00 PM**
 - Dog walk & feed: **4:45–5:30 PM**
 - Dinner: **6:00–7:30 PM**
-- Garden: **7:30–8:00 PM**
+
+Garden and dinner prep are **not** on lifechart2; they remain as **Daily Non-Negotiables** habits only (manual checkoff), not scheduled fixed blocks.
 
 ## What the dashboard does *not* do (yet)
 

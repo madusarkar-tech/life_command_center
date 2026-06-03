@@ -699,12 +699,10 @@ const JOB_START=new Date('2026-05-27T00:00:00');
 const DAY_ROLLOVER_HOUR=4;
 const SCHEDULE_BLOCK_IDS=new Set(['wake','breakfast','study1','study2','gym','lunch','review','dog1','dog2','garden','dinner','dinnerprep','shower','jobapps','nap','mealprep','chores','read','aiwork','qgis','work']);
 const BLOCK_TO_HABIT={wake:'animals',breakfast:'animals',study1:'study',study2:'study',review:'study',gym:'gym',dog1:'dogs',dog2:'dogs',garden:'garden',dinner:'meals',dinnerprep:'meals',mealprep:'meals',jobapps:'jobsearch'};
-const WORKDAY_CLOCK_IDS=new Set(['dinnerprep','dog1','dinner','garden']);
+const WORKDAY_CLOCK_IDS=new Set(['dog1','dinner']);
 const WORKDAY_CLOCK={
-  dinnerPrep:[15*60+30,16*60],
   dog:[16*60+45,17*60+30],
-  dinner:[18*60,19*60+30],
-  garden:[19*60+30,20*60]
+  dinner:[18*60,19*60+30]
 };
 const GYM_COMMUTE_EACH=30;
 const GYM_THRESHOLD=75;
@@ -819,10 +817,8 @@ const TEMPLATES={
     {id:'study2',ico:'📘',lab:'PMP study',sub:'Flexible minimum · 2h/day',dur:60},
     {id:'gym',ico:'🏋️',lab:'Gym',sub:'Flexible minimum · ≥20m/day',dur:20},
     {id:'jobapps',ico:'💼',lab:'Job applications',sub:'Flexible minimum · ≥30m/day',dur:30},
-    {id:'dinnerprep',ico:'🍱',lab:'Dinner prep',sub:'Fixed 3:30–4:00pm',dur:30},
     {id:'dog1',ico:'🐕',lab:'Dog walk & feed',sub:'Fixed 4:45–5:30pm',dur:45},
     {id:'dinner',ico:'🍲',lab:'Dinner',sub:'Fixed 6:00–7:30pm',dur:90},
-    {id:'garden',ico:'🌱',lab:'Garden & chickens',sub:'Fixed 7:30–8:00pm',dur:30},
     {id:'read',ico:'📖',lab:'Read',sub:'Non-fixed pool',dur:45},
     {id:'aiwork',ico:'🤖',lab:'Do AI work',sub:'Non-fixed pool',dur:60},
     {id:'qgis',ico:'🗺️',lab:'QGIS',sub:'Non-fixed pool',dur:60}
@@ -1180,7 +1176,7 @@ function buildWorkdayFixedSeq(c,ov){
   const bfEnd=wakeMin+bfDur;
   seq.push({id:'breakfast',ico:'🍳',lab:'Breakfast',sub:workdayBreakfastSub(wakeMin,bfDur),dur:bfDur,start:wakeMin,end:bfEnd,anchored:true});
   addWorkdayClock(seq,ov);
-  const morningEnd=WORKDAY_CLOCK.dinnerPrep[0];
+  const morningEnd=WORKDAY_CLOCK.dog[0];
   if(bfEnd>morningEnd){
     overlapWarnings.push({msg:'Late wake — breakfast runs into fixed afternoon blocks (from '+fmt12(minToTime(morningEnd))+').'});
   }
@@ -1188,16 +1184,12 @@ function buildWorkdayFixedSeq(c,ov){
 }
 function addWorkdayClock(seq,ov){
   const defs={
-    dinnerprep:{ico:'🍱',lab:'Dinner prep',sub:'Fixed 3:30–4:00pm'},
     dog1:{ico:'🐕',lab:'Dog walk & feed',sub:'Fixed 4:45–5:30pm'},
-    dinner:{ico:'🍲',lab:'Dinner',sub:'Fixed 6:00–7:30pm'},
-    garden:{ico:'🌱',lab:'Garden & chickens',sub:'Fixed 7:30–8:00pm'}
+    dinner:{ico:'🍲',lab:'Dinner',sub:'Fixed 6:00–7:30pm'}
   };
   const clocks=[
-    {id:'dinnerprep',s:WORKDAY_CLOCK.dinnerPrep[0],e:WORKDAY_CLOCK.dinnerPrep[1]},
     {id:'dog1',s:WORKDAY_CLOCK.dog[0],e:WORKDAY_CLOCK.dog[1]},
-    {id:'dinner',s:WORKDAY_CLOCK.dinner[0],e:WORKDAY_CLOCK.dinner[1]},
-    {id:'garden',s:WORKDAY_CLOCK.garden[0],e:WORKDAY_CLOCK.garden[1]}
+    {id:'dinner',s:WORKDAY_CLOCK.dinner[0],e:WORKDAY_CLOCK.dinner[1]}
   ];
   clocks.forEach(c=>{
     const d=defs[c.id];
@@ -1393,7 +1385,7 @@ function buildWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
     cur=Math.max(cur,b.end);
   });
   if(cur<WORK_START)pushFlexGap(withFlex,cur,WORK_START,'Before work');
-  const endMin=seq.reduce((m,b)=>Math.max(m,b.end||0),WORKDAY_CLOCK.garden[1]);
+  const endMin=seq.reduce((m,b)=>Math.max(m,b.end||0),WORKDAY_CLOCK.dinner[1]);
   return {seq:withFlex,endMin,overlapWarnings,suddenConflicts:applied.conflicts};
 }
 function buildWeekendSeq(c,plan){
