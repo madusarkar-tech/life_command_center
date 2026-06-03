@@ -269,7 +269,9 @@
   .weekend-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:11px;margin-bottom:12px;border:1px solid rgba(61,109,143,.35);background:rgba(61,109,143,.08);font-size:13px;font-weight:600;color:var(--sky);flex-wrap:wrap}
   .sudden-panel{border-top:1px solid var(--line-soft);padding-top:12px;margin-top:4px}
   .sudden-panel .sudden-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
-  .sudden-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .sudden-list{display:flex;flex-direction:column;gap:6px;margin-top:8px;min-height:28px}
+  .sudden-empty{font-size:12px;color:var(--muted);padding:6px 2px}
+  .sudden-hdr{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted2);margin-top:4px}
   .sudden-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:var(--surface);border:1px solid var(--line-soft);font-size:13px}
   .sudden-item .si-txt{flex:1;font-weight:600}
   .sudden-item .si-meta{color:var(--muted);font-size:12px;font-weight:500}
@@ -416,7 +418,7 @@
             </select>
             <input type="time" id="tWinStart" style="display:none" title="Start">
             <input type="time" id="tWinEnd" style="display:none" title="End">
-            <button class="btn sm" id="addSudden">Add</button>
+            <button type="button" class="btn sm" id="addSudden">Add</button>
           </div>
           <div id="suddenList" class="sudden-list"></div>
         </div>
@@ -1296,9 +1298,24 @@ function applySuddenCascade(seq,insertStart,dur,block){
   sortSeqByStart(out);
   return out;
 }
-function applySuddenTasks(seq,tasks,scheduleDayKey,dt){
+function tryPlaceSuddenInGaps(seq,block,dur,wakeMin,earliest,dayEnd,minStart){
+  const gaps=normWorkdayGaps(seq,wakeMin,dayEnd,earliest);
+  for(const gap of gaps){
+    const start=Math.max(gap.start,minStart||earliest);
+    const len=gap.end-start;
+    if(len<dur)continue;
+    const trial=seq.map(b=>({...b}));
+    if(placeInGapIfClear(trial,{start,end:gap.end,len},block))return trial;
+  }
+  return null;
+}
+function applySuddenTasks(seq,tasks,scheduleDayKey,dt,opts){
   const conflicts=[];
   if(!tasks.length)return {seq,conflicts};
+  const workdayGap=dt==='workday'&&opts;
+  const wakeMin=opts&&opts.wakeMin;
+  const earliest=opts&&opts.earliest;
+  const dayEnd=opts&&opts.dayEnd;
   const sorted=[...tasks].sort((a,b)=>{
     if(a.mode==='window'&&b.mode!=='window')return -1;
     if(b.mode==='window'&&a.mode!=='window')return 1;
@@ -1306,7 +1323,7 @@ function applySuddenTasks(seq,tasks,scheduleDayKey,dt){
     return (a.recordedAt||'').localeCompare(b.recordedAt||'');
   });
   let result=seq.map(b=>({...b}));
-  const useFlex=dt==='workday'||(dt!=='workday'&&result.some(b=>b.flex));
+  const useFlex=!workdayGap&&(dt!=='workday'||result.some(b=>b.flex));
   sorted.forEach(task=>{
     const prong2=task.recordedDayKey<scheduleDayKey;
     const recordedMin=prong2?0:(task.recordedMin!=null?task.recordedMin:0);
@@ -1315,10 +1332,11 @@ function applySuddenTasks(seq,tasks,scheduleDayKey,dt){
       const we=toMin(task.windowEnd);
       const dur=Math.max(5,we-ws);
       const sudden={id:task.id,ico:'⚡',lab:task.name,sub:'Sudden · fixed time',dur,start:ws,end:we,sudden:true,custom:true};
-      if(useFlex){
+      if(useFlex||workdayGap){
         const overlapping=result.filter(b=>!b.flex&&!b.sudden&&blocksOverlap(b,ws,we));
         result=result.filter(b=>!overlapping.includes(b));
-        result=carveWindow(result,ws,we);
+        if(workdayGap)result=result.filter(b=>!b.flex||!(b.start<we&&b.end>ws));
+        else result=carveWindow(result,ws,we);
         result.push(sudden);
         sortSeqByStart(result);
         const minDisp=prong2?0:Math.max(recordedMin,we);
@@ -1327,8 +1345,14 @@ function applySuddenTasks(seq,tasks,scheduleDayKey,dt){
             conflicts.push({task:task.name,block:block.lab,msg:'“'+task.name+'” overlaps fixed “'+block.lab+'” — treat the appointment as replacing that block.'});
             return;
           }
-          const placed=tryPlaceInFlex(result,block,block.dur,minDisp);
-          if(placed)result=placed.seq;
+          let placedSeq=null;
+          if(workdayGap){
+            placedSeq=tryPlaceSuddenInGaps(result,block,block.dur,wakeMin,earliest,dayEnd,minDisp);
+          }else{
+            const placed=tryPlaceInFlex(result,block,block.dur,minDisp);
+            if(placed)placedSeq=placed.seq;
+          }
+          if(placedSeq)result=placedSeq;
           else conflicts.push({task:task.name,block:block.lab,msg:'No open slot for “'+block.lab+'” — “'+task.name+'” replaces it.'});
         });
       }else{
@@ -1338,7 +1362,11 @@ function applySuddenTasks(seq,tasks,scheduleDayKey,dt){
       const dur=Math.max(5,task.mins);
       const block={id:task.id,ico:'⚡',lab:task.name,sub:'Sudden · anytime',dur,sudden:true,custom:true};
       const minStart=prong2?0:recordedMin;
-      if(useFlex){
+      if(workdayGap){
+        const placed=tryPlaceSuddenInGaps(result,block,dur,wakeMin,earliest,dayEnd,minStart);
+        if(placed)result=placed;
+        else conflicts.push({task:task.name,msg:'No open slot for “'+task.name+'” — trim the day or remove a block.'});
+      }else if(useFlex){
         const placed=tryPlaceInFlex(result,block,dur,minStart);
         if(placed)result=placed.seq;
         else conflicts.push({task:task.name,msg:'No open slot for “'+task.name+'” — trim the day or remove a block.'});
@@ -1357,9 +1385,11 @@ function applySuddenTasks(seq,tasks,scheduleDayKey,dt){
 }
 function buildWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
   const fixed=buildWorkdayFixedSeq(c,ov);
+  const wakeMin=fixed.wakeMin;
   const earliestVar=fixed.bfEnd;
-  const applied=applySuddenTasks(fixed.seq,suddenTasks||[],dayKey||activeDayKey(),'workday');
-  const bag=placeWorkdayFlexibleBag(applied.seq,fixed.wakeMin,earliestVar,ws,ov);
+  const gapOpts={wakeMin,earliest:earliestVar,dayEnd:WORK_START};
+  const applied=applySuddenTasks(fixed.seq,suddenTasks||[],dayKey||activeDayKey(),'workday',gapOpts);
+  const bag=placeWorkdayFlexibleBag(applied.seq,wakeMin,earliestVar,ws,ov);
   const seq=bag.seq;
   const skipped=[...bag.skipped];
   const overlapWarnings=[...fixed.overlapWarnings];
@@ -1367,7 +1397,7 @@ function buildWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
   if(nf){
     const nfDur=ov[nf.id]!=null?ov[nf.id]:nf.dur;
     const need=Math.min(nfDur,30);
-    const nGap=bestGap(normWorkdayGaps(seq,fixed.wakeMin,WORK_START,earliestVar),need,earliestVar);
+    const nGap=bestGap(normWorkdayGaps(seq,wakeMin,WORK_START,earliestVar),need,earliestVar);
     if(nGap&&placeInGapIfClear(seq,nGap,{id:nf.id,ico:nf.ico,lab:nf.lab,sub:nf.sub,dur:Math.min(nGap.len,nfDur),nonFixed:true})){}
     else skipped.push(nf.lab);
   }
@@ -1378,7 +1408,7 @@ function buildWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
   sortSeqByStart(seq);
   overlapWarnings.push(...annotateWorkdayOverlaps(seq));
   const withFlex=[];
-  let cur=fixed.wakeMin;
+  let cur=wakeMin;
   seq.filter(b=>!b.flex).sort((a,b)=>a.start-b.start).forEach(b=>{
     if(b.start>cur+4)pushFlexGap(withFlex,cur,b.start,'Open time');
     withFlex.push(b);
@@ -1489,6 +1519,12 @@ function renderSuddenList(){
     (dayCfg(k).suddenTasks||[]).forEach(t=>upcoming.push({...t,dayKey:k}));
   });
   wrap.innerHTML='';
+  const hasToday=todayTasks.length>0;
+  const hasUpcoming=upcoming.length>0;
+  if(!hasToday&&!hasUpcoming){
+    wrap.innerHTML='<div class="sudden-empty">No sudden tasks yet — they appear here and on the timeline below.</div>';
+    return;
+  }
   const draw=(tasks,dayKey,label)=>{
     tasks.forEach(t=>{
       const el=document.createElement('div');el.className='sudden-item';
@@ -1506,10 +1542,16 @@ function renderSuddenList(){
       wrap.appendChild(el);
     });
   };
-  draw(todayTasks,today,null);
-  if(upcoming.length){
+  if(hasToday){
     const hdr=document.createElement('div');
-    hdr.style.cssText='font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted2);margin-top:6px';
+    hdr.className='sudden-hdr';
+    hdr.textContent='Today';
+    wrap.appendChild(hdr);
+    draw(todayTasks,today,null);
+  }
+  if(hasUpcoming){
+    const hdr=document.createElement('div');
+    hdr.className='sudden-hdr';
     hdr.textContent='Upcoming';
     wrap.appendChild(hdr);
     upcoming.forEach(t=>draw([t],t.dayKey,t.dayKey));
