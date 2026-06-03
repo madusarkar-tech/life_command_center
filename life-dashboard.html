@@ -612,6 +612,8 @@ let firebaseReady=false;
 let cloudSaveTimer=null;
 let appWired=false;
 let visibilityReloadTimer=null;
+let cloudListenUnsub=null;
+let suppressCloudApply=0;
 
 function readLocal(){
   try{
@@ -662,8 +664,8 @@ function mergeDayEntry(loc,clo,localTime,cloudTime){
   let newer,older;
   if(lt>ct){newer=loc;older=clo;}
   else if(ct>lt){newer=clo;older=loc;}
-  else if(localTime>=cloudTime){newer=loc;older=clo;}
-  else{newer=clo;older=loc;}
+  else if(cloudTime>=localTime){newer=clo;older=loc;}
+  else{newer=loc;older=clo;}
   return mergeDayFields(older,newer);
 }
 function mergeDayConfig(localCfg,cloudCfg,localTime,cloudTime){
@@ -691,6 +693,35 @@ function dataSnapshotEqual(a,b){
 }
 
 const Store={
+  applyRemoteData(cloud,cloudTime){
+    if(!cloud)return false;
+    const local=readLocal()||DATA;
+    const localTime=localUpdatedAt();
+    const merged=mergeAppData(local,cloud,localTime,cloudTime||0);
+    if(DATA&&dataSnapshotEqual(merged,DATA))return false;
+    DATA=merged;
+    writeLocal(DATA);
+    mergeDefaults();
+    migrateData();
+    renderAll();
+    return true;
+  },
+  startCloudListener(uid){
+    Store.stopCloudListener();
+    if(!uid||!firebaseReady)return;
+    cloudListenUnsub=userDoc(uid).onSnapshot(snap=>{
+      if(!snap.exists||!snap.data()||!snap.data().data)return;
+      if(snap.metadata.hasPendingWrites)return;
+      if(suppressCloudApply>Date.now())return;
+      const cloud=snap.data().data;
+      const cloudTime=snap.data().updatedAt?.toMillis?.()||0;
+      const changed=Store.applyRemoteData(cloud,cloudTime);
+      if(changed&&document.visibilityState==='visible')flash('Updated from sync',1400);
+    },e=>console.warn('Cloud listen failed',e));
+  },
+  stopCloudListener(){
+    if(cloudListenUnsub){cloudListenUnsub();cloudListenUnsub=null;}
+  },
   schedulePush(d,delay,silent){
     clearTimeout(cloudSaveTimer);
     cloudSaveTimer=setTimeout(()=>Store.pushCloud(d,silent),delay||800);
@@ -708,26 +739,31 @@ const Store={
         if(!local){writeLocal(cloud);return cloud;}
         const merged=mergeAppData(local,cloud,localTime,cloudTime);
         writeLocal(merged);
-        if(!opts||!opts.skipCloudPush){
-          if(!dataSnapshotEqual(merged,cloud))Store.schedulePush(merged,800,true);
-        }
         return merged;
       }
     }catch(e){console.warn('Cloud load failed',e);}
     return local;
   },
-  async save(d){
+  async save(d,opts){
     writeLocal(d);
     const user=firebaseReady&&firebase.auth().currentUser;
     if(!user){flash('Saved');return;}
     setSyncDot('pending');
-    Store.schedulePush(d,600);
-    flash('Saving…');
+    clearTimeout(cloudSaveTimer);
+    if(opts&&opts.urgent){
+      suppressCloudApply=Date.now()+1500;
+      await Store.pushCloud(d,true);
+      if(!opts.silent)flash('Synced');
+    }else{
+      Store.schedulePush(d,600);
+      flash('Saving…');
+    }
   },
   async pushCloud(d,silent){
     const user=firebase.auth().currentUser;
     if(!user||!firebaseReady)return;
     try{
+      suppressCloudApply=Date.now()+1500;
       await userDoc(user.uid).set({
         data:d,
         updatedAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -803,7 +839,6 @@ function migrateData(){
   }
   Object.keys(DATA.dayConfig||{}).forEach(k=>{
     const c=dayCfg(k);
-    if(!c._syncAt&&(c.wakeLocked||c.workout||c.wake!=='10:00'))c._syncAt=localUpdatedAt()||Date.now();
     if((c.tasks||[]).length){
       c.suddenTasks=c.suddenTasks||[];
       c.tasks.forEach(t=>{
@@ -1011,7 +1046,7 @@ function setWakeTime(hhmm,lock){
   const c=cfg();
   c.wake=hhmm||'10:00';
   if(lock!==false)c.wakeLocked=true;
-  save();
+  saveDay();
 }
 function autoDayType(){const d=new Date().getDay();return d===5?'friday':d===6?'saturday':'workday';}
 function dayType(){const c=cfg();return c.dayType||autoDayType();}
@@ -1047,7 +1082,7 @@ function addSuddenTask(opts){
     recordedMin:now.getHours()*60+now.getMinutes(),
     targetDayKey
   });
-  save();
+  saveDay();
   renderSuddenList();
 }
 
@@ -1625,8 +1660,9 @@ function renderSuddenList(){
       el.innerHTML=`<span class="si-txt">⚡ ${t.name.replace(/</g,'&lt;')}</span><span class="si-meta">${meta}${planned}${prong}</span><span class="si-del" title="Remove">✕</span>`;
       el.querySelector('.si-del').onclick=()=>{
         const dc=dayCfg(t.storageKey||t.displayDay);
+        touchDaySync(t.storageKey||t.displayDay);
         dc.suddenTasks=(dc.suddenTasks||[]).filter(x=>x.id!==t.id);
-        save();renderSched();renderGlance();
+        saveDay();renderSched();renderGlance();renderSuddenList();
       };
       wrap.appendChild(el);
     });
@@ -1814,20 +1850,20 @@ function renderSched(){
     if(editMode&&!isFlex){
       el.querySelectorAll('.stepper button').forEach(btn=>btn.onclick=(e)=>{
         e.stopPropagation();const delta=parseInt(btn.dataset.step)*5;
-        if(b.sudden){const t=(c.suddenTasks||[]).find(x=>x.id===b.id);if(t)t.mins=Math.max(5,t.mins+delta);}
+        if(b.sudden){touchDaySync(activeDayKey());const t=(c.suddenTasks||[]).find(x=>x.id===b.id);if(t)t.mins=Math.max(5,t.mins+delta);}
         else if(b.planned){const p=(c.weekendPlan||[]).find(x=>x.id===b.id);if(p)p.dur=Math.max(5,p.dur+delta);}
         else if(b.custom){const t=c.tasks.find(x=>x.id===b.id);if(t)t.mins=Math.max(5,t.mins+delta);}
-        else{const c=cfg();c.blockDur[b.id]=Math.max(5,b.dur+delta);}
-        save();renderSched();renderGlance();
+        else{touchDaySync(activeDayKey());const c=cfg();c.blockDur[b.id]=Math.max(5,b.dur+delta);}
+        saveDay();renderSched();renderGlance();
       });
     } else if(!isFlex) {
       const chk=el.querySelector('.chk');
       if(chk)chk.onclick=(e)=>{e.stopPropagation();if(b.id&&!b.id.startsWith('flex_'))toggleBlockDone(b.id);};
     }
     const dx=el.querySelector('.delx');if(dx)dx.onclick=(e)=>{e.stopPropagation();
-      if(b.sudden)c.suddenTasks=(c.suddenTasks||[]).filter(t=>t.id!==b.id);
-      else c.tasks=c.tasks.filter(t=>t.id!==b.id);
-      save();renderSched();renderGlance();};
+      if(b.sudden){touchDaySync(activeDayKey());c.suddenTasks=(c.suddenTasks||[]).filter(t=>t.id!==b.id);saveDay();}
+      else{c.tasks=c.tasks.filter(t=>t.id!==b.id);save();}
+      renderSched();renderGlance();};
     sched.appendChild(el);
   });
   if(isWorkday()){
@@ -2170,7 +2206,8 @@ function renderJobs(){
   renderJobTodos();
 }
 
-function save(){Store.save(DATA);}
+function save(opts){Store.save(DATA,opts);}
+function saveDay(){save({urgent:true});}
 let flashT,flashDefault='Saved';
 function flash(msg,duration){
   const f=document.getElementById('flash');if(!f)return;
@@ -2404,6 +2441,7 @@ async function signInGoogle(){
 }
 async function signOutUser(){
   clearAuthError();
+  Store.stopCloudListener();
   try{await firebase.auth().signOut();}catch(e){console.warn(e);}
   clearStaleFirebaseRedirectState();
 }
@@ -2464,9 +2502,15 @@ async function setupFirebaseAuth(){
   let synced=false;
   auth.onAuthStateChanged(async user=>{
     updateAuthUI(user);
-    if(user&&!synced){
-      synced=true;
-      await onSignedInUser(user);
+    if(user){
+      Store.startCloudListener(user.uid);
+      if(!synced){
+        synced=true;
+        await onSignedInUser(user);
+      }
+    }else{
+      Store.stopCloudListener();
+      synced=false;
     }
   });
   const user=await finishRedirectSignIn();
@@ -2520,14 +2564,14 @@ function wire(){
   addTodo.onclick=()=>{const v=todoInput.value.trim();if(!v){todoInput.focus();return;}DATA.todos.push({id:'td_'+Date.now(),text:v,done:false,created:todayKey(),due:todoDue.value||null});todoInput.value='';todoDue.value='';save();renderTodos();renderNowBanner();};
   todoInput.addEventListener('keydown',e=>{if(e.key==='Enter')addTodo.click();});
   clearDone.onclick=()=>{DATA.todos=DATA.todos.filter(t=>!t.done);save();renderTodos();renderNowBanner();};
-  resetDur.onclick=()=>{touchDaySync(activeDayKey());cfg().blockDur={};save();renderSched();renderGlance();};
-  document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;save();renderClocks();renderSched();renderNowBanner();renderGlance();});
-  document.querySelectorAll('#segWorkout button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().workout=b.dataset.w;save();renderSched();renderNowBanner();renderGlance();});
+  resetDur.onclick=()=>{touchDaySync(activeDayKey());cfg().blockDur={};saveDay();renderSched();renderGlance();};
+  document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;saveDay();renderClocks();renderSched();renderNowBanner();renderGlance();});
+  document.querySelectorAll('#segWorkout button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().workout=b.dataset.w;saveDay();renderSched();renderNowBanner();renderGlance();});
   document.querySelectorAll('#segNonFixed button').forEach(b=>b.onclick=()=>{
     touchDaySync(activeDayKey());
     const v=b.dataset.nf;
     cfg().nonFixedPick=v==='auto'?null:v;
-    save();renderSched();renderNowBanner();renderGlance();
+    saveDay();renderSched();renderNowBanner();renderGlance();
   });
   const tName=document.getElementById('tName');
   const tMin=document.getElementById('tMin');
@@ -2614,8 +2658,9 @@ function wire(){
   wokeBtn.onclick=()=>{
     const c=cfg();
     if(c.wakeLocked){
+      touchDaySync(activeDayKey());
       c.wakeLocked=false;
-      save();renderSched();renderNowBanner();renderGlance();
+      saveDay();renderSched();renderNowBanner();renderGlance();
       flash('Wake time unlocked — tap again when you wake');
       return;
     }
@@ -2698,6 +2743,12 @@ async function init(){
   setInterval(()=>{
     const day=activeDayKey();
     if(day!==lastActiveDay){lastActiveDay=day;reloadData();}
+    if(document.visibilityState==='visible'&&firebaseReady&&firebase.auth().currentUser){
+      userDoc(firebase.auth().currentUser.uid).get().then(snap=>{
+        if(!snap.exists||!snap.data()?.data||snap.metadata?.hasPendingWrites)return;
+        Store.applyRemoteData(snap.data().data,snap.data().updatedAt?.toMillis?.()||0);
+      }).catch(()=>{});
+    }
     renderClocks();renderNowBanner();renderSched();renderGlance();renderCountdowns();
   },30000);
 }
