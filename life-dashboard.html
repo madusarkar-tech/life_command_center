@@ -1059,8 +1059,20 @@ function basePeriodTemplate(dayKey){
     evening:['dog1','dinner','garden']
   };
 }
-function periodTaskLabel(key){
-  if(key.startsWith('extra:'))return key.slice(6);
+function findPeriodExtra(dayKey,extraId){
+  const extras=(dayCfg(dayKey).periodExtras||{});
+  for(const p of PERIOD_KEYS){
+    const hit=(extras[p]||[]).find(x=>x.id===extraId);
+    if(hit)return hit;
+  }
+  return null;
+}
+function periodTaskLabel(key,dayKey){
+  if(key.startsWith('extra:')){
+    const hit=findPeriodExtra(dayKey||activeDayKey(),key.slice(6));
+    const name=hit&&(hit.name||'').trim();
+    return name||'Activity';
+  }
   const map={
     breakfast:'Breakfast',study1:'PMP study (1)',study2:'PMP study (2)',gym:'Workout',
     jobapps:'Job applications',jobapps2:'Job applications (2)',nonFixed:'Non-fixed (Read/AI/QGIS)',
@@ -1068,8 +1080,11 @@ function periodTaskLabel(key){
   };
   return map[key]||key;
 }
-function periodTaskIco(key){
-  if(key.startsWith('extra:'))return '✨';
+function periodTaskIco(key,dayKey){
+  if(key.startsWith('extra:')){
+    const hit=findPeriodExtra(dayKey||activeDayKey(),key.slice(6));
+    return hit?(hit.ico||'✨'):'✨';
+  }
   const map={breakfast:'🍳',study1:'📘',study2:'📘',gym:'🏋️',jobapps:'💼',jobapps2:'💼',nonFixed:'📖',dinnerprep:'🍽️',dog1:'🐕',dinner:'🍲',garden:'🌱'};
   return map[key]||'✨';
 }
@@ -2171,7 +2186,7 @@ function renderPeriodPlan(){
     items.forEach((taskKey,idx)=>{
       const row=document.createElement('div');
       row.className='period-task';
-      row.innerHTML=`<span class="pt-ico">${periodTaskIco(taskKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey)}</span><span class="pt-act"></span>`;
+      row.innerHTML=`<span class="pt-ico">${periodTaskIco(taskKey,dayKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey,dayKey)}</span><span class="pt-act"></span>`;
       const act=row.querySelector('.pt-act');
       if(idx>0){
         const up=document.createElement('button');
