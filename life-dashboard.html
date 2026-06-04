@@ -761,6 +761,7 @@ function dataSnapshotEqual(a,b){
 const Store={
   applyRemoteData(cloud,cloudTime){
     if(!cloud)return false;
+    if(isWeekendPlanModalOpen())return false;
     const local=readLocal()||DATA;
     const localTime=localUpdatedAt();
     const merged=mergeAppData(local,cloud,localTime,cloudTime||0);
@@ -1173,7 +1174,7 @@ function templateExtrasForDayKey(dayKey){
   return filterWeekendTemplateForPmp(DATA.weekendPeriodTemplate[dt],dayKey).extras||{};
 }
 function findTemplateExtra(dayType,extraId){
-  const t=weekendTemplateDraft&&weekendTemplateEditType===dayType?weekendTemplateDraft:(DATA.weekendPeriodTemplate&&DATA.weekendPeriodTemplate[dayType]);
+  const t=weekendTemplateDrafts&&weekendTemplateDrafts[dayType]?weekendTemplateDrafts[dayType]:(DATA.weekendPeriodTemplate&&DATA.weekendPeriodTemplate[dayType]);
   if(!t)return null;
   for(const p of WEEKEND_PERIOD_KEYS){
     const hit=(t.extras&&t.extras[p]||[]).find(x=>x.id===extraId);
@@ -1466,15 +1467,36 @@ function addPeriodExtra(period,name,mins,ctx){
   c.periodExtras[period].push({id:'pex_'+Date.now(),name:(name||'Activity').trim(),mins:Math.max(5,parseInt(mins,10)||30),ico:'✨'});
   touchDaySync(activeDayKey());
 }
-let weekendTemplateDraft=null;
+let weekendTemplateDrafts=null;
 let weekendTemplateEditType=null;
+function isWeekendPlanModalOpen(){
+  const m=document.getElementById('weekendModal');
+  return!!(m&&m.classList.contains('open'));
+}
+function initWeekendTemplateDrafts(){
+  ensureWeekendPeriodTemplate();
+  weekendTemplateDrafts={
+    friday:cloneWeekendTemplateSlice(DATA.weekendPeriodTemplate.friday),
+    saturday:cloneWeekendTemplateSlice(DATA.weekendPeriodTemplate.saturday)
+  };
+}
+function clearWeekendTemplateDrafts(){
+  weekendTemplateDrafts=null;
+  weekendTemplateEditType=null;
+}
+function flushWeekendTemplateDraftsToData(){
+  if(!weekendTemplateDrafts)return;
+  ensureWeekendPeriodTemplate();
+  DATA.weekendPeriodTemplate.friday=cloneWeekendTemplateSlice(weekendTemplateDrafts.friday);
+  DATA.weekendPeriodTemplate.saturday=cloneWeekendTemplateSlice(weekendTemplateDrafts.saturday);
+}
 function getWeekendTemplateDraft(dayType){
-  if(!weekendTemplateDraft||weekendTemplateEditType!==dayType){
+  if(!weekendTemplateDrafts)initWeekendTemplateDrafts();
+  if(!weekendTemplateDrafts[dayType]){
     ensureWeekendPeriodTemplate();
-    weekendTemplateDraft=cloneWeekendTemplateSlice(DATA.weekendPeriodTemplate[dayType]);
-    weekendTemplateEditType=dayType;
+    weekendTemplateDrafts[dayType]=cloneWeekendTemplateSlice(DATA.weekendPeriodTemplate[dayType]);
   }
-  return weekendTemplateDraft;
+  return weekendTemplateDrafts[dayType];
 }
 function effectiveTemplateLists(dayType){
   const t=getWeekendTemplateDraft(dayType);
@@ -1666,11 +1688,7 @@ function weekendPlanTargets(){
     out.push({label:dt==='friday'?'Friday (today)':'Saturday (today)',dayType:dt});
   return out;
 }
-function persistWeekendTemplateDraft(){
-  if(!weekendTemplateDraft||!weekendTemplateEditType)return;
-  ensureWeekendPeriodTemplate();
-  DATA.weekendPeriodTemplate[weekendTemplateEditType]=cloneWeekendTemplateSlice(weekendTemplateDraft);
-}
+function persistWeekendTemplateDraft(){/* kept for compatibility; drafts live in weekendTemplateDrafts until Save */}
 function addSuddenTask(opts){
   const targetDayKey=opts.targetDayKey;
   touchDaySync(targetDayKey);
@@ -2441,9 +2459,8 @@ function renderPeriodBands(wrap,ctx){
 function openWeekendPlanner(prefDayType){
   const targets=weekendPlanTargets();
   if(!targets.length&&!prefDayType)return;
+  initWeekendTemplateDrafts();
   weekendTemplateEditType=prefDayType||targets[0].dayType;
-  weekendTemplateDraft=null;
-  getWeekendTemplateDraft(weekendTemplateEditType);
   const modal=document.getElementById('weekendModal');
   const tabs=document.getElementById('weekendPlanTabs');
   tabs.innerHTML='';
@@ -2453,7 +2470,7 @@ function openWeekendPlanner(prefDayType){
     b.type='button';
     b.textContent=dt==='friday'?'Friday':'Saturday';
     b.classList.toggle('on',dt===weekendTemplateEditType);
-    b.onclick=()=>{persistWeekendTemplateDraft();weekendTemplateEditType=dt;weekendTemplateDraft=null;getWeekendTemplateDraft(dt);tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderWeekendPlanModal();};
+    b.onclick=()=>{weekendTemplateEditType=dt;tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderWeekendPlanModal();};
     tabs.appendChild(b);
   });
   tabs.style.display='flex';
@@ -2469,9 +2486,9 @@ function renderWeekendPlanModal(){
   renderPeriodBands(wrap,{mode:'template',dayType:weekendTemplateEditType,dayKey:weekendTemplateEditType});
 }
 function saveWeekendPlanFromModal(){
-  if(!weekendTemplateEditType)return;
-  persistWeekendTemplateDraft();
-  weekendTemplateDraft=null;
+  if(!weekendTemplateDrafts)return;
+  flushWeekendTemplateDraftsToData();
+  clearWeekendTemplateDrafts();
   save();
   closeWeekendPlanner();
   renderSched();renderClocks();renderWeekendBanner();renderNowBanner();
@@ -2481,12 +2498,12 @@ function closeWeekendPlanner(){
   const modal=document.getElementById('weekendModal');
   modal.classList.remove('open');
   modal.setAttribute('aria-hidden','true');
-  weekendTemplateDraft=null;
+  clearWeekendTemplateDrafts();
 }
 function copyLastWeekendPlan(){
+  if(!weekendTemplateDrafts||!weekendTemplateEditType)return;
   const other=weekendTemplateEditType==='friday'?'saturday':'friday';
-  ensureWeekendPeriodTemplate();
-  weekendTemplateDraft=cloneWeekendTemplateSlice(DATA.weekendPeriodTemplate[other]);
+  weekendTemplateDrafts[weekendTemplateEditType]=cloneWeekendTemplateSlice(weekendTemplateDrafts[other]);
   renderWeekendPlanModal();
   flash('Copied '+(other==='friday'?'Saturday':'Friday')+' template');
 }
@@ -3291,6 +3308,7 @@ function renderScratchpad(){
   if(disc&&disc.open!==!!DATA.scratchpadOpen)disc.open=!!DATA.scratchpadOpen;
 }
 async function reloadData(opts){
+  if(isWeekendPlanModalOpen())return;
   const prevDay=DATA?JSON.stringify(cfg()):'';
   DATA=await Store.load(opts);
   if(!DATA)DATA=defaults();
