@@ -273,6 +273,26 @@
   .scratch-disclosure textarea{width:100%;min-height:120px;border:1px solid var(--line-soft);border-radius:11px;background:var(--bg2);padding:12px 14px;font-family:'Hanken Grotesk';font-size:14px;line-height:1.55;color:var(--text);resize:vertical;outline:none;transition:border-color .15s}
   .scratch-disclosure textarea:focus{border-color:var(--line)}
   .scratch-disclosure textarea::placeholder{color:var(--muted2)}
+  .period-plan{background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .period-plan-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .period-plan-head h3{font-family:'Fraunces',serif;font-size:15px;font-weight:600}
+  .period-band{margin-bottom:12px;border:1px solid var(--line-soft);border-radius:10px;overflow:hidden}
+  .period-band:last-child{margin-bottom:0}
+  .period-band-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2)}
+  .period-band-hdr .win{font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)}
+  .period-task{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line-soft);font-size:13px;background:var(--surface)}
+  .period-task:first-of-type{border-top:none}
+  .period-task .pt-ico{width:22px;text-align:center}
+  .period-task .pt-lab{flex:1;font-weight:600;min-width:0}
+  .period-task .pt-act{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+  .period-task .pt-act button{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)}
+  .period-task .pt-act button:hover{color:var(--text);border-color:var(--gold)}
+  .period-add-row{display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;border-top:1px dashed var(--line-soft)}
+  .period-add-row input{flex:1;min-width:100px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px}
+  .period-tag{font-size:10px;font-weight:800;padding:2px 6px;border-radius:20px;background:rgba(127,168,201,.15);color:var(--sky);margin-left:6px;vertical-align:middle}
+  .blk.period-morning{border-left:3px solid rgba(184,120,12,.35)}
+  .blk.period-afternoon{border-left:3px solid rgba(61,109,143,.35)}
+  .blk.period-evening{border-left:3px solid rgba(74,122,61,.35)}
   .blk .chk{cursor:pointer}
   .blk .body,.blk .time{cursor:default}
   .blk:not(.info):not(.work){cursor:default}
@@ -419,7 +439,15 @@
         <div class="ctl-row">
           <button class="ghostbtn" id="editBtn">⚙️ Edit block lengths</button>
           <span class="resetlink" id="resetDur" style="display:none">↺ reset this day's lengths</span>
+          <span class="resetlink" id="resetPeriod" style="display:none">↺ reset today's order</span>
           <span class="edithint" id="editHint" style="display:none">Length changes apply to today only.</span>
+        </div>
+        <div id="periodPlanPanel" class="period-plan" style="display:none">
+          <div class="period-plan-head">
+            <h3>Today's bands</h3>
+            <span class="ctl-note">Reorder ↑↓ or move between morning · afternoon · evening</span>
+          </div>
+          <div id="periodBands"></div>
         </div>
         <div class="sudden-panel">
           <div class="sudden-row">
@@ -814,7 +842,7 @@ const Store={
   }
 };
 let DATA=null;
-function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false};}
+function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodTemplate:null};}
 let editMode=false;
 
 const PMP=new Date('2026-06-22T00:00:00');
@@ -992,6 +1020,228 @@ const TEMPLATES={
   ]
 };
 const WORK_START=1200; // 20:00, workdays only
+const SLEEP_START=180; // 03:00
+const PERIOD_KEYS=['morning','afternoon','evening'];
+const PERIOD_END={morning:14*60,afternoon:17*60,evening:WORK_START};
+const PERIOD_LABELS={morning:'Morning',afternoon:'Afternoon',evening:'Evening'};
+const PERIOD_WINDOWS={morning:'wake → 2pm',afternoon:'2pm → 5pm',evening:'5pm → 8pm'};
+const MOVABLE_PERIOD_TASKS=new Set(['breakfast','study1','study2','gym','jobapps','jobapps2','nonFixed','dinnerprep','dog1','dinner','garden']);
+
+function basePeriodTemplate(dayKey){
+  const tpl=DATA&&DATA.periodTemplate;
+  const branch=isPmpActive(dayKey)?'preExam':'postExam';
+  if(tpl&&tpl[branch])return JSON.parse(JSON.stringify(tpl[branch]));
+  if(isPmpActive(dayKey)){
+    return{
+      morning:['breakfast','study1','gym'],
+      afternoon:['study2','jobapps','nonFixed','dinnerprep'],
+      evening:['dog1','dinner','garden']
+    };
+  }
+  return{
+    morning:['breakfast','gym'],
+    afternoon:['jobapps','jobapps2','nonFixed','dinnerprep'],
+    evening:['dog1','dinner','garden']
+  };
+}
+function periodTaskLabel(key){
+  if(key.startsWith('extra:'))return key.slice(6);
+  const map={
+    breakfast:'Breakfast',study1:'PMP study (1)',study2:'PMP study (2)',gym:'Workout',
+    jobapps:'Job applications',jobapps2:'Job applications (2)',nonFixed:'Non-fixed (Read/AI/QGIS)',
+    dinnerprep:'Dinner prep',dog1:'Dog walk & feed',dinner:'Dinner',garden:'Garden'
+  };
+  return map[key]||key;
+}
+function periodTaskIco(key){
+  if(key.startsWith('extra:'))return '✨';
+  const map={breakfast:'🍳',study1:'📘',study2:'📘',gym:'🏋️',jobapps:'💼',jobapps2:'💼',nonFixed:'📖',dinnerprep:'🍽️',dog1:'🐕',dinner:'🍲',garden:'🌱'};
+  return map[key]||'✨';
+}
+function hasPeriodOverrides(dayKey){
+  const c=dayCfg(dayKey);
+  return!!(c.periodOrder||c.periodMoves||c.periodExtras);
+}
+function effectivePeriodLists(dayKey){
+  const base=basePeriodTemplate(dayKey);
+  const c=dayCfg(dayKey);
+  const moves=c.periodMoves||{};
+  const order=c.periodOrder||{};
+  const taskPeriod={};
+  PERIOD_KEYS.forEach(p=>{
+    (base[p]||[]).forEach(t=>{taskPeriod[t]=p;});
+  });
+  Object.keys(moves).forEach(t=>{
+    if(MOVABLE_PERIOD_TASKS.has(t)&&PERIOD_KEYS.includes(moves[t]))taskPeriod[t]=moves[t];
+  });
+  const out={};
+  PERIOD_KEYS.forEach(p=>{
+    const items=Object.keys(taskPeriod).filter(t=>taskPeriod[t]===p);
+    let list=[];
+    if(order[p]&&order[p].length){
+      order[p].forEach(t=>{if(items.includes(t))list.push(t);});
+      items.forEach(t=>{if(!list.includes(t))list.push(t);});
+    }else list=items.slice();
+    (c.periodExtras&&c.periodExtras[p]||[]).forEach(ex=>{
+      list.push('extra:'+(ex.id||'ex_'+Date.now()));
+    });
+    out[p]=list;
+  });
+  return out;
+}
+function gymBlockForPeriod(ws,ov,durCap){
+  if(ws==='skip')return null;
+  const workout=ov.gym!=null?ov.gym:(ws==='home'?45:60);
+  if(ws==='home'){
+    return{id:'gym',ico:'🏠',lab:'Home workout',sub:'Morning/afternoon/evening band',dur:Math.min(durCap||GYM_MAX,Math.max(GYM_MIN,workout))};
+  }
+  const commute=GYM_COMMUTE_EACH*2;
+  const maxW=Math.max(0,(durCap||GYM_MAX)-commute);
+  const workoutM=Math.min(Math.max(GYM_MIN,maxW),GYM_MAX);
+  if((durCap||999)>=GYM_THRESHOLD){
+    return{id:'gym',ico:'🏋️',lab:'Gym + commute',sub:'30m each way · '+workoutM+'m workout',dur:workoutM+commute};
+  }
+  return{id:'gym',ico:'🏠',lab:'Home workout',sub:'Fits band · '+Math.min(durCap||GYM_MAX,GYM_MAX)+'m',dur:Math.min(durCap||GYM_MAX,Math.max(GYM_MIN,workoutM))};
+}
+function resolvePeriodBlock(taskKey,c,ws,ov,dayKey,durCap){
+  if(taskKey.startsWith('extra:')){
+    const id=taskKey.slice(6);
+    for(const p of PERIOD_KEYS){
+      const hit=((dayCfg(dayKey).periodExtras||{})[p]||[]).find(x=>x.id===id);
+      if(hit)return{id:hit.id,ico:hit.ico||'✨',lab:hit.name,sub:'Custom · today',dur:Math.max(5,hit.mins||30),custom:true,periodCustom:true};
+    }
+    return null;
+  }
+  if(taskKey==='gym')return gymBlockForPeriod(ws,ov,durCap);
+  if(taskKey==='nonFixed'){
+    const nf=pickNonFixed(dayKey,c);
+    if(!nf||c.nonFixedPick==='none')return null;
+    const dur=ov[nf.id]!=null?ov[nf.id]:nf.dur;
+    return{id:nf.id,ico:nf.ico,lab:nf.lab,sub:nf.sub,dur:Math.min(durCap||dur,dur),nonFixed:true};
+  }
+  const defs={
+    breakfast:{id:'breakfast',ico:'🍳',lab:'Breakfast',sub:'1h from wake',dur:60},
+    study1:{id:'study1',ico:'📘',lab:'PMP study',sub:'Part 1 · ≥2h/day total',dur:PMP_SEGMENT_MIN},
+    study2:{id:'study2',ico:'📘',lab:'PMP study',sub:'Part 2 · ≥2h/day total',dur:PMP_SEGMENT_MIN},
+    jobapps:{id:'jobapps',ico:'💼',lab:'Job applications',sub:isPmpActive(dayKey)?'≥30m/day':'>2h/day total',dur:isPmpActive(dayKey)?JOB_APPS_MIN:JOB_POST_EXAM_SEGMENT_MIN},
+    jobapps2:{id:'jobapps2',ico:'💼',lab:'Job applications (2/2)',sub:'>2h/day total',dur:JOB_POST_EXAM_SEGMENT_MIN},
+    dinnerprep:{id:'dinnerprep',ico:'🍽️',lab:'Dinner prep',sub:'Prep for tonight · 20m default',dur:20},
+    dog1:{id:'dog1',ico:'🐕',lab:'Dog walk & feed',sub:'Evening band',dur:45},
+    dinner:{id:'dinner',ico:'🍲',lab:'Dinner',sub:'Evening band',dur:90},
+    garden:{id:'garden',ico:'🌱',lab:'Garden & chickens',sub:'Evening band',dur:45}
+  };
+  const d=defs[taskKey];
+  if(!d)return null;
+  let dur=ov[d.id]!=null?ov[d.id]:d.dur;
+  if(durCap!=null)dur=Math.min(dur,durCap);
+  return{...d,dur:Math.max(5,dur)};
+}
+function packPeriodBand(seq,warnings,bandKey,bandStart,bandEnd,taskKeys,c,ws,ov,dayKey){
+  let cur=bandStart;
+  const label=PERIOD_LABELS[bandKey];
+  taskKeys.forEach(taskKey=>{
+    const room=bandEnd-cur;
+    if(room<5)return;
+    const block=resolvePeriodBlock(taskKey,c,ws,ov,dayKey,room);
+    if(!block)return;
+    const overflow=cur+block.dur>bandEnd;
+    block.start=cur;
+    block.end=cur+block.dur;
+    block.period=bandKey;
+    if(overflow){
+      block.overflow=true;
+      warnings.push({msg:label+' band overfull — '+block.lab+' runs past '+fmt12(minToTime(bandEnd))});
+    }
+    seq.push(block);
+    cur=block.end;
+  });
+  if(cur<bandEnd-4)pushFlexGap(seq,cur,bandEnd,'Open time · '+label);
+}
+function buildPeriodWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
+  const wakeMin=toMin(c.wake);
+  const lists=effectivePeriodLists(dayKey);
+  const seq=[];
+  const warnings=[];
+  packPeriodBand(seq,warnings,'morning',wakeMin,PERIOD_END.morning,lists.morning,c,ws,ov,dayKey);
+  packPeriodBand(seq,warnings,'afternoon',PERIOD_END.morning,PERIOD_END.afternoon,lists.afternoon,c,ws,ov,dayKey);
+  packPeriodBand(seq,warnings,'evening',PERIOD_END.afternoon,PERIOD_END.evening,lists.evening,c,ws,ov,dayKey);
+  let bfEnd=wakeMin+60;
+  const bf=seq.find(b=>b.id==='breakfast');
+  if(bf)bfEnd=bf.end;
+  const gapOpts={wakeMin,earliest:bfEnd,dayEnd:WORK_START};
+  const applied=applySuddenTasks(seq,suddenTasks||[],dayKey,'workday',gapOpts);
+  sortSeqByStart(applied.seq);
+  warnings.push(...annotateWorkdayOverlaps(applied.seq));
+  const withFlex=[];
+  let cur=wakeMin;
+  applied.seq.filter(b=>!b.flex).sort((a,b)=>a.start-b.start).forEach(b=>{
+    if(b.start>cur+4)pushFlexGap(withFlex,cur,b.start,'Open time');
+    withFlex.push(b);
+    cur=Math.max(cur,b.end);
+  });
+  if(cur<WORK_START)pushFlexGap(withFlex,cur,WORK_START,'Before work');
+  const endMin=withFlex.reduce((m,b)=>Math.max(m,b.end||0),PERIOD_END.evening);
+  return{seq:withFlex,endMin,overlapWarnings:warnings,suddenConflicts:applied.conflicts};
+}
+function clearPeriodOverrides(dayKey){
+  const c=dayCfg(dayKey);
+  c.periodOrder=null;
+  c.periodMoves=null;
+  c.periodExtras=null;
+}
+function movePeriodTask(taskKey,toPeriod){
+  if(!PERIOD_KEYS.includes(toPeriod))return;
+  const c=cfg();
+  const dayKey=activeDayKey();
+  if(taskKey.startsWith('extra:')){
+    const id=taskKey.slice(6);
+    if(!c.periodExtras)c.periodExtras={};
+    let found=null;
+    PERIOD_KEYS.forEach(p=>{
+      const arr=c.periodExtras[p]||[];
+      const i=arr.findIndex(x=>x.id===id);
+      if(i>=0){found=arr.splice(i,1)[0];c.periodExtras[p]=arr;}
+    });
+    if(found){
+      if(!c.periodExtras[toPeriod])c.periodExtras[toPeriod]=[];
+      c.periodExtras[toPeriod].push(found);
+    }
+  }else if(MOVABLE_PERIOD_TASKS.has(taskKey)){
+    if(!c.periodMoves)c.periodMoves={};
+    c.periodMoves[taskKey]=toPeriod;
+  }else return;
+  touchDaySync(dayKey);
+}
+function reorderPeriodTask(period,taskKey,dir){
+  const dayKey=activeDayKey();
+  const lists=effectivePeriodLists(dayKey);
+  const list=(lists[period]||[]).slice();
+  const idx=list.indexOf(taskKey);
+  if(idx<0)return;
+  const ni=idx+dir;
+  if(ni<0||ni>=list.length)return;
+  const c=dayCfg(dayKey);
+  if(!c.periodOrder)c.periodOrder={};
+  if(!c.periodOrder[period])c.periodOrder[period]=list.slice();
+  const ord=c.periodOrder[period];
+  const at=ord.indexOf(taskKey);
+  const swapKey=list[ni];
+  const swapAt=ord.indexOf(swapKey);
+  if(at<0)ord.push(taskKey);
+  const ai=ord.indexOf(taskKey);
+  const bi=ord.indexOf(swapKey);
+  if(ai<0||bi<0)return;
+  [ord[ai],ord[bi]]=[ord[bi],ord[ai]];
+  touchDaySync(dayKey);
+}
+function addPeriodExtra(period,name,mins){
+  const c=cfg();
+  if(!c.periodExtras)c.periodExtras={};
+  if(!c.periodExtras[period])c.periodExtras[period]=[];
+  c.periodExtras[period].push({id:'pex_'+Date.now(),name:(name||'Activity').trim(),mins:Math.max(5,parseInt(mins,10)||30),ico:'✨'});
+  touchDaySync(activeDayKey());
+}
+
 const HABITS=[
   {id:'sleep7',ico:'😴',nm:'7+ hrs sleep',sub:'One solid block'},
   {id:'gym',ico:'🏋️',nm:'Workout',sub:'Gym, home, or active rest'},
@@ -1021,6 +1271,9 @@ function dayCfg(k){
   if(!c.suddenTasks)c.suddenTasks=[];
   if(c.weekendPlan===undefined)c.weekendPlan=null;
   if(!c.blockDur)c.blockDur={};
+  if(!c.periodOrder)c.periodOrder=null;
+  if(!c.periodMoves)c.periodMoves=null;
+  if(!c.periodExtras)c.periodExtras=null;
   return c;
 }
 function blockDurOv(dayKey){
@@ -1597,39 +1850,7 @@ function applySuddenTasks(seq,tasks,scheduleDayKey,dt,opts){
   return {seq:result,conflicts};
 }
 function buildWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
-  const fixed=buildWorkdayFixedSeq(c,ov);
-  const wakeMin=fixed.wakeMin;
-  const earliestVar=fixed.bfEnd;
-  const gapOpts={wakeMin,earliest:earliestVar,dayEnd:WORK_START};
-  const applied=applySuddenTasks(fixed.seq,suddenTasks||[],dayKey||activeDayKey(),'workday',gapOpts);
-  const bag=placeWorkdayFlexibleBag(applied.seq,wakeMin,earliestVar,ws,ov,dayKey);
-  const seq=bag.seq;
-  const skipped=[...bag.skipped];
-  const overlapWarnings=[...fixed.overlapWarnings];
-  const nf=pickNonFixed(dayKey||activeDayKey(),c);
-  if(nf){
-    const nfDur=ov[nf.id]!=null?ov[nf.id]:nf.dur;
-    const need=Math.min(nfDur,30);
-    const nGap=bestGap(normWorkdayGaps(seq,wakeMin,WORK_START,earliestVar),need,earliestVar);
-    if(nGap&&placeInGapIfClear(seq,nGap,{id:nf.id,ico:nf.ico,lab:nf.lab,sub:nf.sub,dur:Math.min(nGap.len,nfDur),nonFixed:true})){}
-    else skipped.push(nf.lab);
-  }
-  if(skipped.length){
-    const uniq=[...new Set(skipped)];
-    overlapWarnings.push({msg:'Couldn\'t fit: '+uniq.join(', ')+' — open time shows what remains. Fixed evening blocks stay on the clock.'});
-  }
-  sortSeqByStart(seq);
-  overlapWarnings.push(...annotateWorkdayOverlaps(seq));
-  const withFlex=[];
-  let cur=wakeMin;
-  seq.filter(b=>!b.flex).sort((a,b)=>a.start-b.start).forEach(b=>{
-    if(b.start>cur+4)pushFlexGap(withFlex,cur,b.start,'Open time');
-    withFlex.push(b);
-    cur=Math.max(cur,b.end);
-  });
-  if(cur<WORK_START)pushFlexGap(withFlex,cur,WORK_START,'Before work');
-  const endMin=seq.reduce((m,b)=>Math.max(m,b.end||0),WORKDAY_CLOCK.dinner[1]);
-  return {seq:withFlex,endMin,overlapWarnings,suddenConflicts:applied.conflicts};
+  return buildPeriodWorkdaySeq(c,ws,ov,dayKey||activeDayKey(),suddenTasks||[]);
 }
 function buildWeekendSeq(c,plan){
   const seq=[];
@@ -1915,8 +2136,76 @@ function copyLastWeekendPlan(){
   else planDraft=planPresetsForDay(weekendPlanEditKey).slice(0,6).map((p,i)=>({id:'wp_'+Date.now()+i,name:p.name,dur:p.dur,ico:p.ico}));
   renderPlanList();
 }
+function renderPeriodPlan(){
+  const panel=document.getElementById('periodPlanPanel');
+  const wrap=document.getElementById('periodBands');
+  if(!panel||!wrap)return;
+  if(!isWorkday()){panel.style.display='none';return;}
+  panel.style.display='block';
+  const dayKey=activeDayKey();
+  const lists=effectivePeriodLists(dayKey);
+  wrap.innerHTML='';
+  PERIOD_KEYS.forEach(period=>{
+    const band=document.createElement('div');
+    band.className='period-band';
+    const hdr=document.createElement('div');
+    hdr.className='period-band-hdr';
+    hdr.innerHTML=`<span>${PERIOD_LABELS[period]}</span><span class="win">${PERIOD_WINDOWS[period]}</span>`;
+    band.appendChild(hdr);
+    const items=lists[period]||[];
+    items.forEach((taskKey,idx)=>{
+      const row=document.createElement('div');
+      row.className='period-task';
+      row.innerHTML=`<span class="pt-ico">${periodTaskIco(taskKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey)}</span><span class="pt-act"></span>`;
+      const act=row.querySelector('.pt-act');
+      if(idx>0){
+        const up=document.createElement('button');
+        up.type='button';up.textContent='↑';
+        up.onclick=()=>{reorderPeriodTask(period,taskKey,-1);saveDay();renderSched();};
+        act.appendChild(up);
+      }
+      if(idx<items.length-1){
+        const dn=document.createElement('button');
+        dn.type='button';dn.textContent='↓';
+        dn.onclick=()=>{reorderPeriodTask(period,taskKey,1);saveDay();renderSched();};
+        act.appendChild(dn);
+      }
+      const canMove=MOVABLE_PERIOD_TASKS.has(taskKey)||taskKey.startsWith('extra:');
+      if(canMove){
+        PERIOD_KEYS.filter(p=>p!==period).forEach(p=>{
+          const mb=document.createElement('button');
+          mb.type='button';
+          mb.textContent='→ '+PERIOD_LABELS[p].slice(0,3);
+          mb.title='Move to '+PERIOD_LABELS[p];
+          mb.onclick=()=>{movePeriodTask(taskKey,p);saveDay();renderSched();};
+          act.appendChild(mb);
+        });
+      }
+      band.appendChild(row);
+    });
+    const addRow=document.createElement('div');
+    addRow.className='period-add-row';
+    const nmIn=document.createElement('input');
+    nmIn.className='pex-name';nmIn.placeholder='Add activity…';
+    const minIn=document.createElement('input');
+    minIn.className='pex-min';minIn.type='number';minIn.placeholder='min';minIn.min='5';minIn.value='30';
+    const addBtn=document.createElement('button');
+    addBtn.type='button';addBtn.className='btn sm';addBtn.textContent='Add';
+    addBtn.onclick=()=>{
+      if(!nmIn.value.trim()){nmIn.focus();return;}
+      addPeriodExtra(period,nmIn.value,minIn.value);
+      nmIn.value='';saveDay();renderSched();
+    };
+    addRow.appendChild(nmIn);addRow.appendChild(minIn);addRow.appendChild(addBtn);
+    band.appendChild(addRow);
+    wrap.appendChild(band);
+  });
+  const resetP=document.getElementById('resetPeriod');
+  if(resetP)resetP.style.display=hasPeriodOverrides(dayKey)?'inline':'none';
+}
 function renderSched(){
   const c=cfg();const ws=workoutState();const dt=dayType();
+  renderPeriodPlan();
   document.querySelectorAll('#segDay button').forEach(b=>b.classList.toggle('on',b.dataset.d===(c.dayType||'auto')));
   dayLabel.textContent=DAYNAMES[dt];
   document.querySelectorAll('#segWorkout button').forEach(b=>b.classList.toggle('on',b.dataset.w===ws));
@@ -1968,16 +2257,16 @@ function renderSched(){
   seq.forEach(b=>{
     const startHH=minToTime(b.start);const done=!!checks[b.id];const now=!done&&nowMin()>=b.start&&nowMin()<b.end;
     const isFlex=!!b.flex;
-    const el=document.createElement('div');el.className='blk'+(done?' done':'')+(now?' now':'')+(editMode?' info':'')+(isFlex?' flex info':'')+(b.anchored?' anchored':'')+(b.overflow?' overflow':'');
+    const el=document.createElement('div');el.className='blk'+(done?' done':'')+(now?' now':'')+(editMode?' info':'')+(isFlex?' flex info':'')+(b.anchored?' anchored':'')+(b.overflow?' overflow':'')+(b.period?' period-'+b.period:'');
     let rightHTML;
     if(editMode&&!isFlex){
-      rightHTML=`<span class="stepper"><button data-step="-1">−</button><span class="val">${b.dur}m</span><button data-step="1">+</button></span>${(b.custom||b.sudden)?'<span class="delx">✕</span>':''}`;
+      rightHTML=`<span class="stepper"><button data-step="-1">−</button><span class="val">${b.dur}m</span><button data-step="1">+</button></span>${(b.custom||b.sudden||b.periodCustom)?'<span class="delx">✕</span>':''}`;
     } else if(!isFlex) {
       rightHTML=`${(b.custom||b.sudden)?'<span class="delx">✕</span>':''}<div class="chk"></div>`;
     } else rightHTML='';
     const endLbl=b.end!=null?fmt12(minToTime(b.end)):'';
     el.innerHTML=`<div class="time">${fmt12(startHH)}${endLbl?'<br><span style="font-size:11px;color:var(--muted2)">→ '+endLbl+'</span>':''}</div>
-      <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.overflow?'<span class="overflowtag">OVERLAP</span>':''}${b.custom&&!b.sudden?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.nonFixed?'<span class="custag">PICK</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.sub} · ${b.dur}m</small></span></div>
+      <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.overflow?'<span class="overflowtag">OVERLAP</span>':''}${b.custom&&!b.sudden?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.nonFixed?'<span class="custag">PICK</span>':''}${b.period?'<span class="period-tag">'+PERIOD_LABELS[b.period]+'</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.sub} · ${b.dur}m</small></span></div>
       <div class="right">${rightHTML}</div>`;
     if(editMode&&!isFlex){
       el.querySelectorAll('.stepper button').forEach(btn=>btn.onclick=(e)=>{
@@ -1994,7 +2283,13 @@ function renderSched(){
     }
     const dx=el.querySelector('.delx');if(dx)dx.onclick=(e)=>{e.stopPropagation();
       if(b.sudden){touchDaySync(activeDayKey());c.suddenTasks=(c.suddenTasks||[]).filter(t=>t.id!==b.id);saveDay();}
-      else{c.tasks=c.tasks.filter(t=>t.id!==b.id);save();}
+      else if(b.periodCustom){
+        PERIOD_KEYS.forEach(p=>{
+          c.periodExtras=(c.periodExtras||{});
+          c.periodExtras[p]=(c.periodExtras[p]||[]).filter(x=>x.id!==b.id);
+        });
+        saveDay();
+      }else{c.tasks=c.tasks.filter(t=>t.id!==b.id);save();}
       renderSched();renderGlance();};
     sched.appendChild(el);
   });
@@ -2005,7 +2300,7 @@ function renderSched(){
     sched.appendChild(work);
     const sleepNow=wn>=240&&wn<toMin(c.wake);
     const sleep=document.createElement('div');sleep.className='blk'+(sleepNow?' now':'');
-    sleep.innerHTML=`<div class="time">${fmt12('04:00')}</div><div class="body"><span class="ico">😴</span><span class="lab">Sleep block${sleepNow?'<span class="nowtag">NOW</span>':''}<small>Protected. Blackout + DND</small></span></div><div class="right"></div>`;
+    sleep.innerHTML=`<div class="time">${fmt12('03:00')}</div><div class="body"><span class="ico">😴</span><span class="lab">Sleep block${sleepNow?'<span class="nowtag">NOW</span>':''}<small>3am → ${fmt12(c.wake)} · protected</small></span></div><div class="right"></div>`;
     sched.appendChild(sleep);
   } else {
     const info=document.createElement('div');info.className='blk info';
@@ -2713,6 +3008,8 @@ function wire(){
   todoInput.addEventListener('keydown',e=>{if(e.key==='Enter')addTodo.click();});
   clearDone.onclick=()=>{DATA.todos=DATA.todos.filter(t=>!t.done);save();renderTodos();renderNowBanner();};
   resetDur.onclick=()=>{touchDaySync(activeDayKey());cfg().blockDur={};saveDay();renderSched();renderGlance();};
+  const resetPeriodBtn=document.getElementById('resetPeriod');
+  if(resetPeriodBtn)resetPeriodBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodOverrides(activeDayKey());saveDay();renderSched();renderGlance();flash('Today\'s band order reset');};
   document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;saveDay();renderClocks();renderSched();renderNowBanner();renderGlance();});
   document.querySelectorAll('#segWorkout button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().workout=b.dataset.w;saveDay();renderSched();renderNowBanner();renderGlance();});
   document.querySelectorAll('#segNonFixed button').forEach(b=>b.onclick=()=>{

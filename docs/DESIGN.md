@@ -2,7 +2,7 @@
 
 This document captures the real-world constraints that shaped the dashboard. It is the distilled “why” behind `life-dashboard.html`.
 
-**Weekday scheduling source of truth:** [`lifechart2.drawio`](../lifechart2.drawio) (see also `lifechart2.drawio.png`). The older `Lifecommand flowchart.drawio` priority model is retired for workdays.
+**Weekday scheduling source of truth:** period-band model (v1). Legacy lifechart2 gap/clock packing is retired for workdays. Weekend plan flow unchanged.
 
 ## Context
 
@@ -16,93 +16,90 @@ This document captures the real-world constraints that shaped the dashboard. It 
 
 ## Non-negotiable principles (product context)
 
-1. **Sleep is the constraint.** One protected daytime sleep block (~4:00 AM – ~10:00 AM). Avoid split sleep (sleep → wake for work check → sleep again); wrap work before logoff when possible.
-2. **Goals:** PMP exam **June 22, 2026** (through that date inclusive); job target **August 1, 2026** — job countdown always shown; PMP countdown and **PMP Prep** tab only through exam day.
-3. **Operations are capped.** Animals, garden, meals, and workouts use fixed blocks — not unlimited time sinks.
-4. **Meal prep is batched.** Saturday batch prep feeds weekday “reheat” lunches; workdays show a banner if last Saturday’s prep was skipped.
+1. **Sleep is the constraint.** One protected sleep block (~3:00 AM → logged wake). Avoid split sleep; wrap work before logoff when possible.
+2. **Goals:** PMP exam **June 22, 2026** (through that date inclusive); job target **August 1, 2026** — job countdown always shown; PMP UI only through exam day.
+3. **Operations are capped.** Animals, garden, meals, and workouts use scheduled blocks with durations — not unlimited time sinks.
+4. **Meal prep is batched.** Saturday `mealprep` feeds weekday lunches; workdays show a banner if last Saturday’s prep was skipped.
 
-**Weekday block placement** follows **lifechart2 only** (no rules from `Lifecommand flowchart.drawio`).
+## Workday template — period bands (v1)
 
-## Workday template (Sun–Thu) — lifechart2 model
+Only **work (night)** is a hard anchor. Daytime is three **bands**; tasks are stacked in order inside each band. **Open time** flex rows fill unused minutes within a band.
 
-Day starts at **logged wake time**. Build order:
+### Band windows
 
-1. **Fixed** clock and wake-anchored blocks (breakfast from wake; dog & dinner per chart — nothing else auto-scheduled as fixed)
-2. **Sudden tasks** (manual overlay — fixed window or flexible slot)
-3. **Flexible daily minimums** (equal bag — no ranking): bin-packed into daytime gaps before work — **through June 22, 2026:** PMP study + gym + job; **from June 23, 2026:** gym + job only (>2h job target)
-4. **Non-fixed** pick (one of Read / AI / QGIS) if time remains
-5. **Open time** — remaining slack before deploy
+| Band | Window |
+|------|--------|
+| **Morning** | Logged wake → 2:00 PM |
+| **Afternoon** | 2:00 PM → 5:00 PM |
+| **Evening** | 5:00 PM → 8:00 PM |
+| **Night (work)** | 8:00 PM → 3:00 AM — anchor, not reorderable |
+| **Sleep** | 3:00 AM → wake — protected |
 
-### Fixed (clock or wake-anchored)
+### Default task lists (pre–June 23, 2026)
 
-| Block | When | Duration |
-|-------|------|----------|
-| Breakfast | **1 hour from logged wake** | 60m (today-only override via Edit) |
-| Dog walk & feed | 4:45–5:30 PM | 45m |
-| Dinner | 6:00–7:30 PM | 90m |
-| **Work** | 8:00 PM–3:00 AM | 7h (Bangkok 7a–3p) |
-| **Sleep** | ~4:00 AM | Protected block |
+| Morning | Afternoon | Evening |
+|---------|-----------|---------|
+| Breakfast | PMP2 (`study2`) | Dog walk & feed (`dog1`) |
+| PMP1 (`study1`) | Job applications (`jobapps`) | Dinner (`dinner`) |
+| Workout (`gym`) | Non-fixed (Read / AI / QGIS) | Garden (`garden`) |
+| | Dinner prep (`dinnerprep`, 20m) | |
 
-### Flexible daily bag (equal requirements)
+Afternoon order: **study2 → jobapps → nonFixed → dinnerprep**.
 
-**Through June 22, 2026 (`activeDayKey() <= 2026-06-22`):** schedule PMP, gym, and job before work when physically possible. **No priority** between the three — the agent tries gap layouts (permutations) until all fit.
+### Default task lists (post–June 23, 2026)
 
-| Task | Rule |
-|------|------|
-| **PMP study** | **≥2h/day** as two **60+60** blocks when possible; one **120m** block if a single gap fits. |
-| **Gym** | **≥20 min/day**; if gap **≥1h15** → gym + **30m commute each way**; else home workout. Respects Workout **Gym / Home / Skip**. |
-| **Job applications** | **≥30 min/day** in a daytime gap. |
+| Morning | Afternoon | Evening |
+|---------|-----------|---------|
+| Breakfast | Job applications (`jobapps` + `jobapps2`, >2h total) | Dog, dinner, garden |
+| Workout (`gym`) | Non-fixed, dinner prep (20m) | |
+| *Open time* in unused morning slots | | |
 
-**From June 23, 2026:** PMP is removed from the bag, UI, and weekend legacy templates. Only **gym + job** (equal bin-pack). **Job applications** target **>2h/day** (default **61+61** or one **121m** block; overrides via `blockDur.jobapps`, `jobapps1`, `jobapps2`).
+PMP blocks removed; morning open time is for custom activities (add via band UI).
 
-If total free time is enough but no layout fits, the banner warns (e.g. **Couldn't fit: workout**) — gym is not silently dropped when Workout ≠ Skip and some gap has **≥20m**.
+### Today-only overrides (`dayConfig[date]`)
 
-### Non-fixed (one per day if time remains)
+- **periodOrder** — ↑↓ reorder within a band today only.
+- **periodMoves** — move a task to another band today only (e.g. gym → morning).
+- **periodExtras** — custom named activities in a band (post-exam open time).
+- **Reset today's order** — clears overrides; defaults return.
 
-Pick one: Read, Do AI work, or QGIS — **Extra** control (Auto / manual / Skip). Auto rotates by date.
+Sync via existing Firebase `dayConfig` merge.
 
-### PMP habit / study tab (through June 22, 2026 only)
+### Still applies
 
-- **PMP Prep** tab, quiz, study log, domain sliders, header PMP countdown, and Quick Glance study logging are hidden after exam day.
-- Daily target: mark **PMP study** complete when **≥120 minutes** total for `activeDayKey`.
-- Count **combined**: minutes from PMP Prep session log (`DATA.sessions`) **plus** completed scheduled study block durations (`study1` / `study2` when checked).
-- Historical `DATA.sessions`, `pmpNotes`, and `pmpQuiz` are retained in storage but not shown in the UI after exam day.
+- **Wake** / “Just woke up” — starts morning band.
+- **Workout** Gym / Home / Skip — affects gym duration in whichever band gym sits.
+- **Sudden tasks** — applied after band packing; can displace/replace blocks.
+- **Edit block lengths** — `blockDur` per day.
+- **Non-fixed** Extra control — resolves `nonFixed` slot in afternoon.
 
-**Late wake:** Fixed clock blocks never move. Overlapping blocks show an OVERLAP tag; banner explains what could not fit.
+### Minimums & warnings
 
-**Buffer line:** Minutes free before 8:00 PM work start, or over-packed warning.
+- PMP habit: ≥120m from `study1`/`study2` + sessions (through exam day).
+- Job: ≥30m pre-exam; >2h post-exam from job blocks.
+- Band **overfull** warning if stacked tasks exceed band end time.
 
 ## Friday & Saturday (weekend days)
 
 - No work shift — sleep when ready
-- **Night before:** use “Plan day” to list activities (gym, PMP, meal prep, hobby, dinner ~7, read, etc.)
-- Agent packs your list from wake time with **open time** gaps between items (for sudden tasks)
-- Legacy templates still apply if you have not saved a plan yet
-- Saturday batch meal prep still feeds the workday meal-prep banner when logged
+- **Plan day** modal packs an ordered list from wake (unchanged in v1)
+- Saturday **mealprep** for the week — not on workday afternoon list
 
 ## Flexible controls
 
 | Control | Behavior |
 |---------|----------|
-| Wake time / “Just woke up” | Recomputes all block start times downstream |
-| Day type (Auto / Workday / Friday / Saturday) | Auto uses weekday; override for swapped days |
-| Workout: Gym / Home / Skip | Default **Gym** (auto): commute session if ≥1h15 free, else home ≥20m. **Skip** only when you tap it. |
-| Sudden tasks | Anytime or fixed window; today vs future rules; displaces into open time |
-| Weekend plan | Night before: build Friday/Saturday activity list; schedule packs from wake |
-| Edit block lengths | Today only (saved in `dayConfig[date].blockDur`) |
-| To-do list | Rolls over until done; optional due dates; most urgent surfaces in Quick Glance |
-
-## Dog & dinner windows (workday — lifechart2)
-
-- Dog walk & feed: **4:45–5:30 PM**
-- Dinner: **6:00–7:30 PM**
-
-Garden and dinner prep are **not** on lifechart2; they remain as **Daily Non-Negotiables** habits only (manual checkoff), not scheduled fixed blocks.
+| Wake time / “Just woke up” | Morning band starts at wake |
+| Day type (Auto / Workday / Friday / Saturday) | Auto uses weekday |
+| Workout: Gym / Home / Skip | Gym block duration/placement |
+| Sudden tasks | Anytime or fixed window |
+| Weekend plan | Friday/Saturday activity list |
+| Edit block lengths | Today only (`blockDur`) |
+| Today's bands | Reorder / move tasks between morning · afternoon · evening |
 
 ## What the dashboard does *not* do (yet)
 
-- Sync across phone and laptop (localStorage only on one browser)
+- Cloud backup beyond Firebase sign-in
 - Google Calendar / Todoist integration
-- Cloud backup
 
-See [BUILD-HISTORY.md](BUILD-HISTORY.md) for feature evolution and possible future ideas.
+See [BUILD-HISTORY.md](BUILD-HISTORY.md) for feature evolution.

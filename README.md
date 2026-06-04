@@ -34,7 +34,7 @@ No output = local only. See [docs/GITHUB-SETUP.md](docs/GITHUB-SETUP.md) to push
 
 | Tab | Purpose |
 |-----|---------|
-| **Today** | Wake-time schedule, sudden tasks, workout modes, to-dos |
+| **Today** | Period bands (morning/afternoon/evening), wake-time schedule, reorder tasks per day, sudden tasks, to-dos |
 | **Daily Non-Negotiables** | Habit streaks |
 | **PMP Prep** | Study log, domain sliders, countdown to June 22, 2026 (hidden after exam day) |
 | **Job Search** | Application pipeline, deadline Aug 1, 2026; primary flexible schedule focus after June 22, 2026 (>2h/day on workdays) |
