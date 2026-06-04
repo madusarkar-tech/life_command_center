@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Page-1" id="5H1RpEqk1S_blSqHO_Yj">
-    <mxGraphModel dx="1564" dy="705" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="1784" dy="670" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -99,9 +99,9 @@
         <mxCell id="yO8ztNF9SrLAGVCPVbxF-20" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;verticalAlign=top;" value="&lt;b&gt;Fixed time, fixed duration tasks&lt;/b&gt;&lt;br&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
           <mxGeometry height="45" width="115" x="290" y="245" as="geometry" />
         </mxCell>
-        <mxCell id="yO8ztNF9SrLAGVCPVbxF-23" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.571;entryY=-0.016;entryDx=0;entryDy=0;entryPerimeter=0;fontSize=13;verticalAlign=top;">
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-23" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;fontSize=13;verticalAlign=top;">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="568.52" y="243.15999999999997" as="targetPoint" />
+            <mxPoint x="569" y="230" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="yO8ztNF9SrLAGVCPVbxF-28" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;" value="Tasks for the day start based on wake up time logged" vertex="1">
@@ -113,8 +113,8 @@
         <mxCell id="QWhCmEoeKmfQhMOu0N17-2" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;" target="yO8ztNF9SrLAGVCPVbxF-49">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="yO8ztNF9SrLAGVCPVbxF-29" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;verticalAlign=top;" value="&lt;b&gt;Variable time, Variable duration tasks&amp;nbsp;&lt;/b&gt;&lt;div&gt;&lt;b&gt;-defined by agent based on the parameters (prioritize before open time)&lt;/b&gt;&lt;div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="85" width="200" x="450" y="245" as="geometry" />
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-29" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;verticalAlign=top;" value="&lt;b&gt;Variable time, Variable duration tasks&amp;nbsp;&lt;/b&gt;&lt;div&gt;&lt;b&gt;-duration defined by agent based on the parameters but tasks have to be done everyday (prioritize before open time)&lt;/b&gt;&lt;div&gt;&lt;div style=&quot;text-align: left;&quot;&gt;&lt;br&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="200" x="450" y="230" as="geometry" />
         </mxCell>
         <mxCell id="lBWh7IeuOUsdjZyWGTuz-26" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="yO8ztNF9SrLAGVCPVbxF-36">
           <mxGeometry relative="1" as="geometry" />
@@ -143,11 +143,14 @@
         <mxCell id="yO8ztNF9SrLAGVCPVbxF-42" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;rounded=0;" value="Work&lt;div&gt;8pm-3am&lt;/div&gt;" vertex="1">
           <mxGeometry height="60" width="120" x="285" y="750" as="geometry" />
         </mxCell>
-        <mxCell id="yO8ztNF9SrLAGVCPVbxF-49" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;Gym (priority 2)&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-atleast 20 minutes minimum to 2 hours maximum each day.&amp;nbsp;&lt;/div&gt;&lt;div&gt;-based on sudden tasks and fixed time fixed duration tasks.&amp;nbsp;&lt;/div&gt;&lt;div&gt;-if I have more than 1.15 hours, then I go to the gym where the commute time is half hour each way.&amp;nbsp;&lt;/div&gt;&lt;div&gt;-If I have less than 1.15 hours, agent chooses home workouts&lt;/div&gt;&lt;div&gt;-if the only 60 minute gap is before PMP&#39;s 2 hour block, gym may go there; PMP takes the next largest gap&lt;/div&gt;&lt;div&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); text-align: center;&quot;&gt;Shower tied to gym (priority 2)&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;div&gt;- time duration is 30 minutes sometime after gym and before beginning work&lt;/div&gt;&lt;/div&gt;" vertex="1">
-          <mxGeometry height="500" width="120" x="570" y="360" as="geometry" />
+        <mxCell id="d5QV1f2z7jx3rNjdsKPl-2" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-49" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="d5QV1f2z7jx3rNjdsKPl-1" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-49" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;Gym (priority 2)&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="570" y="360" as="geometry" />
         </mxCell>
         <mxCell id="yO8ztNF9SrLAGVCPVbxF-57" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;rounded=0;" value="&lt;b&gt;Job applications (priority 3)&lt;/b&gt;&lt;div&gt;30 minutes atleast everyday&lt;/div&gt;" vertex="1">
-          <mxGeometry height="80" width="120" x="710" y="370" as="geometry" />
+          <mxGeometry height="80" width="120" x="710" y="360" as="geometry" />
         </mxCell>
         <mxCell id="yO8ztNF9SrLAGVCPVbxF-59" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;rounded=0;" value="Read" vertex="1">
           <mxGeometry height="30" width="50" x="1080" y="110" as="geometry" />
@@ -167,8 +170,8 @@
         <mxCell id="Asbc4W8R_7uDBVIC_qn3-5" edge="1" parent="1" source="yO8ztNF9SrLAGVCPVbxF-52" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="Asbc4W8R_7uDBVIC_qn3-4" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="yO8ztNF9SrLAGVCPVbxF-52" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;PMP (priority 1)&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-1 block of 2 hours of deep study&lt;/div&gt;&lt;div&gt;-Only pertinent until June 22, 2026 when I have to take the exam&lt;/div&gt;&lt;div&gt;-after June 22, 2026, this time slot is free&lt;/div&gt;" vertex="1">
-          <mxGeometry height="150" width="125" x="425" y="360" as="geometry" />
+        <mxCell id="yO8ztNF9SrLAGVCPVbxF-52" parent="1" style="whiteSpace=wrap;html=1;rounded=0;fontSize=13;align=left;verticalAlign=top;" value="&lt;div style=&quot;text-align: center;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;PMP (priority 1)&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;-find 1 block of 2 hours of deep study in the day&lt;/div&gt;&lt;div&gt;-Only pertinent until June 22, 2026 when I have to take the exam&lt;/div&gt;&lt;div&gt;-after June 22, 2026, this time slot is free&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="125" x="425" y="360" as="geometry" />
         </mxCell>
         <mxCell id="QWhCmEoeKmfQhMOu0N17-12" edge="1" parent="1" source="QWhCmEoeKmfQhMOu0N17-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="QWhCmEoeKmfQhMOu0N17-11" value="">
           <mxGeometry relative="1" as="geometry" />
@@ -237,7 +240,7 @@
           <mxGeometry height="60" width="120" x="1390" y="640" as="geometry" />
         </mxCell>
         <mxCell id="Asbc4W8R_7uDBVIC_qn3-4" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;rounded=0;" value="after June 22, 2026" vertex="1">
-          <mxGeometry height="60" width="120" x="427.5" y="635" as="geometry" />
+          <mxGeometry height="60" width="120" x="425" y="710" as="geometry" />
         </mxCell>
         <mxCell id="Asbc4W8R_7uDBVIC_qn3-6" edge="1" parent="1" source="Asbc4W8R_7uDBVIC_qn3-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.575;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" target="yO8ztNF9SrLAGVCPVbxF-57">
           <mxGeometry relative="1" as="geometry">
@@ -266,7 +269,7 @@
               <mxPoint x="180" y="210" />
               <mxPoint x="510" y="210" />
             </Array>
-            <mxPoint x="510" y="240" as="targetPoint" />
+            <mxPoint x="510" y="220" as="targetPoint" />
           </mxGeometry>
         </mxCell>
         <mxCell id="lBWh7IeuOUsdjZyWGTuz-8" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;verticalAlign=top;rounded=0;" value="Breakfast&lt;div&gt;Time duration of 1 hour from waking up&lt;/div&gt;" vertex="1">
@@ -310,6 +313,21 @@
         </mxCell>
         <mxCell id="lBWh7IeuOUsdjZyWGTuz-19" edge="1" parent="1" source="lBWh7IeuOUsdjZyWGTuz-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.428;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="lBWh7IeuOUsdjZyWGTuz-14">
           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d5QV1f2z7jx3rNjdsKPl-4" edge="1" parent="1" source="d5QV1f2z7jx3rNjdsKPl-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="d5QV1f2z7jx3rNjdsKPl-3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d5QV1f2z7jx3rNjdsKPl-6" edge="1" parent="1" source="d5QV1f2z7jx3rNjdsKPl-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="d5QV1f2z7jx3rNjdsKPl-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d5QV1f2z7jx3rNjdsKPl-1" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;rounded=0;" value="After fixed time, fixed duration tasks and PMP" vertex="1">
+          <mxGeometry height="60" width="120" x="570" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="d5QV1f2z7jx3rNjdsKPl-3" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;rounded=0;" value="If time left is &amp;lt; 2 hour -&amp;gt; workout at home. The time duration is variable and up to the agent, find atleast 20 mintues in the day to workout.&amp;nbsp;" vertex="1">
+          <mxGeometry height="140" width="120" x="500" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="d5QV1f2z7jx3rNjdsKPl-5" parent="1" style="whiteSpace=wrap;html=1;fontSize=13;align=left;verticalAlign=top;rounded=0;" value="If time left is &amp;gt; 2 hours, go to the gym | commute time is 20 minutes each way" vertex="1">
+          <mxGeometry height="90" width="120" x="640" y="530" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
