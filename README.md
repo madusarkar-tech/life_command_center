@@ -41,6 +41,8 @@ No output = local only. See [docs/GITHUB-SETUP.md](docs/GITHUB-SETUP.md) to push
 
 Design details: [docs/DESIGN.md](docs/DESIGN.md) · Build history: [docs/BUILD-HISTORY.md](docs/BUILD-HISTORY.md)
 
+**Stable baseline:** tag `baseline-2026-06-04` — code + sync contract in [docs/BASELINE.md](docs/BASELINE.md). Say *“Return to baseline”* in a new chat to anchor agents there.
+
 ## Data persistence
 
 - **Signed out:** saves to browser `localStorage` on that device only.
