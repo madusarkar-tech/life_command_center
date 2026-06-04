@@ -290,7 +290,12 @@
   .period-band:last-child{margin-bottom:0}
   .period-band-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2)}
   .period-band-hdr .win{font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)}
+  .period-band-hdr .band-fill{font-weight:700;text-transform:none;letter-spacing:0;margin-left:8px}
+  .period-band-hdr .band-fill.ok{color:var(--sage)}
+  .period-band-hdr .band-fill.warn{color:var(--rust)}
+  .period-band-hdr.overfull{border-bottom:2px solid rgba(180,80,60,.4)}
   .period-task{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line-soft);font-size:13px;background:var(--surface)}
+  .period-task .pt-dur{font-size:11px;font-weight:700;color:var(--muted2);flex-shrink:0;min-width:38px;text-align:right}
   .period-task:first-of-type{border-top:none}
   .period-task .pt-ico{width:22px;text-align:center}
   .period-task .pt-lab{flex:1;font-weight:600;min-width:0}
@@ -1547,16 +1552,46 @@ function reorderTemplatePeriodTask(period,taskKey,dir,dayType){
   [list[idx],list[ni]]=[list[ni],list[idx]];
   const t=getWeekendTemplateDraft(dayType);
   if(!t.extras)t.extras={};
-  t[period]=[];
-  t.extras[period]=[];
   const allExtras={};
   WEEKEND_PERIOD_KEYS.forEach(p=>{(t.extras[p]||[]).forEach(ex=>{allExtras[ex.id]=ex;});});
+  t[period]=[];
+  t.extras[period]=[];
   list.forEach(k=>{
     if(k.startsWith('extra:')){
       const ex=allExtras[k.slice(6)];
       if(ex)t.extras[period].push(ex);
     }else t[period].push(k);
   });
+}
+function planPreviewWakeMin(dayType){
+  return dayType()===dayType?cfg().wake:'10:00';
+}
+function bandCapacityMinutes(period,dt,wakeMin){
+  const ends=periodEndMap(dt);
+  const wake=toMin(wakeMin);
+  if(period==='morning')return Math.max(0,ends.morning-wake);
+  if(period==='afternoon')return ends.afternoon-ends.morning;
+  if(period==='evening')return ends.evening-ends.afternoon;
+  if(period==='night')return ends.night-ends.evening;
+  return 0;
+}
+function taskMinutesForBandRow(taskKey,ctx){
+  const labelKey=ctx.mode==='template'?ctx.dayType:(ctx.dayKey||activeDayKey());
+  if(taskKey.startsWith('extra:')){
+    const found=findPeriodExtra(labelKey,taskKey.slice(6));
+    if(found&&found.hit)return Math.max(5,found.hit.mins||30);
+    return 30;
+  }
+  const planCfg={wake:planPreviewWakeMin(ctx.dayType||dayType()),workout:null,nonFixedPick:null};
+  if(ctx.mode!=='template')Object.assign(planCfg,cfg());
+  else planCfg.wake=planPreviewWakeMin(ctx.dayType);
+  const ws=workoutState();
+  const ov=ctx.mode==='template'?{}:blockDurOv(ctx.dayKey||activeDayKey());
+  const block=resolvePeriodBlock(taskKey,planCfg,ws,ov,activeDayKey(),null);
+  return block?block.dur:0;
+}
+function sumBandMinutes(period,list,ctx){
+  return(list||[]).reduce((s,k)=>s+taskMinutesForBandRow(k,ctx),0);
 }
 function addTemplatePeriodExtra(period,name,mins,dayType){
   const t=getWeekendTemplateDraft(dayType);
@@ -1688,7 +1723,6 @@ function weekendPlanTargets(){
     out.push({label:dt==='friday'?'Friday (today)':'Saturday (today)',dayType:dt});
   return out;
 }
-function persistWeekendTemplateDraft(){/* kept for compatibility; drafts live in weekendTemplateDrafts until Save */}
 function addSuddenTask(opts){
   const targetDayKey=opts.targetDayKey;
   touchDaySync(targetDayKey);
@@ -2382,19 +2416,30 @@ function renderPeriodBands(wrap,ctx){
   const wins=periodWindowsFor(dt);
   const lists=ctx.mode==='template'?effectiveTemplateLists(ctx.dayType):effectivePeriodLists(dayKey);
   const labelKey=ctx.mode==='template'?ctx.dayType:dayKey;
+  const showFill=true;
+  const previewWake=ctx.mode==='template'?planPreviewWakeMin(ctx.dayType):cfg().wake;
   wrap.innerHTML='';
   keys.forEach(period=>{
     const band=document.createElement('div');
     band.className='period-band';
-    const hdr=document.createElement('div');
-    hdr.className='period-band-hdr';
-    hdr.innerHTML=`<span>${PERIOD_LABELS[period]}</span><span class="win">${wins[period]||''}</span>`;
-    band.appendChild(hdr);
     const items=lists[period]||[];
+    const used=sumBandMinutes(period,items,ctx);
+    const cap=bandCapacityMinutes(period,dt,previewWake);
+    const over=cap>0&&used>cap;
+    const hdr=document.createElement('div');
+    hdr.className='period-band-hdr'+(over?' overfull':'');
+    let fillHtml='';
+    if(showFill&&cap>0){
+      const cls=over?'band-fill warn':'band-fill ok';
+      fillHtml=`<span class="${cls}">${used}/${cap}m</span>`;
+    }
+    hdr.innerHTML=`<span>${PERIOD_LABELS[period]}</span><span class="win">${wins[period]||''}${fillHtml}</span>`;
+    band.appendChild(hdr);
     items.forEach((taskKey,idx)=>{
       const row=document.createElement('div');
       row.className='period-task';
-      row.innerHTML=`<span class="pt-ico">${periodTaskIco(taskKey,labelKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey,labelKey)}</span><span class="pt-act"></span>`;
+      const mins=taskMinutesForBandRow(taskKey,ctx);
+      row.innerHTML=`<span class="pt-ico">${periodTaskIco(taskKey,labelKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey,labelKey)}</span><span class="pt-dur">${mins}m</span><span class="pt-act"></span>`;
       const act=row.querySelector('.pt-act');
       if(idx>0){
         const up=document.createElement('button');
