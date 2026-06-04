@@ -1563,8 +1563,8 @@ function reorderTemplatePeriodTask(period,taskKey,dir,dayType){
     }else t[period].push(k);
   });
 }
-function planPreviewWakeMin(dayType){
-  return dayType()===dayType?cfg().wake:'10:00';
+function planPreviewWakeMin(forDayType){
+  return dayType()===forDayType?cfg().wake:'10:00';
 }
 function bandCapacityMinutes(period,dt,wakeMin){
   const ends=periodEndMap(dt);
