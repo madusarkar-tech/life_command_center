@@ -83,7 +83,7 @@ Sync via existing Firebase `dayConfig` merge.
 
 - No work shift — sleep when ready
 - **Four bands:** morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), **night (8pm–midnight)**
-- **Plan** modal sets **weekly defaults** for Friday and Saturday (`weekendPeriodTemplate`); auto-applies every week
+- **Plan** modal (Friday/Saturday tabs): edit weekly band templates only — reorder, move, **remove (✕)**, or add per band; no quick-add preset chips
 - **Today's bands** on Fri/Sat: same today-only overrides as workdays (`periodOrder`, `periodMoves`, `periodExtras`)
 - Legacy flat `weekendPlan` per date migrates into templates on first load
 - Saturday **mealprep** for the week — not on workday afternoon list

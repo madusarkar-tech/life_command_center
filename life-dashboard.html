@@ -297,6 +297,8 @@
   .period-task .pt-act{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
   .period-task .pt-act button{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted)}
   .period-task .pt-act button:hover{color:var(--text);border-color:var(--gold)}
+  .period-task .pt-act button.pt-rm{color:var(--rust);border-color:rgba(180,80,60,.35)}
+  .period-task .pt-act button.pt-rm:hover{color:#fff;background:var(--rust);border-color:var(--rust)}
   .period-add-row{display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;border-top:1px dashed var(--line-soft)}
   .period-add-row input{flex:1;min-width:100px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px}
   .period-tag{font-size:10px;font-weight:800;padding:2px 6px;border-radius:20px;background:rgba(127,168,201,.15);color:var(--sky);margin-left:6px;vertical-align:middle}
@@ -654,8 +656,7 @@
     </div>
     <div class="modal-body">
       <div class="modal-tabs" id="weekendPlanTabs"></div>
-      <p class="modal-hint" id="weekendModalSub2">Weekly defaults auto-apply to every Friday or Saturday. Reorder bands below.</p>
-      <div class="plan-presets" id="planPresets"></div>
+      <p class="modal-hint" id="weekendModalSub2">Weekly defaults auto-apply every week. Reorder, move, or remove tasks in each band.</p>
       <div id="weekendPlanBands" class="period-bands-modal"></div>
       <div class="modal-foot">
         <button type="button" class="ghostbtn" id="copyLastWeekend">Copy last plan</button>
@@ -1541,11 +1542,15 @@ function addTemplatePeriodExtra(period,name,mins,dayType){
   if(!t.extras[period])t.extras[period]=[];
   t.extras[period].push({id:'pex_'+Date.now(),name:(name||'Activity').trim(),mins:Math.max(5,parseInt(mins,10)||30),ico:'✨'});
 }
-function addTemplateTaskKey(dayType,taskKey){
+function removeTemplatePeriodTask(taskKey,dayType){
   const t=getWeekendTemplateDraft(dayType);
-  if(!t.morning)t.morning=[];
-  if(WEEKEND_PERIOD_KEYS.some(p=>(t[p]||[]).includes(taskKey)))return;
-  t.morning.push(taskKey);
+  if(!t.extras)t.extras={};
+  if(taskKey.startsWith('extra:')){
+    const id=taskKey.slice(6);
+    WEEKEND_PERIOD_KEYS.forEach(p=>{t.extras[p]=(t.extras[p]||[]).filter(x=>x.id!==id);});
+  }else{
+    WEEKEND_PERIOD_KEYS.forEach(p=>{t[p]=(t[p]||[]).filter(k=>k!==taskKey);});
+  }
 }
 
 const HABITS=[
@@ -2404,6 +2409,15 @@ function renderPeriodBands(wrap,ctx){
           act.appendChild(mb);
         });
       }
+      if(ctx.mode==='template'){
+        const rm=document.createElement('button');
+        rm.type='button';
+        rm.className='pt-rm';
+        rm.textContent='✕';
+        rm.title='Remove from weekly plan';
+        rm.onclick=()=>{removeTemplatePeriodTask(taskKey,ctx.dayType);renderPeriodBands(wrap,ctx);};
+        act.appendChild(rm);
+      }
       band.appendChild(row);
     });
     const addRow=document.createElement('div');
@@ -2450,21 +2464,8 @@ function openWeekendPlanner(prefDayType){
   modal.setAttribute('aria-hidden','false');
 }
 function renderWeekendPlanModal(){
-  const presets=document.getElementById('planPresets');
   const wrap=document.getElementById('weekendPlanBands');
-  if(!presets||!wrap)return;
-  presets.innerHTML='';
-  const quick=[
-    {key:'gym',label:'🏋️ Gym'},{key:'mealprep',label:'🍱 Meal prep'},{key:'study1',label:'📘 Study'},
-    {key:'garden',label:'🌱 Garden'},{key:'dog1',label:'🐕 Dogs'},{key:'chores',label:'🧹 Chores'}
-  ];
-  quick.forEach(q=>{
-    if(!isPmpActive()&&/study/.test(q.key))return;
-    const b=document.createElement('button');
-    b.type='button';b.textContent=q.label;
-    b.onclick=()=>{addTemplateTaskKey(weekendTemplateEditType,q.key);renderWeekendPlanModal();};
-    presets.appendChild(b);
-  });
+  if(!wrap||!weekendTemplateEditType)return;
   renderPeriodBands(wrap,{mode:'template',dayType:weekendTemplateEditType,dayKey:weekendTemplateEditType});
 }
 function saveWeekendPlanFromModal(){
