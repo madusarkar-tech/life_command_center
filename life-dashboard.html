@@ -273,9 +273,17 @@
   .scratch-disclosure textarea{width:100%;min-height:120px;border:1px solid var(--line-soft);border-radius:11px;background:var(--bg2);padding:12px 14px;font-family:'Hanken Grotesk';font-size:14px;line-height:1.55;color:var(--text);resize:vertical;outline:none;transition:border-color .15s}
   .scratch-disclosure textarea:focus{border-color:var(--line)}
   .scratch-disclosure textarea::placeholder{color:var(--muted2)}
-  .period-plan{background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px;margin-bottom:14px}
-  .period-plan-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-  .period-plan-head h3{font-family:'Fraunces',serif;font-size:15px;font-weight:600}
+  .period-disclosure{border:1px solid var(--line-soft);border-radius:12px;overflow:hidden;background:var(--bg2);margin-bottom:14px}
+  .period-disclosure summary.period-summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;color:var(--text);user-select:none}
+  .period-disclosure summary.period-summary::-webkit-details-marker{display:none}
+  .period-disclosure summary.period-summary::marker{content:''}
+  .period-disclosure .tri{width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid var(--sky);flex-shrink:0;transition:transform .2s ease}
+  .period-disclosure[open] .tri{transform:rotate(90deg)}
+  .period-disclosure .sum-txt{flex:0 0 auto;font-family:'Fraunces',serif}
+  .period-disclosure .sum-hint{font-size:12px;font-weight:500;color:var(--muted);flex:1;min-width:0;text-align:right}
+  .period-disclosure .period-body{padding:0 12px 12px;border-top:1px solid var(--line-soft)}
+  .period-disclosure:not([open]) .period-body{display:none}
+  .period-plan-foot{padding:8px 4px 4px;text-align:right}
   .period-band{margin-bottom:12px;border:1px solid var(--line-soft);border-radius:10px;overflow:hidden}
   .period-band:last-child{margin-bottom:0}
   .period-band-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2)}
@@ -439,15 +447,22 @@
         <div class="ctl-row">
           <button class="ghostbtn" id="editBtn">⚙️ Edit block lengths</button>
           <span class="resetlink" id="resetDur" style="display:none">↺ reset this day's lengths</span>
-          <span class="resetlink" id="resetPeriod" style="display:none">↺ reset today's order</span>
           <span class="edithint" id="editHint" style="display:none">Length changes apply to today only.</span>
         </div>
-        <div id="periodPlanPanel" class="period-plan" style="display:none">
-          <div class="period-plan-head">
-            <h3>Today's bands</h3>
-            <span class="ctl-note">Reorder ↑↓ or move between morning · afternoon · evening</span>
-          </div>
-          <div id="periodBands"></div>
+        <div id="periodPlanPanel" style="display:none">
+          <details class="period-disclosure" id="periodPlanDisclosure">
+            <summary class="period-summary">
+              <span class="tri" aria-hidden="true"></span>
+              <span class="sum-txt">Today's bands</span>
+              <span class="sum-hint">Tap to reorder</span>
+            </summary>
+            <div class="period-body">
+              <div id="periodBands"></div>
+              <div class="period-plan-foot">
+                <span class="resetlink" id="resetPeriod" style="display:none">↺ reset today's order</span>
+              </div>
+            </div>
+          </details>
         </div>
         <div class="sudden-panel">
           <div class="sudden-row">
@@ -842,7 +857,7 @@ const Store={
   }
 };
 let DATA=null;
-function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodTemplate:null};}
+function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodPlanOpen:false,periodTemplate:null};}
 let editMode=false;
 
 const PMP=new Date('2026-06-22T00:00:00');
@@ -2202,6 +2217,12 @@ function renderPeriodPlan(){
   });
   const resetP=document.getElementById('resetPeriod');
   if(resetP)resetP.style.display=hasPeriodOverrides(dayKey)?'inline':'none';
+  const disc=document.getElementById('periodPlanDisclosure');
+  if(disc&&!disc.dataset.wired){
+    disc.dataset.wired='1';
+    disc.addEventListener('toggle',()=>{DATA.periodPlanOpen=disc.open;save();});
+  }
+  if(disc&&disc.open!==!!DATA.periodPlanOpen)disc.open=!!DATA.periodPlanOpen;
 }
 function renderSched(){
   const c=cfg();const ws=workoutState();const dt=dayType();
