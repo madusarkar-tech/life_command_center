@@ -343,7 +343,7 @@
 </header>
 
 <div class="countdowns">
-  <div class="cd">
+  <div class="cd" id="pmpCountdown">
     <div class="top"><span>PMP Exam</span><span class="pill" id="pmpDate">Jun 22</span></div>
     <div class="num"><span id="pmpDays">--</span> <small>days left</small></div>
     <div class="sub">Deep-study window: protect your sharp hours.</div>
@@ -368,7 +368,7 @@
 <nav class="tabs">
   <button class="active" data-v="today">Today</button>
   <button data-v="habits">Daily Non-Negotiables</button>
-  <button data-v="pmp">PMP Prep</button>
+  <button data-v="pmp" id="tabPmp">PMP Prep</button>
   <button data-v="jobs">Job Search</button>
 </nav>
 
@@ -453,17 +453,17 @@
     <div class="sidebar-col">
       <div class="card">
         <h2>✦ Quick Glance</h2>
-        <div class="h-sub">Check blocks on the left · habits & study below.</div>
+        <div class="h-sub" id="qgSub">Check blocks on the left · habits & study below.</div>
         <div class="stat-row">
           <div class="stat"><div class="v" id="qBlocks">0/0</div><div class="k">Blocks done</div></div>
           <div class="stat"><div class="v" id="qHabits">0/0</div><div class="k">Habits</div></div>
-          <div class="stat"><div class="v" id="qStudy">0m</div><div class="k">Study logged</div></div>
+          <div class="stat" id="qStudyStat"><div class="v" id="qStudy">0m</div><div class="k">Study logged</div></div>
         </div>
         <div class="qg-section">
           <div class="qg-label">Daily habits <span class="qg-hint">tap to mark done</span></div>
           <div class="habit-chips" id="habitChips"></div>
         </div>
-        <div class="qg-section">
+        <div class="qg-section" id="qgStudySection">
           <div class="qg-label">Log study minutes</div>
           <div class="study-quick">
             <button type="button" class="ghostbtn sm q-study" data-mins="15">+15m</button>
@@ -628,7 +628,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="pmp-questions.js"></script>
 <script>
 const KEY='lifehub:data';
 const META_KEY='lifehub:meta';
@@ -819,12 +818,13 @@ function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domai
 let editMode=false;
 
 const PMP=new Date('2026-06-22T00:00:00');
+const PMP_EXAM_KEY='2026-06-22';
 const JOB=new Date('2026-08-01T00:00:00');
 const PMP_START=new Date('2026-05-27T00:00:00');
 const JOB_START=new Date('2026-05-27T00:00:00');
 const DAY_ROLLOVER_HOUR=4;
-const SCHEDULE_BLOCK_IDS=new Set(['wake','breakfast','study1','study2','gym','lunch','review','dog1','dog2','garden','dinner','dinnerprep','shower','jobapps','nap','mealprep','chores','read','aiwork','qgis','work']);
-const BLOCK_TO_HABIT={wake:'animals',breakfast:'animals',study1:'study',study2:'study',review:'study',gym:'gym',dog1:'dogs',dog2:'dogs',garden:'garden',dinner:'meals',dinnerprep:'meals',mealprep:'meals',jobapps:'jobsearch'};
+const SCHEDULE_BLOCK_IDS=new Set(['wake','breakfast','study1','study2','gym','lunch','review','dog1','dog2','garden','dinner','dinnerprep','shower','jobapps','jobapps2','nap','mealprep','chores','read','aiwork','qgis','work']);
+const BLOCK_TO_HABIT={wake:'animals',breakfast:'animals',study1:'study',study2:'study',review:'study',gym:'gym',dog1:'dogs',dog2:'dogs',garden:'garden',dinner:'meals',dinnerprep:'meals',mealprep:'meals',jobapps:'jobsearch',jobapps2:'jobsearch'};
 const WORKDAY_CLOCK_IDS=new Set(['dog1','dinner']);
 const WORKDAY_CLOCK={
   dog:[16*60+45,17*60+30],
@@ -838,12 +838,18 @@ const PMP_DAILY_MIN=120;
 const PMP_SEGMENT_MIN=60;
 const PMP_BLOCK_MIN=120;
 const JOB_APPS_MIN=30;
+const JOB_POST_EXAM_DAILY_MIN=121;
+const JOB_POST_EXAM_SEGMENT_MIN=61;
 const NON_FIXED_POOL=[
   {id:'read',ico:'📖',lab:'Read',sub:'Non-fixed · one pick per day',dur:45},
   {id:'aiwork',ico:'🤖',lab:'Do AI work',sub:'Non-fixed · one pick per day',dur:60},
   {id:'qgis',ico:'🗺️',lab:'QGIS',sub:'Non-fixed · one pick per day',dur:60}
 ];
 function todayKey(){const d=new Date();return dateKeyOf(d);}
+function isPmpActive(dayKey){
+  const k=dayKey||activeDayKey();
+  return k<=PMP_EXAM_KEY;
+}
 function activeDayKey(){
   const d=new Date();
   if(d.getHours()<DAY_ROLLOVER_HOUR)d.setDate(d.getDate()-1);
@@ -911,15 +917,24 @@ function studyMinutesForDay(dayKey,seq,checks){
   return m;
 }
 function syncStudyHabit(seq){
+  if(!isPmpActive())return;
   const k=activeDayKey();
   const m=studyMinutesForDay(k,seq||[],dayChecks());
   if(m>=PMP_DAILY_MIN)setHabitDone('study',true);
 }
 function logStudyMinutes(mins,topic){
+  if(!isPmpActive())return false;
   const m=parseInt(mins,10);
   if(!m||m<1)return false;
   DATA.sessions.push({mins:m,topic:(topic||'study').trim(),date:activeDayKey()});
   return true;
+}
+function habitsForDay(){
+  if(isPmpActive())return HABITS;
+  return HABITS.filter(h=>h.id!=='study');
+}
+function jobHabitSub(){
+  return isPmpActive()?'At least 30m on workdays':'>2h/day from job blocks on workdays';
 }
 function toggleBlockDone(blockId){
   const ch=dayChecks();
@@ -981,7 +996,7 @@ const HABITS=[
   {id:'sleep7',ico:'😴',nm:'7+ hrs sleep',sub:'One solid block'},
   {id:'gym',ico:'🏋️',nm:'Workout',sub:'Gym, home, or active rest'},
   {id:'study',ico:'📘',nm:'PMP study',sub:'≥120 min total (sessions + done blocks)'},
-  {id:'jobsearch',ico:'💼',nm:'Job applications',sub:'At least 30m on workdays'},
+  {id:'jobsearch',ico:'💼',nm:'Job applications',sub:'At least 30m on workdays'}, // sub overridden in render via jobHabitSub()
   {id:'dogs',ico:'🐕',nm:'Dogs walked & fed',sub:'Both walks + dinner'},
   {id:'animals',ico:'🐔',nm:'Chickens checked',sub:'Food, water, eggs'},
   {id:'garden',ico:'🌱',nm:'Garden tended',sub:'Water & quick check'},
@@ -1206,6 +1221,34 @@ function makePmpBlock(id,dur,partN,totalParts){
     dur
   };
 }
+function makeJobBlock(id,dur,partN,totalParts,postExam){
+  const part=totalParts>1?' · part '+partN+'/'+totalParts:'';
+  const minLabel=postExam?'>2h/day':'≥30m/day';
+  return {
+    id,
+    ico:'💼',
+    lab:totalParts>1?(id==='jobapps2'?'Job applications (2/2)':'Job applications (1/2)'):'Job applications',
+    sub:'Flexible minimum · '+minLabel+part+' · '+dur+'m',
+    dur
+  };
+}
+function jobPiecePlans(ov,postExam){
+  if(!postExam){
+    const dur=ov.jobapps!=null?ov.jobapps:JOB_APPS_MIN;
+    return [[{kind:'job',block:makeJobBlock('jobapps',dur,1,1,false)}]];
+  }
+  const d1=ov.jobapps1!=null?ov.jobapps1:JOB_POST_EXAM_SEGMENT_MIN;
+  const d2=ov.jobapps2!=null?ov.jobapps2:JOB_POST_EXAM_SEGMENT_MIN;
+  const single=ov.jobapps!=null&&ov.jobapps>120?ov.jobapps:JOB_POST_EXAM_DAILY_MIN;
+  const plans=[];
+  if(d1+d2>120)plans.push([
+    {kind:'job',block:makeJobBlock('jobapps',d1,1,2,true)},
+    {kind:'job',block:makeJobBlock('jobapps2',d2,2,2,true)}
+  ]);
+  if(single>120)plans.push([{kind:'job',block:makeJobBlock('jobapps',single,1,1,true)}]);
+  if(!plans.length)plans.push([{kind:'job',block:makeJobBlock('jobapps',JOB_POST_EXAM_DAILY_MIN,1,1,true)}]);
+  return plans;
+}
 function permute(arr){
   if(arr.length<=1)return [arr];
   const out=[];
@@ -1226,23 +1269,38 @@ function pmpPiecePlans(ov){
   if(single>=PMP_DAILY_MIN)plans.push([{kind:'pmp',block:makePmpBlock('study1',single,1,1)}]);
   return plans;
 }
-function buildBagPieceLists(ws,ov){
-  const jobDur=ov.jobapps!=null?ov.jobapps:JOB_APPS_MIN;
-  const jobPiece={kind:'job',block:{id:'jobapps',ico:'💼',lab:'Job applications',sub:'Flexible minimum · ≥30m/day · '+jobDur+'m',dur:jobDur}};
+function buildBagPieceLists(ws,ov,dayKey){
+  const dk=dayKey||activeDayKey();
   const gymPiece=ws==='skip'?null:{kind:'gym'};
   const lists=[];
-  pmpPiecePlans(ov).forEach(pmpPieces=>{
-    const base=[...pmpPieces];
+  const seen=new Set();
+  const addList=pieces=>{
+    const base=[...pieces];
     if(gymPiece)base.push(gymPiece);
-    base.push(jobPiece);
-    const seen=new Set();
-    permute(base).forEach(pieces=>{
-      const key=pieces.map(x=>x.kind+(x.block&&x.block.id||'')).join('|');
+    permute(base).forEach(p=>{
+      const key=p.map(x=>x.kind+(x.block&&x.block.id||'')).join('|');
       if(seen.has(key))return;
       seen.add(key);
-      lists.push(pieces);
+      lists.push(p);
     });
-  });
+  };
+  if(isPmpActive(dk)){
+    const jobDur=ov.jobapps!=null?ov.jobapps:JOB_APPS_MIN;
+    const jobPiece={kind:'job',block:{id:'jobapps',ico:'💼',lab:'Job applications',sub:'Flexible minimum · ≥30m/day · '+jobDur+'m',dur:jobDur}};
+    pmpPiecePlans(ov).forEach(pmpPieces=>{
+      const base=[...pmpPieces];
+      if(gymPiece)base.push(gymPiece);
+      base.push(jobPiece);
+      permute(base).forEach(pieces=>{
+        const key=pieces.map(x=>x.kind+(x.block&&x.block.id||'')).join('|');
+        if(seen.has(key))return;
+        seen.add(key);
+        lists.push(pieces);
+      });
+    });
+  }else{
+    jobPiecePlans(ov,true).forEach(jobPieces=>addList(jobPieces));
+  }
   return lists;
 }
 function placeBagPieces(seq,wakeMin,earliest,pieces,ws){
@@ -1278,9 +1336,9 @@ function bagPieceFitsAlone(seq,wakeMin,earliest,piece,ws){
     return false;
   });
 }
-function diagnoseBagSkipped(seq,wakeMin,earliest,ws,ov){
+function diagnoseBagSkipped(seq,wakeMin,earliest,ws,ov,dayKey){
   const skipped=[];
-  const lists=buildBagPieceLists(ws,ov);
+  const lists=buildBagPieceLists(ws,ov,dayKey);
   if(!lists.length)return skipped;
   const refList=lists[0];
   const totalFree=normWorkdayGaps(seq,wakeMin,WORK_START,earliest).reduce((a,g)=>a+g.len,0);
@@ -1309,20 +1367,20 @@ function diagnoseBagSkipped(seq,wakeMin,earliest,ws,ov){
     const trial=placeBagPieces(seq.map(b=>({...b})),wakeMin,earliest,refList,ws);
     if(!trial.ok){
       if(ws!=='skip'&&!skipped.includes('workout'))skipped.push('workout');
-      if(!skipped.includes('PMP study')&&refList.some(p=>p.kind==='pmp'))skipped.push('PMP study');
+      if(isPmpActive(dayKey||activeDayKey())&&!skipped.includes('PMP study')&&refList.some(p=>p.kind==='pmp'))skipped.push('PMP study');
       if(!skipped.includes('job applications'))skipped.push('job applications');
     }
   }
   return [...new Set(skipped)];
 }
-function placeWorkdayFlexibleBag(seq,wakeMin,earliest,ws,ov){
-  const lists=buildBagPieceLists(ws,ov);
+function placeWorkdayFlexibleBag(seq,wakeMin,earliest,ws,ov,dayKey){
+  const lists=buildBagPieceLists(ws,ov,dayKey);
   for(const pieces of lists){
     const trial=seq.map(b=>({...b}));
     const r=placeBagPieces(trial,wakeMin,earliest,pieces,ws);
     if(r.ok)return {seq:r.seq,skipped:[]};
   }
-  const skipped=diagnoseBagSkipped(seq,wakeMin,earliest,ws,ov);
+  const skipped=diagnoseBagSkipped(seq,wakeMin,earliest,ws,ov,dayKey);
   return {seq,skipped};
 }
 function buildWorkdayFixedSeq(c,ov){
@@ -1544,7 +1602,7 @@ function buildWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
   const earliestVar=fixed.bfEnd;
   const gapOpts={wakeMin,earliest:earliestVar,dayEnd:WORK_START};
   const applied=applySuddenTasks(fixed.seq,suddenTasks||[],dayKey||activeDayKey(),'workday',gapOpts);
-  const bag=placeWorkdayFlexibleBag(applied.seq,wakeMin,earliestVar,ws,ov);
+  const bag=placeWorkdayFlexibleBag(applied.seq,wakeMin,earliestVar,ws,ov,dayKey);
   const seq=bag.seq;
   const skipped=[...bag.skipped];
   const overlapWarnings=[...fixed.overlapWarnings];
@@ -1590,8 +1648,17 @@ function buildWeekendSeq(c,plan){
   if(cur<17*60){pushFlexGap(seq,cur,17*60,'Open time');cur=17*60;}
   return {seq,endMin:cur};
 }
-function buildLegacyWeekendSeq(c,ws,dt,ov){
-  const tmpl=TEMPLATES[dt];
+function weekendTemplateBlocks(dt,dayKey){
+  const tmpl=TEMPLATES[dt]||[];
+  if(isPmpActive(dayKey||activeDayKey()))return tmpl;
+  return tmpl.filter(b=>!['study1','study2','review'].includes(b.id));
+}
+function planPresetsForDay(dayKey){
+  if(isPmpActive(dayKey||activeDayKey()))return PLAN_PRESETS;
+  return PLAN_PRESETS.filter(p=>!/pmp/i.test(p.name));
+}
+function buildLegacyWeekendSeq(c,ws,dt,ov,dayKey){
+  const tmpl=weekendTemplateBlocks(dt,dayKey);
   const seq=[];
   tmpl.forEach(b=>{
     const base=(ov[b.id]!=null)?ov[b.id]:b.dur;
@@ -1623,7 +1690,7 @@ function buildSeq(){
     return {seq:base.seq,endMin:base.endMin,conflicts:mergedConflicts};
   }
   if((dt==='friday'||dt==='saturday')&&c.weekendPlan&&c.weekendPlan.length)base=buildWeekendSeq(c,c.weekendPlan);
-  else base=buildLegacyWeekendSeq(c,ws,dt,ov);
+  else base=buildLegacyWeekendSeq(c,ws,dt,ov,dayKey);
   const applied=applySuddenTasks(base.seq,c.suddenTasks||[],dayKey,dt);
   const mergedConflicts=[...(base.overlapWarnings||[]),...applied.conflicts];
   lastScheduleConflicts=mergedConflicts;
@@ -1640,16 +1707,55 @@ function renderClocks(){
   const dt=dayType();
   const c=cfg();
   if(dt==='friday')greet.textContent=c.weekendPlan?.length?'Friday — your plan is set. Enjoy the flow.':'Friday — plan your day or use the banner to build it.';
-  else if(dt==='saturday')greet.textContent=c.weekendPlan?.length?'Saturday — your plan is set. Prep, study, breathe.':'Saturday — plan your day when you\'re ready.';
+  else if(dt==='saturday')greet.textContent=c.weekendPlan?.length?(isPmpActive()?'Saturday — your plan is set. Prep, study, breathe.':'Saturday — your plan is set. Enjoy the flow.'):'Saturday — plan your day when you\'re ready.';
   else{const h=now.getHours();greet.textContent=(h>=4&&h<11?'Good morning — ease into the day.':h<16?'Afternoon — prime focus hours.':h<20?'Evening wind-up before the shift.':'On shift. You\'ve got this.');}
 }
 function renderCountdowns(){
-  const pd=daysBetween(new Date(),PMP),jd=daysBetween(new Date(),JOB);
-  pmpDays.textContent=Math.max(pd,0);jobDays.textContent=Math.max(jd,0);
-  const pTot=daysBetween(PMP_START,PMP),jTot=daysBetween(JOB_START,JOB);
-  pmpBar.style.width=Math.min(100,Math.max(0,(1-pd/pTot)*100))+'%';
+  const jd=daysBetween(new Date(),JOB);
+  jobDays.textContent=Math.max(jd,0);
+  const jTot=daysBetween(JOB_START,JOB);
   jobBar.style.width=Math.min(100,Math.max(0,(1-jd/jTot)*100))+'%';
   jobSub.textContent='Applications in pipeline: '+DATA.jobs.filter(j=>j.status!=='closed').length;
+  if(isPmpActive()){
+    const pd=daysBetween(new Date(),PMP);
+    if(pmpDays)pmpDays.textContent=Math.max(pd,0);
+    const pTot=daysBetween(PMP_START,PMP);
+    if(pmpBar)pmpBar.style.width=Math.min(100,Math.max(0,(1-pd/pTot)*100))+'%';
+  }
+}
+let pmpScriptPromise=null;
+function ensurePmpQuestionsScript(){
+  if(!isPmpActive())return Promise.resolve();
+  if(window.PMP_QUESTIONS)return Promise.resolve();
+  if(pmpScriptPromise)return pmpScriptPromise;
+  pmpScriptPromise=new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='pmp-questions.js';
+    s.async=true;
+    s.onload=()=>resolve();
+    s.onerror=()=>{pmpScriptPromise=null;reject(new Error('pmp-questions.js failed to load'));};
+    document.head.appendChild(s);
+  });
+  return pmpScriptPromise;
+}
+function applyPmpUiPhase(){
+  const on=isPmpActive();
+  const pmpCd=document.getElementById('pmpCountdown');
+  const pmpTab=document.getElementById('tabPmp');
+  const pmpView=document.getElementById('v-pmp');
+  const qStudyStat=document.getElementById('qStudyStat');
+  const qStudySec=document.getElementById('qgStudySection');
+  const qgSub=document.getElementById('qgSub');
+  if(pmpCd)pmpCd.style.display=on?'':'none';
+  if(pmpTab)pmpTab.style.display=on?'':'none';
+  if(pmpView)pmpView.style.display=on?'':'none';
+  if(qStudyStat)qStudyStat.style.display=on?'':'none';
+  if(qStudySec)qStudySec.style.display=on?'':'none';
+  if(qgSub)qgSub.textContent=on?'Check blocks on the left · habits & study below.':'Check blocks on the left · habits below.';
+  if(!on&&pmpView&&pmpView.classList.contains('active')){
+    const todayBtn=document.querySelector('nav.tabs button[data-v="today"]');
+    if(todayBtn)todayBtn.click();
+  }
 }
 function curBlock(seq){const n=nowMin();return seq.find(b=>n>=b.start&&n<b.end);}
 function dateKeyOf(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1744,7 +1850,7 @@ function openWeekendPlanner(prefKey){
   document.getElementById('weekendModalSub').textContent='Activities pack from wake time, with open gaps for sudden tasks.';
   const presets=document.getElementById('planPresets');
   presets.innerHTML='';
-  PLAN_PRESETS.forEach(p=>{
+  planPresetsForDay(weekendPlanEditKey).forEach(p=>{
     const b=document.createElement('button');
     b.type='button';b.textContent=p.ico+' '+p.name;
     b.onclick=()=>{planDraft.push({id:'wp_'+Date.now(),name:p.name,dur:p.dur,ico:p.ico});renderPlanList();};
@@ -1804,8 +1910,9 @@ function copyLastWeekendPlan(){
     const p=DATA.dayConfig[k]&&DATA.dayConfig[k].weekendPlan;
     if(p&&p.length&&dayTypeForKey(k)===dt&&(!best||k>best.key))best={key:k,plan:p};
   });
-  if(best)planDraft=best.plan.map((x,i)=>({...x,id:'wp_'+Date.now()+i}));
-  else planDraft=PLAN_PRESETS.slice(0,6).map((p,i)=>({id:'wp_'+Date.now()+i,name:p.name,dur:p.dur,ico:p.ico}));
+  const stripPmp=name=>isPmpActive(weekendPlanEditKey)||!/pmp/i.test(name||'');
+  if(best)planDraft=best.plan.filter(x=>stripPmp(x.name)).map((x,i)=>({...x,id:'wp_'+Date.now()+i}));
+  else planDraft=planPresetsForDay(weekendPlanEditKey).slice(0,6).map((p,i)=>({id:'wp_'+Date.now()+i,name:p.name,dur:p.dur,ico:p.ico}));
   renderPlanList();
 }
 function renderSched(){
@@ -1909,23 +2016,25 @@ function renderSched(){
 function renderHabitChips(){
   const wrap=document.getElementById('habitChips');if(!wrap)return;
   wrap.innerHTML='';
-  HABITS.forEach(h=>{
+  habitsForDay().forEach(h=>{
+    const sub=h.id==='jobsearch'?jobHabitSub():h.sub;
     const done=isHabitDone(h.id);
     const chip=document.createElement('button');
     chip.type='button';
     chip.className='habit-chip'+(done?' done':'');
     chip.textContent=(done?'✓ ':'')+h.ico+' '+h.nm.split(' ')[0];
-    chip.title=h.nm+' — '+h.sub;
+    chip.title=h.nm+' — '+sub;
     chip.onclick=()=>{setHabitDone(h.id,!done);save();renderHabitChips();renderHabits();renderGlance();};
     wrap.appendChild(chip);
   });
 }
 function renderHabits(){
   habits.innerHTML='';
-  HABITS.forEach(h=>{
+  habitsForDay().forEach(h=>{
     const done=isHabitDone(h.id);const st=streakOf(h.id);
+    const sub=h.id==='jobsearch'?jobHabitSub():h.sub;
     const el=document.createElement('div');el.className='habit'+(done?' done':'');
-    el.innerHTML=`<div class="ck"></div><div class="nm">${h.ico} ${h.nm}<small>${h.sub}</small></div><div class="streak${st?'':' zero'}">🔥 ${st} day${st===1?'':'s'}</div>`;
+    el.innerHTML=`<div class="ck"></div><div class="nm">${h.ico} ${h.nm}<small>${sub}</small></div><div class="streak${st?'':' zero'}">🔥 ${st} day${st===1?'':'s'}</div>`;
     el.onclick=()=>{setHabitDone(h.id,!done);save();renderHabits();renderHabitChips();renderGlance();};
     habits.appendChild(el);
   });
@@ -1982,10 +2091,13 @@ function renderGlance(){
   const {seq}=buildSeq();const checks=dayChecks();
   const real=seq.filter(b=>!b.flex);
   qBlocks.textContent=real.filter(b=>checks[b.id]).length+'/'+real.length;
-  qHabits.textContent=HABITS.filter(h=>isHabitDone(h.id)).length+'/'+HABITS.length;
-  const studyM=studyMinutesForDay(activeDayKey(),seq,checks);
-  qStudy.textContent=studyM+'m'+(studyM>=PMP_DAILY_MIN?' ✓':' / '+PMP_DAILY_MIN+'m');
-  syncStudyHabit(seq);
+  const habits=habitsForDay();
+  qHabits.textContent=habits.filter(h=>isHabitDone(h.id)).length+'/'+habits.length;
+  if(isPmpActive()){
+    const studyM=studyMinutesForDay(activeDayKey(),seq,checks);
+    if(qStudy)qStudy.textContent=studyM+'m'+(studyM>=PMP_DAILY_MIN?' ✓':' / '+PMP_DAILY_MIN+'m');
+    syncStudyHabit(seq);
+  }
   renderHabitChips();
 }
 function renderTodoList(listId,countId,clearId,todos,onUpdate){
@@ -2043,6 +2155,7 @@ function shuffleIndices(n,seed){
   return idx;
 }
 function getDailyQuizQuestions(){
+  if(!isPmpActive())return [];
   const bank=window.PMP_QUESTIONS||[];
   if(!bank.length)return [];
   const indices=shuffleIndices(bank.length,quizSeed(activeDayKey()));
@@ -2096,6 +2209,7 @@ function quizStats7d(){
   return {avg,days:scored.length,dom};
 }
 function renderPMPQuiz(){
+  if(!isPmpActive())return;
   const wrap=document.getElementById('pmpQuiz');
   const statsEl=document.getElementById('quizReadiness');
   const statusEl=document.getElementById('quizStatus');
@@ -2185,6 +2299,7 @@ function checkQuizAnswers(){
   flash(sc.correct+'/6 · '+sc.pct+'%');
 }
 function renderPMP(){
+  if(!isPmpActive())return;
   renderPMPQuiz();
   const total=DATA.sessions.reduce((a,s)=>a+s.mins,0);
   totHrs.textContent=(total/60).toFixed(1);totSess.textContent=DATA.sessions.length;
@@ -2552,6 +2667,7 @@ function mergeDefaults(){
   if(!DATA.pmpQuiz)DATA.pmpQuiz={};
 }
 function renderAll(){
+  applyPmpUiPhase();
   renderClocks();renderCountdowns();renderNowBanner();renderSched();renderHabits();renderGlance();renderTodos();renderScratchpad();renderPMP();renderJobs();
 }
 function renderScratchpad(){
@@ -2585,6 +2701,7 @@ function setupVisibilitySync(){
 }
 
 document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
+  if(b.dataset.v==='pmp'&&!isPmpActive())return;
   document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');document.getElementById('v-'+b.dataset.v).classList.add('active');
@@ -2679,7 +2796,8 @@ function wire(){
   if(saveWp)saveWp.onclick=saveWeekendPlanFromModal;
   const copyWp=document.getElementById('copyLastWeekend');
   if(copyWp)copyWp.onclick=copyLastWeekendPlan;
-  addSess.onclick=()=>{const m=parseInt(sMins.value);if(!m||m<1){sMins.focus();return;}logStudyMinutes(m,sTopic.value);sMins.value='';sTopic.value='';save();renderPMP();renderGlance();renderHabits();};
+  const addSessBtn=document.getElementById('addSess');
+  if(addSessBtn)addSessBtn.onclick=()=>{const m=parseInt(sMins.value);if(!m||m<1){sMins.focus();return;}logStudyMinutes(m,sTopic.value);sMins.value='';sTopic.value='';save();renderPMP();renderGlance();renderHabits();};
   document.querySelectorAll('.q-study').forEach(b=>b.onclick=()=>{if(logStudyMinutes(b.dataset.mins,'study')){save();renderPMP();renderGlance();renderHabits();flash('+'+b.dataset.mins+'m study');}});
   const qLog=document.getElementById('qStudyLog');
   const qMin=document.getElementById('qStudyMins');
@@ -2702,7 +2820,7 @@ function wire(){
     renderSched();renderNowBanner();renderGlance();
     flash('Wake time saved for today');
   };
-  sTopic.addEventListener('keydown',e=>{if(e.key==='Enter')addSess.click();});
+  if(sTopic&&addSessBtn)sTopic.addEventListener('keydown',e=>{if(e.key==='Enter')addSessBtn.click();});
   addJob.onclick=()=>{const c=jCo.value.trim();if(!c){jCo.focus();return;}DATA.jobs.push({company:c,role:jRo.value.trim(),status:jSt.value});jCo.value='';jRo.value='';save();renderJobs();renderCountdowns();};
   jRo.addEventListener('keydown',e=>{if(e.key==='Enter')addJob.click();});
   const addJobTodoBtn=document.getElementById('addJobTodo');
@@ -2763,6 +2881,10 @@ function wire(){
 
 async function init(){
   initFirebase();
+  applyPmpUiPhase();
+  if(isPmpActive()){
+    try{await ensurePmpQuestionsScript();}catch(e){console.warn('PMP questions',e);}
+  }
   const btnIn=document.getElementById('btnSignIn');
   const btnOut=document.getElementById('btnSignOut');
   if(btnIn)btnIn.onclick=signInGoogle;

@@ -17,7 +17,7 @@ This document captures the real-world constraints that shaped the dashboard. It 
 ## Non-negotiable principles (product context)
 
 1. **Sleep is the constraint.** One protected daytime sleep block (~4:00 AM – ~10:00 AM). Avoid split sleep (sleep → wake for work check → sleep again); wrap work before logoff when possible.
-2. **Goals:** PMP exam **June 22, 2026**; job target **August 1, 2026** — shown in countdowns, not used to skip weekday schedule blocks.
+2. **Goals:** PMP exam **June 22, 2026** (through that date inclusive); job target **August 1, 2026** — job countdown always shown; PMP countdown and **PMP Prep** tab only through exam day.
 3. **Operations are capped.** Animals, garden, meals, and workouts use fixed blocks — not unlimited time sinks.
 4. **Meal prep is batched.** Saturday batch prep feeds weekday “reheat” lunches; workdays show a banner if last Saturday’s prep was skipped.
 
@@ -29,7 +29,7 @@ Day starts at **logged wake time**. Build order:
 
 1. **Fixed** clock and wake-anchored blocks (breakfast from wake; dog & dinner per chart — nothing else auto-scheduled as fixed)
 2. **Sudden tasks** (manual overlay — fixed window or flexible slot)
-3. **Flexible daily minimums** (equal bag — no ranking): PMP study, gym, job applications — bin-packed into daytime gaps before work
+3. **Flexible daily minimums** (equal bag — no ranking): bin-packed into daytime gaps before work — **through June 22, 2026:** PMP study + gym + job; **from June 23, 2026:** gym + job only (>2h job target)
 4. **Non-fixed** pick (one of Read / AI / QGIS) if time remains
 5. **Open time** — remaining slack before deploy
 
@@ -45,25 +45,28 @@ Day starts at **logged wake time**. Build order:
 
 ### Flexible daily bag (equal requirements)
 
-Schedule all three before work when physically possible. **No priority** between PMP, gym, and job — the agent tries gap layouts (permutations) until all fit.
+**Through June 22, 2026 (`activeDayKey() <= 2026-06-22`):** schedule PMP, gym, and job before work when physically possible. **No priority** between the three — the agent tries gap layouts (permutations) until all fit.
 
 | Task | Rule |
 |------|------|
-| **PMP study** | **≥2h/day** (chart: “at least 2 hours”) as two **60+60** blocks when possible; one **120m** block if a single gap fits. |
-| **Gym** | **≥20 min/day**; if gap **≥1h15** → gym + **30m commute each way** (workout clipped to gap); else home workout. Respects Workout **Gym / Home / Skip** (manual only). |
+| **PMP study** | **≥2h/day** as two **60+60** blocks when possible; one **120m** block if a single gap fits. |
+| **Gym** | **≥20 min/day**; if gap **≥1h15** → gym + **30m commute each way**; else home workout. Respects Workout **Gym / Home / Skip**. |
 | **Job applications** | **≥30 min/day** in a daytime gap. |
 
-If total free time is enough but no layout fits all three, the banner warns (e.g. **Couldn't fit: workout**) — gym is not silently dropped when Workout ≠ Skip and some gap has **≥20m**.
+**From June 23, 2026:** PMP is removed from the bag, UI, and weekend legacy templates. Only **gym + job** (equal bin-pack). **Job applications** target **>2h/day** (default **61+61** or one **121m** block; overrides via `blockDur.jobapps`, `jobapps1`, `jobapps2`).
+
+If total free time is enough but no layout fits, the banner warns (e.g. **Couldn't fit: workout**) — gym is not silently dropped when Workout ≠ Skip and some gap has **≥20m**.
 
 ### Non-fixed (one per day if time remains)
 
 Pick one: Read, Do AI work, or QGIS — **Extra** control (Auto / manual / Skip). Auto rotates by date.
 
-### PMP habit / study tab
+### PMP habit / study tab (through June 22, 2026 only)
 
+- **PMP Prep** tab, quiz, study log, domain sliders, header PMP countdown, and Quick Glance study logging are hidden after exam day.
 - Daily target: mark **PMP study** complete when **≥120 minutes** total for `activeDayKey`.
-- Count **combined**: minutes from PMP Prep session log (`DATA.sessions` for today) **plus** completed scheduled study block durations (`study1` / `study2` when checked).
-- Does **not** require two separate block checkoffs for the habit.
+- Count **combined**: minutes from PMP Prep session log (`DATA.sessions`) **plus** completed scheduled study block durations (`study1` / `study2` when checked).
+- Historical `DATA.sessions`, `pmpNotes`, and `pmpQuiz` are retained in storage but not shown in the UI after exam day.
 
 **Late wake:** Fixed clock blocks never move. Overlapping blocks show an OVERLAP tag; banner explains what could not fit.
 
