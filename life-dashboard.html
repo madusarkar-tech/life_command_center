@@ -283,6 +283,8 @@
   .period-disclosure .sum-hint{font-size:12px;font-weight:500;color:var(--muted);flex:1;min-width:0;text-align:right}
   .period-disclosure .period-body{padding:0 12px 12px;border-top:1px solid var(--line-soft)}
   .period-disclosure:not([open]) .period-body{display:none}
+  .period-bands-modal{max-height:min(62vh,520px);overflow-y:auto;margin-bottom:12px}
+  .modal-hint{font-size:12px;color:var(--muted);margin:0 0 10px;line-height:1.4}
   .period-plan-foot{padding:8px 4px 4px;text-align:right}
   .period-band{margin-bottom:12px;border:1px solid var(--line-soft);border-radius:10px;overflow:hidden}
   .period-band:last-child{margin-bottom:0}
@@ -652,13 +654,9 @@
     </div>
     <div class="modal-body">
       <div class="modal-tabs" id="weekendPlanTabs"></div>
+      <p class="modal-hint" id="weekendModalSub2">Weekly defaults auto-apply to every Friday or Saturday. Reorder bands below.</p>
       <div class="plan-presets" id="planPresets"></div>
-      <div class="plan-list" id="planList"></div>
-      <div class="addrow">
-        <input class="tname" type="text" id="planName" placeholder="Activity name">
-        <input class="tmin" type="number" id="planDur" placeholder="min" min="5" value="60">
-        <button type="button" class="btn sm" id="addPlanItem">+ Add</button>
-      </div>
+      <div id="weekendPlanBands" class="period-bands-modal"></div>
       <div class="modal-foot">
         <button type="button" class="ghostbtn" id="copyLastWeekend">Copy last plan</button>
         <button type="button" class="btn" id="saveWeekendPlan">Save plan</button>
@@ -857,7 +855,7 @@ const Store={
   }
 };
 let DATA=null;
-function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodPlanOpen:false,periodTemplate:null};}
+function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodPlanOpen:false,periodTemplate:null,weekendPeriodTemplate:null};}
 let editMode=false;
 
 const PMP=new Date('2026-06-22T00:00:00');
@@ -938,6 +936,8 @@ function migrateData(){
     if(leg&&Object.keys(leg).length&&!Object.keys(tc.blockDur).length)Object.assign(tc.blockDur,leg);
     delete DATA.templateDur;
   }
+  ensureWeekendPeriodTemplate();
+  migrateWeekendPlansToBands();
 }
 function dayChecks(){
   const k=activeDayKey();
@@ -1036,56 +1036,192 @@ const TEMPLATES={
 };
 const WORK_START=1200; // 20:00, workdays only
 const SLEEP_START=180; // 03:00
-const PERIOD_KEYS=['morning','afternoon','evening'];
-const PERIOD_END={morning:14*60,afternoon:17*60,evening:WORK_START};
-const PERIOD_LABELS={morning:'Morning',afternoon:'Afternoon',evening:'Evening'};
-const PERIOD_WINDOWS={morning:'wake → 2pm',afternoon:'2pm → 5pm',evening:'5pm → 8pm'};
+const WEEKEND_MIDNIGHT=24*60;
+const WORKDAY_PERIOD_KEYS=['morning','afternoon','evening'];
+const WEEKEND_PERIOD_KEYS=['morning','afternoon','evening','night'];
+const WORKDAY_PERIOD_END={morning:14*60,afternoon:17*60,evening:WORK_START};
+const WEEKEND_PERIOD_END={morning:14*60,afternoon:17*60,evening:WORK_START,night:WEEKEND_MIDNIGHT};
+const PERIOD_LABELS={morning:'Morning',afternoon:'Afternoon',evening:'Evening',night:'Night'};
+const PERIOD_WINDOWS_WORKDAY={morning:'wake → 2pm',afternoon:'2pm → 5pm',evening:'5pm → 8pm'};
+const PERIOD_WINDOWS_WEEKEND={morning:'wake → 2pm',afternoon:'2pm → 5pm',evening:'5pm → 8pm',night:'8pm → midnight'};
 const MOVABLE_PERIOD_TASKS=new Set(['breakfast','study1','study2','gym','jobapps','jobapps2','nonFixed','dinnerprep','dog1','dinner','garden']);
+const MOVABLE_WEEKEND_TASKS=new Set(['wake','breakfast','review','gym','lunch','study1','study2','mealprep','dog1','dog2','garden','dinner','chores','read','aiwork','qgis']);
+const DEFAULT_WEEKEND_PERIOD={
+  friday:{morning:['wake','breakfast','review','gym','lunch','study1'],afternoon:['dog1','garden'],evening:['study2','dinner'],night:['dog2'],extras:{}},
+  saturday:{morning:['wake','breakfast','gym','lunch','mealprep','study1'],afternoon:['dog1','garden','chores'],evening:['dinner'],night:['dog2'],extras:{}}
+};
+const WEEKEND_NAME_TO_TASK={gym:'gym',pmp:'study1',study:'study1','meal prep':'mealprep',mealprep:'mealprep',dog:'dog1',garden:'garden',dinner:'dinner',breakfast:'breakfast',chores:'chores',review:'review',wake:'wake',lunch:'lunch'};
+
+function isWeekendDayType(dt){return dt==='friday'||dt==='saturday';}
+function periodKeysForDayKey(dayKey){return periodKeysForDayType(dayTypeForKey(dayKey));}
+function periodKeysForDayType(dt){return isWeekendDayType(dt)?WEEKEND_PERIOD_KEYS:WORKDAY_PERIOD_KEYS;}
+function periodEndMap(dt){return isWeekendDayType(dt)?WEEKEND_PERIOD_END:WORKDAY_PERIOD_END;}
+function periodWindowsFor(dt){return isWeekendDayType(dt)?PERIOD_WINDOWS_WEEKEND:PERIOD_WINDOWS_WORKDAY;}
+function isMovablePeriodTask(taskKey,dayKey){
+  if(taskKey.startsWith('extra:'))return true;
+  const dt=dayTypeForKey(dayKey);
+  return isWeekendDayType(dt)?MOVABLE_WEEKEND_TASKS.has(taskKey):MOVABLE_PERIOD_TASKS.has(taskKey);
+}
+function cloneWeekendTemplateSlice(src){
+  const out={morning:[],afternoon:[],evening:[],night:[],extras:{}};
+  WEEKEND_PERIOD_KEYS.forEach(p=>{out[p]=(src[p]||[]).slice();});
+  out.extras={};
+  WEEKEND_PERIOD_KEYS.forEach(p=>{out.extras[p]=(src.extras&&src.extras[p]||[]).map(x=>({...x}));});
+  return out;
+}
+function filterWeekendTemplateForPmp(tpl,dayKey){
+  if(isPmpActive(dayKey))return tpl;
+  const out=cloneWeekendTemplateSlice(tpl);
+  WEEKEND_PERIOD_KEYS.forEach(p=>{
+    out[p]=out[p].filter(k=>!['study1','study2','review'].includes(k));
+    out.extras[p]=(out.extras[p]||[]).filter(x=>!/pmp/i.test(x.name||''));
+  });
+  return out;
+}
+function defaultWeekendPeriodTemplate(){
+  const seedKey='2026-06-01';
+  return{
+    friday:filterWeekendTemplateForPmp(cloneWeekendTemplateSlice(DEFAULT_WEEKEND_PERIOD.friday),seedKey),
+    saturday:filterWeekendTemplateForPmp(cloneWeekendTemplateSlice(DEFAULT_WEEKEND_PERIOD.saturday),seedKey)
+  };
+}
+function ensureWeekendPeriodTemplate(){
+  if(!DATA)return;
+  if(!DATA.weekendPeriodTemplate){
+    DATA.weekendPeriodTemplate=defaultWeekendPeriodTemplate();
+    return;
+  }
+  ['friday','saturday'].forEach(dt=>{
+    if(!DATA.weekendPeriodTemplate[dt])DATA.weekendPeriodTemplate[dt]=cloneWeekendTemplateSlice(DEFAULT_WEEKEND_PERIOD[dt]);
+    const t=DATA.weekendPeriodTemplate[dt];
+    WEEKEND_PERIOD_KEYS.forEach(p=>{if(!t[p])t[p]=[];});
+    if(!t.extras)t.extras={};
+    WEEKEND_PERIOD_KEYS.forEach(p=>{if(!t.extras[p])t.extras[p]=[];});
+  });
+}
+function weekendTemplateHasTasks(dt){
+  ensureWeekendPeriodTemplate();
+  const t=DATA.weekendPeriodTemplate[dt];
+  if(!t)return false;
+  return WEEKEND_PERIOD_KEYS.some(p=>(t[p]||[]).length)||WEEKEND_PERIOD_KEYS.some(p=>((t.extras||{})[p]||[]).length);
+}
+function countWeekendTemplateTasks(dt){
+  ensureWeekendPeriodTemplate();
+  const t=DATA.weekendPeriodTemplate[dt];
+  if(!t)return 0;
+  let n=0;
+  WEEKEND_PERIOD_KEYS.forEach(p=>{n+=(t[p]||[]).length+((t.extras||{})[p]||[]).length;});
+  return n;
+}
+function guessWeekendTaskKey(name){
+  const n=(name||'').toLowerCase();
+  for(const [frag,key] of Object.entries(WEEKEND_NAME_TO_TASK))if(n.includes(frag))return key;
+  return null;
+}
+function migrateWeekendPlansToBands(){
+  if(!DATA||DATA._weekendBandsMigrated)return;
+  ensureWeekendPeriodTemplate();
+  let changed=false;
+  Object.keys(DATA.dayConfig||{}).forEach(k=>{
+    const c=DATA.dayConfig[k];
+    const plan=c.weekendPlan;
+    if(!plan||!plan.length)return;
+    const dt=dayTypeForKey(k);
+    if(!isWeekendDayType(dt))return;
+    const tpl=DATA.weekendPeriodTemplate[dt];
+    const hasAny=WEEKEND_PERIOD_KEYS.some(p=>(tpl[p]||[]).length)||WEEKEND_PERIOD_KEYS.some(p=>((tpl.extras||{})[p]||[]).length);
+    if(hasAny)return;
+    plan.forEach(item=>{
+      const tk=item.id&&MOVABLE_WEEKEND_TASKS.has(item.id)?item.id:guessWeekendTaskKey(item.name);
+      if(tk&&!tpl.morning.includes(tk)&&!WEEKEND_PERIOD_KEYS.some(p=>(tpl[p]||[]).includes(tk)))tpl.morning.push(tk);
+      else{
+        const exId=item.id&&String(item.id).startsWith('wp_')?item.id.replace(/^wp_/,'pex_'):'pex_'+Date.now()+Math.random().toString(36).slice(2,6);
+        if(!tpl.extras.morning)tpl.extras.morning=[];
+        tpl.extras.morning.push({id:exId,name:(item.name||'Activity').trim(),mins:Math.max(5,item.dur||60),ico:item.ico||guessIco(item.name)});
+      }
+    });
+    c.weekendPlan=null;
+    changed=true;
+  });
+  DATA._weekendBandsMigrated=true;
+  if(changed)save();
+}
 
 function basePeriodTemplate(dayKey){
+  const dt=dayTypeForKey(dayKey);
+  if(isWeekendDayType(dt)){
+    ensureWeekendPeriodTemplate();
+    const raw=DATA.weekendPeriodTemplate[dt];
+    const t=filterWeekendTemplateForPmp(raw,dayKey);
+    const out={};
+    periodKeysForDayType(dt).forEach(p=>{out[p]=(t[p]||[]).slice();});
+    return out;
+  }
   const tpl=DATA&&DATA.periodTemplate;
   const branch=isPmpActive(dayKey)?'preExam':'postExam';
   if(tpl&&tpl[branch])return JSON.parse(JSON.stringify(tpl[branch]));
   if(isPmpActive(dayKey)){
-    return{
-      morning:['breakfast','study1','gym'],
-      afternoon:['study2','jobapps','nonFixed','dinnerprep'],
-      evening:['dog1','dinner','garden']
-    };
+    return{morning:['breakfast','study1','gym'],afternoon:['study2','jobapps','nonFixed','dinnerprep'],evening:['dog1','dinner','garden']};
   }
-  return{
-    morning:['breakfast','gym'],
-    afternoon:['jobapps','jobapps2','nonFixed','dinnerprep'],
-    evening:['dog1','dinner','garden']
-  };
+  return{morning:['breakfast','gym'],afternoon:['jobapps','jobapps2','nonFixed','dinnerprep'],evening:['dog1','dinner','garden']};
 }
-function findPeriodExtra(dayKey,extraId){
-  const extras=(dayCfg(dayKey).periodExtras||{});
-  for(const p of PERIOD_KEYS){
-    const hit=(extras[p]||[]).find(x=>x.id===extraId);
+function templateExtrasForDayKey(dayKey){
+  const dt=dayTypeForKey(dayKey);
+  if(!isWeekendDayType(dt))return null;
+  ensureWeekendPeriodTemplate();
+  return filterWeekendTemplateForPmp(DATA.weekendPeriodTemplate[dt],dayKey).extras||{};
+}
+function findTemplateExtra(dayType,extraId){
+  const t=weekendTemplateDraft&&weekendTemplateEditType===dayType?weekendTemplateDraft:(DATA.weekendPeriodTemplate&&DATA.weekendPeriodTemplate[dayType]);
+  if(!t)return null;
+  for(const p of WEEKEND_PERIOD_KEYS){
+    const hit=(t.extras&&t.extras[p]||[]).find(x=>x.id===extraId);
     if(hit)return hit;
   }
   return null;
 }
+function findPeriodExtra(dayKey,extraId){
+  if(/^\d{4}-\d{2}-\d{2}$/.test(dayKey||'')){
+    const keys=periodKeysForDayKey(dayKey);
+    const c=dayCfg(dayKey);
+    for(const p of keys){
+      const hit=(c.periodExtras&&c.periodExtras[p]||[]).find(x=>x.id===extraId);
+      if(hit)return{hit,fromTemplate:false};
+    }
+    const tex=templateExtrasForDayKey(dayKey);
+    if(tex){
+      for(const p of keys){
+        const hit=(tex[p]||[]).find(x=>x.id===extraId);
+        if(hit)return{hit,fromTemplate:true};
+      }
+    }
+    return null;
+  }
+  const hit=findTemplateExtra(dayKey,extraId);
+  if(hit)return{hit,fromTemplate:true};
+  return null;
+}
 function periodTaskLabel(key,dayKey){
   if(key.startsWith('extra:')){
-    const hit=findPeriodExtra(dayKey||activeDayKey(),key.slice(6));
-    const name=hit&&(hit.name||'').trim();
+    const found=findPeriodExtra(dayKey||activeDayKey(),key.slice(6));
+    const name=found&&found.hit&&(found.hit.name||'').trim();
     return name||'Activity';
   }
   const map={
     breakfast:'Breakfast',study1:'PMP study (1)',study2:'PMP study (2)',gym:'Workout',
     jobapps:'Job applications',jobapps2:'Job applications (2)',nonFixed:'Non-fixed (Read/AI/QGIS)',
-    dinnerprep:'Dinner prep',dog1:'Dog walk & feed',dinner:'Dinner',garden:'Garden'
+    dinnerprep:'Dinner prep',dog1:'Dog walk & feed',dinner:'Dinner',garden:'Garden',
+    wake:'Wake & animals',review:'Light study',lunch:'Shower & lunch',mealprep:'Batch meal prep',
+    chores:'Errands & chores',dog2:'Dog walk #2',read:'Read',aiwork:'AI work',qgis:'QGIS'
   };
   return map[key]||key;
 }
 function periodTaskIco(key,dayKey){
   if(key.startsWith('extra:')){
-    const hit=findPeriodExtra(dayKey||activeDayKey(),key.slice(6));
-    return hit?(hit.ico||'✨'):'✨';
+    const found=findPeriodExtra(dayKey||activeDayKey(),key.slice(6));
+    return found&&found.hit?(found.hit.ico||'✨'):'✨';
   }
-  const map={breakfast:'🍳',study1:'📘',study2:'📘',gym:'🏋️',jobapps:'💼',jobapps2:'💼',nonFixed:'📖',dinnerprep:'🍽️',dog1:'🐕',dinner:'🍲',garden:'🌱'};
+  const map={breakfast:'🍳',study1:'📘',study2:'📝',gym:'🏋️',jobapps:'💼',jobapps2:'💼',nonFixed:'📖',dinnerprep:'🍽️',dog1:'🐕',dinner:'🍲',garden:'🌱',wake:'☕',review:'🃏',lunch:'🍽️',mealprep:'🍱',chores:'🧹',dog2:'🦮',read:'📖',aiwork:'🤖',qgis:'🗺️'};
   return map[key]||'✨';
 }
 function hasPeriodOverrides(dayKey){
@@ -1093,27 +1229,35 @@ function hasPeriodOverrides(dayKey){
   return!!(c.periodOrder||c.periodMoves||c.periodExtras);
 }
 function effectivePeriodLists(dayKey){
+  const dt=dayTypeForKey(dayKey);
+  const keys=periodKeysForDayType(dt);
   const base=basePeriodTemplate(dayKey);
   const c=dayCfg(dayKey);
   const moves=c.periodMoves||{};
   const order=c.periodOrder||{};
+  const tex=templateExtrasForDayKey(dayKey);
   const taskPeriod={};
-  PERIOD_KEYS.forEach(p=>{
-    (base[p]||[]).forEach(t=>{taskPeriod[t]=p;});
-  });
+  keys.forEach(p=>{(base[p]||[]).forEach(t=>{taskPeriod[t]=p;});});
   Object.keys(moves).forEach(t=>{
-    if(MOVABLE_PERIOD_TASKS.has(t)&&PERIOD_KEYS.includes(moves[t]))taskPeriod[t]=moves[t];
+    if(isMovablePeriodTask(t,dayKey)&&keys.includes(moves[t]))taskPeriod[t]=moves[t];
   });
   const out={};
-  PERIOD_KEYS.forEach(p=>{
+  keys.forEach(p=>{
     const items=Object.keys(taskPeriod).filter(t=>taskPeriod[t]===p);
     let list=[];
     if(order[p]&&order[p].length){
       order[p].forEach(t=>{if(items.includes(t))list.push(t);});
       items.forEach(t=>{if(!list.includes(t))list.push(t);});
     }else list=items.slice();
+    if(tex)(tex[p]||[]).forEach(ex=>{
+      const ek='extra:'+(ex.id||'tex_'+Date.now());
+      const dest=moves[ek]||p;
+      if(dest===p)list.push(ek);
+    });
     (c.periodExtras&&c.periodExtras[p]||[]).forEach(ex=>{
-      list.push('extra:'+(ex.id||'ex_'+Date.now()));
+      const ek='extra:'+(ex.id||'pex_'+Date.now());
+      const dest=moves[ek]||p;
+      if(dest===p)list.push(ek);
     });
     out[p]=list;
   });
@@ -1135,12 +1279,12 @@ function gymBlockForPeriod(ws,ov,durCap){
 }
 function resolvePeriodBlock(taskKey,c,ws,ov,dayKey,durCap){
   if(taskKey.startsWith('extra:')){
-    const id=taskKey.slice(6);
-    for(const p of PERIOD_KEYS){
-      const hit=((dayCfg(dayKey).periodExtras||{})[p]||[]).find(x=>x.id===id);
-      if(hit)return{id:hit.id,ico:hit.ico||'✨',lab:hit.name,sub:'Custom · today',dur:Math.max(5,hit.mins||30),custom:true,periodCustom:true};
-    }
-    return null;
+    const found=findPeriodExtra(dayKey,taskKey.slice(6));
+    if(!found)return null;
+    const hit=found.hit;
+    let dur=ov[hit.id]!=null?ov[hit.id]:(hit.mins||30);
+    if(durCap!=null)dur=Math.min(dur,durCap);
+    return{id:hit.id,ico:hit.ico||'✨',lab:hit.name,sub:found.fromTemplate?'Weekend default':'Custom · today',dur:Math.max(5,dur),custom:true,periodCustom:!found.fromTemplate,templateExtra:found.fromTemplate};
   }
   if(taskKey==='gym')return gymBlockForPeriod(ws,ov,durCap);
   if(taskKey==='nonFixed'){
@@ -1152,13 +1296,22 @@ function resolvePeriodBlock(taskKey,c,ws,ov,dayKey,durCap){
   const defs={
     breakfast:{id:'breakfast',ico:'🍳',lab:'Breakfast',sub:'1h from wake',dur:60},
     study1:{id:'study1',ico:'📘',lab:'PMP study',sub:'Part 1 · ≥2h/day total',dur:PMP_SEGMENT_MIN},
-    study2:{id:'study2',ico:'📘',lab:'PMP study',sub:'Part 2 · ≥2h/day total',dur:PMP_SEGMENT_MIN},
+    study2:{id:'study2',ico:'📝',lab:'PMP study',sub:'Part 2 · ≥2h/day total',dur:PMP_SEGMENT_MIN},
     jobapps:{id:'jobapps',ico:'💼',lab:'Job applications',sub:isPmpActive(dayKey)?'≥30m/day':'>2h/day total',dur:isPmpActive(dayKey)?JOB_APPS_MIN:JOB_POST_EXAM_SEGMENT_MIN},
     jobapps2:{id:'jobapps2',ico:'💼',lab:'Job applications (2/2)',sub:'>2h/day total',dur:JOB_POST_EXAM_SEGMENT_MIN},
     dinnerprep:{id:'dinnerprep',ico:'🍽️',lab:'Dinner prep',sub:'Prep for tonight · 20m default',dur:20},
     dog1:{id:'dog1',ico:'🐕',lab:'Dog walk & feed',sub:'Evening band',dur:45},
     dinner:{id:'dinner',ico:'🍲',lab:'Dinner',sub:'Evening band',dur:90},
-    garden:{id:'garden',ico:'🌱',lab:'Garden & chickens',sub:'Evening band',dur:45}
+    garden:{id:'garden',ico:'🌱',lab:'Garden & chickens',sub:'Evening band',dur:45},
+    wake:{id:'wake',ico:'☕',lab:'Wake & animals',sub:'Coffee · dogs · chickens',dur:45},
+    review:{id:'review',ico:'🃏',lab:'Light study',sub:'Warm up',dur:45},
+    lunch:{id:'lunch',ico:'🍽️',lab:'Shower & lunch',sub:'Refuel',dur:60},
+    mealprep:{id:'mealprep',ico:'🍱',lab:'Batch meal prep',sub:'Weekday lunches',dur:90},
+    chores:{id:'chores',ico:'🧹',lab:'Errands & chores',sub:'Reset for the week',dur:90},
+    dog2:{id:'dog2',ico:'🦮',lab:'Dog walk #2',sub:'Evening stroll',dur:20},
+    read:{id:'read',ico:'📖',lab:'Read',sub:'Flexible',dur:45},
+    aiwork:{id:'aiwork',ico:'🤖',lab:'AI work',sub:'Flexible',dur:60},
+    qgis:{id:'qgis',ico:'🗺️',lab:'QGIS',sub:'Flexible',dur:60}
   };
   const d=defs[taskKey];
   if(!d)return null;
@@ -1192,9 +1345,9 @@ function buildPeriodWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
   const lists=effectivePeriodLists(dayKey);
   const seq=[];
   const warnings=[];
-  packPeriodBand(seq,warnings,'morning',wakeMin,PERIOD_END.morning,lists.morning,c,ws,ov,dayKey);
-  packPeriodBand(seq,warnings,'afternoon',PERIOD_END.morning,PERIOD_END.afternoon,lists.afternoon,c,ws,ov,dayKey);
-  packPeriodBand(seq,warnings,'evening',PERIOD_END.afternoon,PERIOD_END.evening,lists.evening,c,ws,ov,dayKey);
+  packPeriodBand(seq,warnings,'morning',wakeMin,WORKDAY_PERIOD_END.morning,lists.morning,c,ws,ov,dayKey);
+  packPeriodBand(seq,warnings,'afternoon',WORKDAY_PERIOD_END.morning,WORKDAY_PERIOD_END.afternoon,lists.afternoon,c,ws,ov,dayKey);
+  packPeriodBand(seq,warnings,'evening',WORKDAY_PERIOD_END.afternoon,WORKDAY_PERIOD_END.evening,lists.evening,c,ws,ov,dayKey);
   let bfEnd=wakeMin+60;
   const bf=seq.find(b=>b.id==='breakfast');
   if(bf)bfEnd=bf.end;
@@ -1210,7 +1363,35 @@ function buildPeriodWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
     cur=Math.max(cur,b.end);
   });
   if(cur<WORK_START)pushFlexGap(withFlex,cur,WORK_START,'Before work');
-  const endMin=withFlex.reduce((m,b)=>Math.max(m,b.end||0),PERIOD_END.evening);
+  const endMin=withFlex.reduce((m,b)=>Math.max(m,b.end||0),WORKDAY_PERIOD_END.evening);
+  return{seq:withFlex,endMin,overlapWarnings:warnings,suddenConflicts:applied.conflicts};
+}
+function buildPeriodWeekendSeq(c,ws,ov,dayKey,suddenTasks){
+  const dt=dayTypeForKey(dayKey);
+  const wakeMin=toMin(c.wake);
+  const ends=periodEndMap(dt);
+  const keys=periodKeysForDayType(dt);
+  const lists=effectivePeriodLists(dayKey);
+  const seq=[];
+  const warnings=[];
+  let bandStart=wakeMin;
+  keys.forEach(period=>{
+    const bandEnd=ends[period];
+    packPeriodBand(seq,warnings,period,bandStart,bandEnd,lists[period]||[],c,ws,ov,dayKey);
+    bandStart=bandEnd;
+  });
+  const gapOpts={wakeMin,earliest:wakeMin+60,dayEnd:WEEKEND_MIDNIGHT};
+  const applied=applySuddenTasks(seq,suddenTasks||[],dayKey,dt,gapOpts);
+  sortSeqByStart(applied.seq);
+  const withFlex=[];
+  let cur=wakeMin;
+  applied.seq.filter(b=>!b.flex).sort((a,b)=>a.start-b.start).forEach(b=>{
+    if(b.start>cur+4)pushFlexGap(withFlex,cur,b.start,'Open time');
+    withFlex.push(b);
+    cur=Math.max(cur,b.end);
+  });
+  if(cur<WEEKEND_MIDNIGHT)pushFlexGap(withFlex,cur,WEEKEND_MIDNIGHT,'After midnight');
+  const endMin=withFlex.reduce((m,b)=>Math.max(m,b.end||0),ends.night||WEEKEND_MIDNIGHT);
   return{seq:withFlex,endMin,overlapWarnings:warnings,suddenConflicts:applied.conflicts};
 }
 function clearPeriodOverrides(dayKey){
@@ -1219,31 +1400,43 @@ function clearPeriodOverrides(dayKey){
   c.periodMoves=null;
   c.periodExtras=null;
 }
-function movePeriodTask(taskKey,toPeriod){
-  if(!PERIOD_KEYS.includes(toPeriod))return;
-  const c=cfg();
-  const dayKey=activeDayKey();
+function movePeriodTask(taskKey,toPeriod,ctx){
+  const dayKey=ctx&&ctx.dayKey?ctx.dayKey:activeDayKey();
+  const keys=periodKeysForDayKey(dayKey);
+  if(!keys.includes(toPeriod))return;
+  if(ctx&&ctx.mode==='template'){
+    moveTemplatePeriodTask(taskKey,toPeriod,ctx.dayType);
+    return;
+  }
+  const c=dayCfg(dayKey);
   if(taskKey.startsWith('extra:')){
     const id=taskKey.slice(6);
-    if(!c.periodExtras)c.periodExtras={};
-    let found=null;
-    PERIOD_KEYS.forEach(p=>{
-      const arr=c.periodExtras[p]||[];
-      const i=arr.findIndex(x=>x.id===id);
-      if(i>=0){found=arr.splice(i,1)[0];c.periodExtras[p]=arr;}
-    });
-    if(found){
-      if(!c.periodExtras[toPeriod])c.periodExtras[toPeriod]=[];
-      c.periodExtras[toPeriod].push(found);
+    const found=findPeriodExtra(dayKey,id);
+    if(found&&!found.fromTemplate){
+      if(!c.periodExtras)c.periodExtras={};
+      let item=null;
+      keys.forEach(p=>{
+        const arr=c.periodExtras[p]||[];
+        const i=arr.findIndex(x=>x.id===id);
+        if(i>=0){item=arr.splice(i,1)[0];c.periodExtras[p]=arr;}
+      });
+      if(item){
+        if(!c.periodExtras[toPeriod])c.periodExtras[toPeriod]=[];
+        c.periodExtras[toPeriod].push(item);
+      }
+    }else if(found&&found.fromTemplate){
+      if(!c.periodMoves)c.periodMoves={};
+      c.periodMoves['extra:'+id]=toPeriod;
     }
-  }else if(MOVABLE_PERIOD_TASKS.has(taskKey)){
+  }else if(isMovablePeriodTask(taskKey,dayKey)){
     if(!c.periodMoves)c.periodMoves={};
     c.periodMoves[taskKey]=toPeriod;
   }else return;
   touchDaySync(dayKey);
 }
-function reorderPeriodTask(period,taskKey,dir){
-  const dayKey=activeDayKey();
+function reorderPeriodTask(period,taskKey,dir,ctx){
+  const dayKey=ctx&&ctx.dayKey?ctx.dayKey:activeDayKey();
+  if(ctx&&ctx.mode==='template'){reorderTemplatePeriodTask(period,taskKey,dir,ctx.dayType);return;}
   const lists=effectivePeriodLists(dayKey);
   const list=(lists[period]||[]).slice();
   const idx=list.indexOf(taskKey);
@@ -1254,22 +1447,105 @@ function reorderPeriodTask(period,taskKey,dir){
   if(!c.periodOrder)c.periodOrder={};
   if(!c.periodOrder[period])c.periodOrder[period]=list.slice();
   const ord=c.periodOrder[period];
-  const at=ord.indexOf(taskKey);
-  const swapKey=list[ni];
-  const swapAt=ord.indexOf(swapKey);
-  if(at<0)ord.push(taskKey);
+  if(ord.indexOf(taskKey)<0)ord.push(taskKey);
   const ai=ord.indexOf(taskKey);
-  const bi=ord.indexOf(swapKey);
+  const bi=ord.indexOf(list[ni]);
   if(ai<0||bi<0)return;
   [ord[ai],ord[bi]]=[ord[bi],ord[ai]];
   touchDaySync(dayKey);
 }
-function addPeriodExtra(period,name,mins){
+function addPeriodExtra(period,name,mins,ctx){
+  if(ctx&&ctx.mode==='template'){
+    addTemplatePeriodExtra(period,name,mins,ctx.dayType);
+    return;
+  }
   const c=cfg();
   if(!c.periodExtras)c.periodExtras={};
   if(!c.periodExtras[period])c.periodExtras[period]=[];
   c.periodExtras[period].push({id:'pex_'+Date.now(),name:(name||'Activity').trim(),mins:Math.max(5,parseInt(mins,10)||30),ico:'✨'});
   touchDaySync(activeDayKey());
+}
+let weekendTemplateDraft=null;
+let weekendTemplateEditType=null;
+function getWeekendTemplateDraft(dayType){
+  if(!weekendTemplateDraft||weekendTemplateEditType!==dayType){
+    ensureWeekendPeriodTemplate();
+    weekendTemplateDraft=cloneWeekendTemplateSlice(DATA.weekendPeriodTemplate[dayType]);
+    weekendTemplateEditType=dayType;
+  }
+  return weekendTemplateDraft;
+}
+function effectiveTemplateLists(dayType){
+  const t=getWeekendTemplateDraft(dayType);
+  const keys=WEEKEND_PERIOD_KEYS;
+  const out={};
+  keys.forEach(p=>{
+    const list=(t[p]||[]).slice();
+    (t.extras&&t.extras[p]||[]).forEach(ex=>{list.push('extra:'+(ex.id||'tex_'+Date.now()));});
+    out[p]=list;
+  });
+  return out;
+}
+function moveTemplatePeriodTask(taskKey,toPeriod,dayType){
+  const t=getWeekendTemplateDraft(dayType);
+  const keys=WEEKEND_PERIOD_KEYS;
+  if(!keys.includes(toPeriod))return;
+  if(taskKey.startsWith('extra:')){
+    const id=taskKey.slice(6);
+    let item=null;
+    keys.forEach(p=>{
+      const arr=t.extras[p]||[];
+      const i=arr.findIndex(x=>x.id===id);
+      if(i>=0){item=arr.splice(i,1)[0];t.extras[p]=arr;}
+    });
+    if(item){
+      if(!t.extras[toPeriod])t.extras[toPeriod]=[];
+      t.extras[toPeriod].push(item);
+    }
+  }else{
+    let from=null;
+    keys.forEach(p=>{
+      const arr=t[p]||[];
+      const i=arr.indexOf(taskKey);
+      if(i>=0){from=p;arr.splice(i,1);t[p]=arr;}
+    });
+    if(from===null)return;
+    if(!t[toPeriod])t[toPeriod]=[];
+    t[toPeriod].push(taskKey);
+  }
+}
+function reorderTemplatePeriodTask(period,taskKey,dir,dayType){
+  const lists=effectiveTemplateLists(dayType);
+  const list=(lists[period]||[]).slice();
+  const idx=list.indexOf(taskKey);
+  if(idx<0)return;
+  const ni=idx+dir;
+  if(ni<0||ni>=list.length)return;
+  [list[idx],list[ni]]=[list[ni],list[idx]];
+  const t=getWeekendTemplateDraft(dayType);
+  if(!t.extras)t.extras={};
+  t[period]=[];
+  t.extras[period]=[];
+  const allExtras={};
+  WEEKEND_PERIOD_KEYS.forEach(p=>{(t.extras[p]||[]).forEach(ex=>{allExtras[ex.id]=ex;});});
+  list.forEach(k=>{
+    if(k.startsWith('extra:')){
+      const ex=allExtras[k.slice(6)];
+      if(ex)t.extras[period].push(ex);
+    }else t[period].push(k);
+  });
+}
+function addTemplatePeriodExtra(period,name,mins,dayType){
+  const t=getWeekendTemplateDraft(dayType);
+  if(!t.extras)t.extras={};
+  if(!t.extras[period])t.extras[period]=[];
+  t.extras[period].push({id:'pex_'+Date.now(),name:(name||'Activity').trim(),mins:Math.max(5,parseInt(mins,10)||30),ico:'✨'});
+}
+function addTemplateTaskKey(dayType,taskKey){
+  const t=getWeekendTemplateDraft(dayType);
+  if(!t.morning)t.morning=[];
+  if(WEEKEND_PERIOD_KEYS.some(p=>(t[p]||[]).includes(taskKey)))return;
+  t.morning.push(taskKey);
 }
 
 const HABITS=[
@@ -1363,7 +1639,6 @@ const PLAN_PRESETS=[
   {name:'Dinner',dur:60,ico:'🍲'},{name:'Read',dur:45,ico:'📖'}
 ];
 let lastScheduleConflicts=[];
-let weekendPlanEditKey=null;
 function setWakeTime(hhmm,lock){
   touchDaySync(activeDayKey());
   const c=cfg();
@@ -1377,16 +1652,19 @@ function isWorkday(){return dayType()==='workday';}
 function workoutState(){const c=cfg();if(c.workout)return c.workout;return 'gym';}
 const DAYNAMES={workday:'Workday · shift at 8pm',friday:'Friday · your weekend',saturday:'Saturday · your weekend'};
 function weekendPlanTargets(){
-  const today=activeDayKey();
   const dow=new Date().getDay();
   const out=[];
-  if(dow===4)out.push({key:addDaysToKey(today,1),label:'Friday',dayType:'friday'});
-  if(dow===5)out.push({key:addDaysToKey(today,1),label:'Saturday',dayType:'saturday'});
+  if(dow===4)out.push({label:'Friday',dayType:'friday'});
+  if(dow===5)out.push({label:'Saturday',dayType:'saturday'});
   const dt=dayType();
-  const c=cfg();
-  if((dt==='friday'||dt==='saturday')&&(!c.weekendPlan||!c.weekendPlan.length))
-    out.push({key:today,label:dt==='friday'?'Friday (today)':'Saturday (today)',dayType:dt});
+  if(isWeekendDayType(dt)&&!weekendTemplateHasTasks(dt))
+    out.push({label:dt==='friday'?'Friday (today)':'Saturday (today)',dayType:dt});
   return out;
+}
+function persistWeekendTemplateDraft(){
+  if(!weekendTemplateDraft||!weekendTemplateEditType)return;
+  ensureWeekendPeriodTemplate();
+  DATA.weekendPeriodTemplate[weekendTemplateEditType]=cloneWeekendTemplateSlice(weekendTemplateDraft);
 }
 function addSuddenTask(opts){
   const targetDayKey=opts.targetDayKey;
@@ -1940,13 +2218,10 @@ function buildSeq(){
     lastScheduleConflicts=mergedConflicts;
     return {seq:base.seq,endMin:base.endMin,conflicts:mergedConflicts};
   }
-  if((dt==='friday'||dt==='saturday')&&c.weekendPlan&&c.weekendPlan.length)base=buildWeekendSeq(c,c.weekendPlan);
-  else base=buildLegacyWeekendSeq(c,ws,dt,ov,dayKey);
-  const applied=applySuddenTasks(base.seq,c.suddenTasks||[],dayKey,dt);
-  const mergedConflicts=[...(base.overlapWarnings||[]),...applied.conflicts];
+  base=buildPeriodWeekendSeq(c,ws,ov,dayKey,c.suddenTasks||[]);
+  const mergedConflicts=[...(base.overlapWarnings||[]),...(base.suddenConflicts||[])];
   lastScheduleConflicts=mergedConflicts;
-  const endMin=applied.seq.reduce((m,b)=>Math.max(m,b.end||0),base.endMin||0);
-  return {seq:applied.seq,endMin,conflicts:mergedConflicts};
+  return {seq:base.seq,endMin:base.endMin,conflicts:mergedConflicts};
 }
 
 function renderClocks(){
@@ -1957,8 +2232,8 @@ function renderClocks(){
   dBKK.textContent=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Bangkok',weekday:'short',month:'short',day:'numeric'}).format(now);
   const dt=dayType();
   const c=cfg();
-  if(dt==='friday')greet.textContent=c.weekendPlan?.length?'Friday — your plan is set. Enjoy the flow.':'Friday — plan your day or use the banner to build it.';
-  else if(dt==='saturday')greet.textContent=c.weekendPlan?.length?(isPmpActive()?'Saturday — your plan is set. Prep, study, breathe.':'Saturday — your plan is set. Enjoy the flow.'):'Saturday — plan your day when you\'re ready.';
+  if(dt==='friday')greet.textContent=weekendTemplateHasTasks('friday')?'Friday — your bands are set. Enjoy the flow.':'Friday — set weekend bands under Plan.';
+  else if(dt==='saturday')greet.textContent=weekendTemplateHasTasks('saturday')?(isPmpActive()?'Saturday — your bands are set. Prep, study, breathe.':'Saturday — your bands are set. Enjoy the flow.'):'Saturday — set weekend bands under Plan.';
   else{const h=now.getHours();greet.textContent=(h>=4&&h<11?'Good morning — ease into the day.':h<16?'Afternoon — prime focus hours.':h<20?'Evening wind-up before the shift.':'On shift. You\'ve got this.');}
 }
 function renderCountdowns(){
@@ -2071,143 +2346,61 @@ function renderWeekendBanner(){
   if(!targets.length){el.style.display='none';return;}
   el.style.display='flex';
   const parts=targets.map(t=>{
-    const n=(dayCfg(t.key).weekendPlan||[]).length;
+    const n=countWeekendTemplateTasks(t.dayType);
     return n?'✓ '+t.label+' ('+n+')':'Plan '+t.label;
   });
   txt.textContent=parts.join(' · ');
 }
-let planDraft=[];
-function openWeekendPlanner(prefKey){
-  const targets=weekendPlanTargets();
-  if(!targets.length&&!prefKey)return;
-  weekendPlanEditKey=prefKey||targets[0].key;
-  const modal=document.getElementById('weekendModal');
-  const tabs=document.getElementById('weekendPlanTabs');
-  tabs.innerHTML='';
-  if(targets.length>1){
-    targets.forEach(t=>{
-      const b=document.createElement('button');
-      b.type='button';
-      b.textContent=t.label;
-      b.classList.toggle('on',t.key===weekendPlanEditKey);
-      b.onclick=()=>{weekendPlanEditKey=t.key;b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));loadPlanDraft();renderPlanList();};
-      tabs.appendChild(b);
-    });
-    tabs.style.display='flex';
-  }else tabs.style.display='none';
-  const t=targets.find(x=>x.key===weekendPlanEditKey)||targets[0];
-  if(t)weekendPlanEditKey=t.key;
-  document.getElementById('weekendModalTitle').textContent='Plan '+((t&&t.label)||'your day');
-  document.getElementById('weekendModalSub').textContent='Activities pack from wake time, with open gaps for sudden tasks.';
-  const presets=document.getElementById('planPresets');
-  presets.innerHTML='';
-  planPresetsForDay(weekendPlanEditKey).forEach(p=>{
-    const b=document.createElement('button');
-    b.type='button';b.textContent=p.ico+' '+p.name;
-    b.onclick=()=>{planDraft.push({id:'wp_'+Date.now(),name:p.name,dur:p.dur,ico:p.ico});renderPlanList();};
-    presets.appendChild(b);
-  });
-  loadPlanDraft();
-  renderPlanList();
-  modal.classList.add('open');
-  modal.setAttribute('aria-hidden','false');
-}
-function loadPlanDraft(){
-  const c=dayCfg(weekendPlanEditKey);
-  planDraft=(c.weekendPlan||[]).map((x,i)=>({...x,id:x.id||'wp_'+i}));
-}
-function renderPlanList(){
-  const list=document.getElementById('planList');
-  list.innerHTML='';
-  if(!planDraft.length){list.innerHTML='<div class="empty" style="padding:12px">No activities yet — use presets or add your own.</div>';return;}
-  planDraft.forEach((item,i)=>{
-    const row=document.createElement('div');row.className='plan-item';
-    row.innerHTML=`<span style="font-size:18px">${item.ico||guessIco(item.name)}</span>
-      <input type="text" value="${(item.name||'').replace(/"/g,'&quot;')}" data-i="${i}" class="plan-name">
-      <input type="number" min="5" value="${item.dur||60}" data-i="${i}" class="plan-mins plan-dur">
-      <div class="plan-btns"><button type="button" data-i="${i}" data-dir="-1" title="Up">↑</button><button type="button" data-i="${i}" data-dir="1" title="Down">↓</button><button type="button" data-i="${i}" data-del="1" title="Remove">✕</button></div>`;
-    row.querySelector('.plan-name').onchange=e=>{planDraft[+e.target.dataset.i].name=e.target.value;};
-    row.querySelector('.plan-dur').onchange=e=>{planDraft[+e.target.dataset.i].dur=Math.max(5,parseInt(e.target.value)||60);};
-    row.querySelectorAll('.plan-btns button').forEach(btn=>{
-      if(btn.dataset.del){btn.onclick=()=>{planDraft.splice(+btn.dataset.i,1);renderPlanList();};return;}
-      btn.onclick=()=>{
-        const j=+btn.dataset.i+parseInt(btn.dataset.dir);
-        if(j<0||j>=planDraft.length)return;
-        const tmp=planDraft[j];planDraft[j]=planDraft[+btn.dataset.i];planDraft[+btn.dataset.i]=tmp;
-        renderPlanList();
-      };
-    });
-    list.appendChild(row);
-  });
-}
-function saveWeekendPlanFromModal(){
-  if(!weekendPlanEditKey)return;
-  dayCfg(weekendPlanEditKey).weekendPlan=planDraft.map((x,i)=>({id:x.id||'wp_'+i,name:x.name.trim()||'Activity',dur:Math.max(5,x.dur||60),ico:x.ico||guessIco(x.name),note:x.note||''}));
-  save();
-  closeWeekendPlanner();
-  renderSched();renderClocks();renderWeekendBanner();renderNowBanner();
-  flash('Weekend plan saved');
-}
-function closeWeekendPlanner(){
-  const modal=document.getElementById('weekendModal');
-  modal.classList.remove('open');
-  modal.setAttribute('aria-hidden','true');
-}
-function copyLastWeekendPlan(){
-  const dt=dayTypeForKey(weekendPlanEditKey);
-  let best=null;
-  Object.keys(DATA.dayConfig||{}).forEach(k=>{
-    if(k>=weekendPlanEditKey)return;
-    const p=DATA.dayConfig[k]&&DATA.dayConfig[k].weekendPlan;
-    if(p&&p.length&&dayTypeForKey(k)===dt&&(!best||k>best.key))best={key:k,plan:p};
-  });
-  const stripPmp=name=>isPmpActive(weekendPlanEditKey)||!/pmp/i.test(name||'');
-  if(best)planDraft=best.plan.filter(x=>stripPmp(x.name)).map((x,i)=>({...x,id:'wp_'+Date.now()+i}));
-  else planDraft=planPresetsForDay(weekendPlanEditKey).slice(0,6).map((p,i)=>({id:'wp_'+Date.now()+i,name:p.name,dur:p.dur,ico:p.ico}));
-  renderPlanList();
-}
-function renderPeriodPlan(){
-  const panel=document.getElementById('periodPlanPanel');
-  const wrap=document.getElementById('periodBands');
-  if(!panel||!wrap)return;
-  if(!isWorkday()){panel.style.display='none';return;}
-  panel.style.display='block';
-  const dayKey=activeDayKey();
-  const lists=effectivePeriodLists(dayKey);
+function renderPeriodBands(wrap,ctx){
+  if(!wrap)return;
+  const dayKey=ctx.dayKey||activeDayKey();
+  const dt=ctx.dayType||dayTypeForKey(dayKey);
+  const keys=periodKeysForDayType(dt);
+  const wins=periodWindowsFor(dt);
+  const lists=ctx.mode==='template'?effectiveTemplateLists(ctx.dayType):effectivePeriodLists(dayKey);
+  const labelKey=ctx.mode==='template'?ctx.dayType:dayKey;
   wrap.innerHTML='';
-  PERIOD_KEYS.forEach(period=>{
+  keys.forEach(period=>{
     const band=document.createElement('div');
     band.className='period-band';
     const hdr=document.createElement('div');
     hdr.className='period-band-hdr';
-    hdr.innerHTML=`<span>${PERIOD_LABELS[period]}</span><span class="win">${PERIOD_WINDOWS[period]}</span>`;
+    hdr.innerHTML=`<span>${PERIOD_LABELS[period]}</span><span class="win">${wins[period]||''}</span>`;
     band.appendChild(hdr);
     const items=lists[period]||[];
     items.forEach((taskKey,idx)=>{
       const row=document.createElement('div');
       row.className='period-task';
-      row.innerHTML=`<span class="pt-ico">${periodTaskIco(taskKey,dayKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey,dayKey)}</span><span class="pt-act"></span>`;
+      row.innerHTML=`<span class="pt-ico">${periodTaskIco(taskKey,labelKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey,labelKey)}</span><span class="pt-act"></span>`;
       const act=row.querySelector('.pt-act');
       if(idx>0){
         const up=document.createElement('button');
         up.type='button';up.textContent='↑';
-        up.onclick=()=>{reorderPeriodTask(period,taskKey,-1);saveDay();renderSched();};
+        up.onclick=()=>{
+          if(ctx.mode==='template'){reorderTemplatePeriodTask(period,taskKey,-1,ctx.dayType);renderPeriodBands(wrap,ctx);}
+          else{reorderPeriodTask(period,taskKey,-1,ctx);saveDay();renderSched();}
+        };
         act.appendChild(up);
       }
       if(idx<items.length-1){
         const dn=document.createElement('button');
         dn.type='button';dn.textContent='↓';
-        dn.onclick=()=>{reorderPeriodTask(period,taskKey,1);saveDay();renderSched();};
+        dn.onclick=()=>{
+          if(ctx.mode==='template'){reorderTemplatePeriodTask(period,taskKey,1,ctx.dayType);renderPeriodBands(wrap,ctx);}
+          else{reorderPeriodTask(period,taskKey,1,ctx);saveDay();renderSched();}
+        };
         act.appendChild(dn);
       }
-      const canMove=MOVABLE_PERIOD_TASKS.has(taskKey)||taskKey.startsWith('extra:');
-      if(canMove){
-        PERIOD_KEYS.filter(p=>p!==period).forEach(p=>{
+      if(isMovablePeriodTask(taskKey,dayKey)||ctx.mode==='template'){
+        keys.filter(p=>p!==period).forEach(p=>{
           const mb=document.createElement('button');
           mb.type='button';
           mb.textContent='→ '+PERIOD_LABELS[p].slice(0,3);
           mb.title='Move to '+PERIOD_LABELS[p];
-          mb.onclick=()=>{movePeriodTask(taskKey,p);saveDay();renderSched();};
+          mb.onclick=()=>{
+            if(ctx.mode==='template'){moveTemplatePeriodTask(taskKey,p,ctx.dayType);renderPeriodBands(wrap,ctx);}
+            else{movePeriodTask(taskKey,p,ctx);saveDay();renderSched();}
+          };
           act.appendChild(mb);
         });
       }
@@ -2223,13 +2416,90 @@ function renderPeriodPlan(){
     addBtn.type='button';addBtn.className='btn sm';addBtn.textContent='Add';
     addBtn.onclick=()=>{
       if(!nmIn.value.trim()){nmIn.focus();return;}
-      addPeriodExtra(period,nmIn.value,minIn.value);
-      nmIn.value='';saveDay();renderSched();
+      if(ctx.mode==='template'){addTemplatePeriodExtra(period,nmIn.value,minIn.value,ctx.dayType);renderPeriodBands(wrap,ctx);}
+      else{addPeriodExtra(period,nmIn.value,minIn.value,ctx);nmIn.value='';saveDay();renderSched();}
     };
     addRow.appendChild(nmIn);addRow.appendChild(minIn);addRow.appendChild(addBtn);
     band.appendChild(addRow);
     wrap.appendChild(band);
   });
+}
+function openWeekendPlanner(prefDayType){
+  const targets=weekendPlanTargets();
+  if(!targets.length&&!prefDayType)return;
+  weekendTemplateEditType=prefDayType||targets[0].dayType;
+  weekendTemplateDraft=null;
+  getWeekendTemplateDraft(weekendTemplateEditType);
+  const modal=document.getElementById('weekendModal');
+  const tabs=document.getElementById('weekendPlanTabs');
+  tabs.innerHTML='';
+  const tabTypes=['friday','saturday'];
+  tabTypes.forEach(dt=>{
+    const b=document.createElement('button');
+    b.type='button';
+    b.textContent=dt==='friday'?'Friday':'Saturday';
+    b.classList.toggle('on',dt===weekendTemplateEditType);
+    b.onclick=()=>{persistWeekendTemplateDraft();weekendTemplateEditType=dt;weekendTemplateDraft=null;getWeekendTemplateDraft(dt);tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderWeekendPlanModal();};
+    tabs.appendChild(b);
+  });
+  tabs.style.display='flex';
+  document.getElementById('weekendModalTitle').textContent='Plan your weekend';
+  document.getElementById('weekendModalSub').textContent='Weekly defaults for Friday & Saturday — auto-applies every week.';
+  renderWeekendPlanModal();
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden','false');
+}
+function renderWeekendPlanModal(){
+  const presets=document.getElementById('planPresets');
+  const wrap=document.getElementById('weekendPlanBands');
+  if(!presets||!wrap)return;
+  presets.innerHTML='';
+  const quick=[
+    {key:'gym',label:'🏋️ Gym'},{key:'mealprep',label:'🍱 Meal prep'},{key:'study1',label:'📘 Study'},
+    {key:'garden',label:'🌱 Garden'},{key:'dog1',label:'🐕 Dogs'},{key:'chores',label:'🧹 Chores'}
+  ];
+  quick.forEach(q=>{
+    if(!isPmpActive()&&/study/.test(q.key))return;
+    const b=document.createElement('button');
+    b.type='button';b.textContent=q.label;
+    b.onclick=()=>{addTemplateTaskKey(weekendTemplateEditType,q.key);renderWeekendPlanModal();};
+    presets.appendChild(b);
+  });
+  renderPeriodBands(wrap,{mode:'template',dayType:weekendTemplateEditType,dayKey:weekendTemplateEditType});
+}
+function saveWeekendPlanFromModal(){
+  if(!weekendTemplateEditType)return;
+  persistWeekendTemplateDraft();
+  weekendTemplateDraft=null;
+  save();
+  closeWeekendPlanner();
+  renderSched();renderClocks();renderWeekendBanner();renderNowBanner();
+  flash('Weekend bands saved');
+}
+function closeWeekendPlanner(){
+  const modal=document.getElementById('weekendModal');
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden','true');
+  weekendTemplateDraft=null;
+}
+function copyLastWeekendPlan(){
+  const other=weekendTemplateEditType==='friday'?'saturday':'friday';
+  ensureWeekendPeriodTemplate();
+  weekendTemplateDraft=cloneWeekendTemplateSlice(DATA.weekendPeriodTemplate[other]);
+  renderWeekendPlanModal();
+  flash('Copied '+(other==='friday'?'Saturday':'Friday')+' template');
+}
+function renderPeriodPlan(){
+  const panel=document.getElementById('periodPlanPanel');
+  const wrap=document.getElementById('periodBands');
+  const sumTxt=panel&&panel.querySelector('.sum-txt');
+  if(!panel||!wrap)return;
+  const dt=dayType();
+  if(dt!=='workday'&&!isWeekendDayType(dt)){panel.style.display='none';return;}
+  panel.style.display='block';
+  if(sumTxt)sumTxt.textContent=isWeekendDayType(dt)?'Today\'s bands':'Today\'s bands';
+  const dayKey=activeDayKey();
+  renderPeriodBands(wrap,{mode:'today',dayKey,dayType:dt});
   const resetP=document.getElementById('resetPeriod');
   if(resetP)resetP.style.display=hasPeriodOverrides(dayKey)?'inline':'none';
   const disc=document.getElementById('periodPlanDisclosure');
@@ -2296,7 +2566,7 @@ function renderSched(){
     const el=document.createElement('div');el.className='blk'+(done?' done':'')+(now?' now':'')+(editMode?' info':'')+(isFlex?' flex info':'')+(b.anchored?' anchored':'')+(b.overflow?' overflow':'')+(b.period?' period-'+b.period:'');
     let rightHTML;
     if(editMode&&!isFlex){
-      rightHTML=`<span class="stepper"><button data-step="-1">−</button><span class="val">${b.dur}m</span><button data-step="1">+</button></span>${(b.custom||b.sudden||b.periodCustom)?'<span class="delx">✕</span>':''}`;
+      rightHTML=`<span class="stepper"><button data-step="-1">−</button><span class="val">${b.dur}m</span><button data-step="1">+</button></span>${(b.custom||b.sudden||(b.periodCustom&&!b.templateExtra))?'<span class="delx">✕</span>':''}`;
     } else if(!isFlex) {
       rightHTML=`${(b.custom||b.sudden)?'<span class="delx">✕</span>':''}<div class="chk"></div>`;
     } else rightHTML='';
@@ -2308,7 +2578,13 @@ function renderSched(){
       el.querySelectorAll('.stepper button').forEach(btn=>btn.onclick=(e)=>{
         e.stopPropagation();const delta=parseInt(btn.dataset.step)*5;
         if(b.sudden){touchDaySync(activeDayKey());const t=(c.suddenTasks||[]).find(x=>x.id===b.id);if(t)t.mins=Math.max(5,t.mins+delta);}
-        else if(b.planned){const p=(c.weekendPlan||[]).find(x=>x.id===b.id);if(p)p.dur=Math.max(5,p.dur+delta);}
+        else if(b.periodCustom){
+          const found=findPeriodExtra(activeDayKey(),b.id);
+          if(found&&!found.fromTemplate){
+            const pkeys=periodKeysForDayKey(activeDayKey());
+            pkeys.forEach(p=>{const arr=c.periodExtras[p]||[];const hit=arr.find(x=>x.id===b.id);if(hit)hit.mins=Math.max(5,hit.mins+delta);});
+          }else{touchDaySync(activeDayKey());c.blockDur[b.id]=Math.max(5,b.dur+delta);}
+        }
         else if(b.custom){const t=c.tasks.find(x=>x.id===b.id);if(t)t.mins=Math.max(5,t.mins+delta);}
         else{touchDaySync(activeDayKey());const c=cfg();c.blockDur[b.id]=Math.max(5,b.dur+delta);}
         saveDay();renderSched();renderGlance();
@@ -2319,8 +2595,8 @@ function renderSched(){
     }
     const dx=el.querySelector('.delx');if(dx)dx.onclick=(e)=>{e.stopPropagation();
       if(b.sudden){touchDaySync(activeDayKey());c.suddenTasks=(c.suddenTasks||[]).filter(t=>t.id!==b.id);saveDay();}
-      else if(b.periodCustom){
-        PERIOD_KEYS.forEach(p=>{
+      else if(b.periodCustom&&!b.templateExtra){
+        periodKeysForDayKey(activeDayKey()).forEach(p=>{
           c.periodExtras=(c.periodExtras||{});
           c.periodExtras[p]=(c.periodExtras[p]||[]).filter(x=>x.id!==b.id);
         });
@@ -2338,6 +2614,12 @@ function renderSched(){
     const sleep=document.createElement('div');sleep.className='blk'+(sleepNow?' now':'');
     sleep.innerHTML=`<div class="time">${fmt12('03:00')}</div><div class="body"><span class="ico">😴</span><span class="lab">Sleep block${sleepNow?'<span class="nowtag">NOW</span>':''}<small>3am → ${fmt12(c.wake)} · protected</small></span></div><div class="right"></div>`;
     sched.appendChild(sleep);
+  } else if(isWeekendDayType(dt)){
+    if(endMin<WEEKEND_MIDNIGHT){
+      const info=document.createElement('div');info.className='blk info';
+      info.innerHTML=`<div class="time">${fmt12(minToTime(endMin))}</div><div class="body"><span class="ico">🌙</span><span class="lab">After midnight<small>No shift — wind down, sleep when ready</small></span></div><div class="right"></div>`;
+      sched.appendChild(info);
+    }
   } else {
     const info=document.createElement('div');info.className='blk info';
     info.innerHTML=`<div class="time">${fmt12(minToTime(endMin))}</div><div class="body"><span class="ico">🌙</span><span class="lab">Free evening<small>No shift — wind down, then sleep whenever you like</small></span></div><div class="right"></div>`;
@@ -3115,16 +3397,6 @@ function wire(){
   if(closeWp)closeWp.onclick=closeWeekendPlanner;
   const modalWp=document.getElementById('weekendModal');
   if(modalWp)modalWp.onclick=e=>{if(e.target===modalWp)closeWeekendPlanner();};
-  const addPi=document.getElementById('addPlanItem');
-  if(addPi)addPi.onclick=()=>{
-    const nm=document.getElementById('planName');
-    const du=document.getElementById('planDur');
-    const name=nm&&nm.value.trim();
-    if(!name){if(nm)nm.focus();return;}
-    planDraft.push({id:'wp_'+Date.now(),name,dur:Math.max(5,parseInt(du&&du.value,10)||60),ico:guessIco(name)});
-    if(nm)nm.value='';
-    renderPlanList();
-  };
   const saveWp=document.getElementById('saveWeekendPlan');
   if(saveWp)saveWp.onclick=saveWeekendPlanFromModal;
   const copyWp=document.getElementById('copyLastWeekend');

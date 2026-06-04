@@ -2,7 +2,7 @@
 
 This document captures the real-world constraints that shaped the dashboard. It is the distilled “why” behind `life-dashboard.html`.
 
-**Weekday scheduling source of truth:** period-band model (v1). Legacy lifechart2 gap/clock packing is retired for workdays. Weekend plan flow unchanged.
+**Scheduling source of truth:** period-band model (v1). Workdays: 3 bands + work/sleep. Weekends: 4 bands (incl. night 8pm–midnight) + weekly Plan templates.
 
 ## Context
 
@@ -82,7 +82,10 @@ Sync via existing Firebase `dayConfig` merge.
 ## Friday & Saturday (weekend days)
 
 - No work shift — sleep when ready
-- **Plan day** modal packs an ordered list from wake (unchanged in v1)
+- **Four bands:** morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), **night (8pm–midnight)**
+- **Plan** modal sets **weekly defaults** for Friday and Saturday (`weekendPeriodTemplate`); auto-applies every week
+- **Today's bands** on Fri/Sat: same today-only overrides as workdays (`periodOrder`, `periodMoves`, `periodExtras`)
+- Legacy flat `weekendPlan` per date migrates into templates on first load
 - Saturday **mealprep** for the week — not on workday afternoon list
 
 ## Flexible controls
@@ -93,9 +96,9 @@ Sync via existing Firebase `dayConfig` merge.
 | Day type (Auto / Workday / Friday / Saturday) | Auto uses weekday |
 | Workout: Gym / Home / Skip | Gym block duration/placement |
 | Sudden tasks | Anytime or fixed window |
-| Weekend plan | Friday/Saturday activity list |
+| Weekend plan | Weekly Fri/Sat band templates (Plan modal) |
 | Edit block lengths | Today only (`blockDur`) |
-| Today's bands | Reorder / move tasks between morning · afternoon · evening |
+| Today's bands | Reorder / move tasks between bands (workday: 3 + work; weekend: 4) |
 
 ## What the dashboard does *not* do (yet)
 
