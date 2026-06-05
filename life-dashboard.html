@@ -1647,13 +1647,16 @@ function dayCfg(k){
 function blockDurOv(dayKey){
   return dayCfg(dayKey).blockDur||{};
 }
-function dayTypeForKey(k){
-  const c=DATA.dayConfig[k];
-  if(c&&c.dayType)return c.dayType;
+function calendarDayTypeForKey(k){
   const p=k.split('-').map(Number);
   const d=new Date(p[0],p[1]-1,p[2]);
   const dow=d.getDay();
   return dow===5?'friday':dow===6?'saturday':'workday';
+}
+function dayTypeForKey(k){
+  const c=DATA.dayConfig[k];
+  if(c&&c.dayType)return c.dayType;
+  return calendarDayTypeForKey(k);
 }
 function addDaysToKey(key,delta){
   const p=key.split('-').map(Number);
@@ -1708,7 +1711,7 @@ function setWakeTime(hhmm,lock){
   if(lock!==false)c.wakeLocked=true;
   saveDay();
 }
-function autoDayType(){const d=new Date().getDay();return d===5?'friday':d===6?'saturday':'workday';}
+function autoDayType(){return calendarDayTypeForKey(activeDayKey());}
 function dayType(){const c=cfg();return c.dayType||autoDayType();}
 function isWorkday(){return dayType()==='workday';}
 function workoutState(){const c=cfg();if(c.workout)return c.workout;return 'gym';}
