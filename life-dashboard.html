@@ -740,6 +740,61 @@ function mergeDayConfig(localCfg,cloudCfg,localTime,cloudTime){
   });
   return out;
 }
+function mergeIdArrays(localArr,cloudArr,localIsNewer,getKey){
+  const loc=Array.isArray(localArr)?localArr:[];
+  const clo=Array.isArray(cloudArr)?cloudArr:[];
+  const newer=localIsNewer?loc:clo;
+  const older=localIsNewer?clo:loc;
+  const byKey=new Map();
+  older.forEach(item=>{
+    const k=getKey(item);
+    if(k==null||k==='')return;
+    byKey.set(k,JSON.parse(JSON.stringify(item)));
+  });
+  newer.forEach(item=>{
+    const k=getKey(item);
+    if(k==null||k==='')return;
+    byKey.set(k,JSON.parse(JSON.stringify(item)));
+  });
+  const result=[];
+  const seen=new Set();
+  newer.forEach(item=>{
+    const k=getKey(item);
+    if(k==null||k===''||!byKey.has(k)||seen.has(k))return;
+    result.push(byKey.get(k));
+    seen.add(k);
+  });
+  older.forEach(item=>{
+    const k=getKey(item);
+    if(k==null||k===''||!byKey.has(k)||seen.has(k))return;
+    result.push(byKey.get(k));
+    seen.add(k);
+  });
+  return result;
+}
+function mergeHabitsMap(local,cloud){
+  const loc=local&&typeof local==='object'?local:{};
+  const clo=cloud&&typeof cloud==='object'?cloud:{};
+  const ids=new Set([...Object.keys(loc),...Object.keys(clo)]);
+  const out={};
+  ids.forEach(hid=>{
+    const dates=new Set([...(loc[hid]||[]),...(clo[hid]||[])]);
+    if(dates.size)out[hid]=[...dates].sort();
+  });
+  return out;
+}
+function jobMergeKey(j){
+  if(!j)return '';
+  if(j.id)return String(j.id);
+  return 'job_'+String(j.company||'')+'\x01'+String(j.role||'')+'\x01'+String(j.status||'');
+}
+function mergeArrayFields(out,local,cloud,localTime,cloudTime){
+  const localIsNewer=localTime>=cloudTime;
+  out.todos=mergeIdArrays(local.todos,cloud.todos,localIsNewer,t=>t&&t.id);
+  out.jobTodos=mergeIdArrays(local.jobTodos,cloud.jobTodos,localIsNewer,t=>t&&t.id);
+  out.habits=mergeHabitsMap(local.habits,cloud.habits);
+  out.jobs=mergeIdArrays(local.jobs,cloud.jobs,localIsNewer,jobMergeKey);
+}
 function mergeAppData(local,cloud,localTime,cloudTime){
   if(!local)return cloud?JSON.parse(JSON.stringify(cloud)):null;
   if(!cloud)return JSON.parse(JSON.stringify(local));
@@ -748,6 +803,7 @@ function mergeAppData(local,cloud,localTime,cloudTime){
   const out=JSON.parse(JSON.stringify(base));
   out.dayConfig=mergeDayConfig(local.dayConfig||{},cloud.dayConfig||{},localTime,cloudTime);
   if(!out.scheduleChecks&&other.scheduleChecks)out.scheduleChecks=JSON.parse(JSON.stringify(other.scheduleChecks));
+  mergeArrayFields(out,local,cloud,localTime,cloudTime);
   return out;
 }
 function dataSnapshotEqual(a,b){

@@ -37,6 +37,14 @@ git show baseline-2026-06-05 --stat
 
 ---
 
+## Changes since `baseline-2026-06-05` (`2f5d6b3` app)
+
+| Commit | Summary |
+|--------|---------|
+| *(this commit)* | **Safe per-array sync merge** — `mergeArrayFields` unions `todos`, `jobTodos`, `habits`, `jobs` after winner-take-all base; never replaces non-empty with empty; same-id conflicts prefer newer document side. `dayConfig` merge unchanged. |
+
+---
+
 ## Changes since `baseline-2026-06-04` (`c525908` app / `3791fa4` docs)
 
 | Commit | Summary |
@@ -45,7 +53,7 @@ git show baseline-2026-06-05 --stat
 | `2f5d6b3` | **UI** — removed Daily Non-Negotiables tab; habits only on Today → Quick Glance chips. `renderHabits()` guarded when `#habits` absent. |
 | `e3dfb74` | Docs only — scheduling flowcharts (not part of app baseline) |
 
-**Unchanged since 2026-06-04:** sync merge model, weekend Plan modal, period-band scheduling engine, `planPreviewWakeMin(forDayType)` fix.
+**Unchanged since 2026-06-04:** weekend Plan modal, period-band scheduling engine, `planPreviewWakeMin(forDayType)` fix. Sync still uses document-level winner-take-all **base**; array fields now merged separately (see below).
 
 ---
 
@@ -116,13 +124,26 @@ Implementation: `life-dashboard.html` — `Store`, `mergeAppData`, `mergeDayConf
 
 - The newer snapshot becomes the base (`JSON.parse` copy).
 - **Exception:** `dayConfig` is always merged per date (see below).
+- **Exception:** `todos`, `jobTodos`, `habits`, `jobs` are merged via `mergeArrayFields` (see below).
 - **Patch:** if winner lacks `scheduleChecks` but loser has it, copy `scheduleChecks` from loser.
 
-**Fields on the winning snapshot include (non-exhaustive):**  
-`todos`, `jobTodos`, `habits`, `sessions`, `jobs`, `domains`, `weekendPeriodTemplate`, `periodTemplate`, notes fields, `mealPrep`, etc.
+**Other fields on the winning snapshot include (non-exhaustive):**  
+`sessions`, `domains`, `weekendPeriodTemplate`, `periodTemplate`, notes fields, `mealPrep`, etc.
 
-**Known gap (do not “fix” silently without user approval):**  
-If cloud is newer but has **empty** `todos` (or other top-level arrays), local list can be wiped. Safer array-level merge is **out of scope** for this baseline.
+### Per-array merge (`mergeArrayFields`)
+
+After the base snapshot is chosen, these fields are **replaced** with a merged result from **both** local and cloud:
+
+| Field | Merge rule |
+|-------|------------|
+| `todos` | Union by `id`; newer document wins on same id; empty newer never wipes non-empty older |
+| `jobTodos` | Same as `todos` |
+| `habits` | Union date arrays per habit id (sorted unique dates) |
+| `jobs` | Union by `id` or composite key `company+role+status`; newer wins on conflict |
+
+Implementation: `mergeIdArrays`, `mergeHabitsMap`, `jobMergeKey` in `life-dashboard.html`.
+
+**Still not merged field-by-field:** `sessions`, `weekendPeriodTemplate`, notes, etc. — still from winning snapshot only.
 
 ### Per-day merge (`mergeDayConfig` / `mergeDayEntry`)
 
@@ -175,7 +196,7 @@ Full band windows and defaults: [DESIGN.md](./DESIGN.md).
 
 ---
 
-## Fixes included in baseline code (`2f5d6b3`)
+## Fixes included in baseline code (`2f5d6b3` + safe merge)
 
 - Weekend 4-band model + weekly Plan templates
 - Fri/Sat tab drafts without reload
@@ -183,6 +204,7 @@ Full band windows and defaults: [DESIGN.md](./DESIGN.md).
 - `planPreviewWakeMin(forDayType)` — no shadowing of `dayType()`
 - Auto day type aligned with `activeDayKey` before 4am rollover
 - Habits on Today Quick Glance only (tab removed)
+- Safe per-array sync merge for `todos`, `jobTodos`, `habits`, `jobs`
 
 ---
 
@@ -202,10 +224,10 @@ When I say "return to baseline" or "restore baseline-2026-06-05", read docs/BASE
 
 ## Out of scope at this baseline
 
-- Safer per-array sync merge
 - Drag-and-drop reorder (buttons only)
 - Google Calendar / Todoist
 - Multi-user onboarding / `DATA.profile` (planned next — use legacy migration when building)
+- Full replacement of document-level winner-take-all for **all** fields (arrays above are the exception)
 
 ---
 
