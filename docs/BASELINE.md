@@ -1,50 +1,67 @@
 # Baseline checkpoint
 
-**Established:** 2026-06-04  
-**Return phrase:** `Return to baseline` or `Restore baseline-2026-06-04`
+**Established:** 2026-06-05 (current) · **Archive:** 2026-06-04  
+**Return phrase:** `Return to baseline` or `Restore baseline-2026-06-05`
 
 Use this when you want future work (or a new chat) to treat the app as **known-good** and avoid accidental changes to sync or weekend Plan behavior unless you explicitly ask otherwise.
 
-## Git reference
+## Git reference (current)
 
 | Item | Value |
 |------|--------|
-| Tag | `baseline-2026-06-04` |
-| App code commit | `c525908` — fix `planPreviewWakeMin` parameter shadowing `dayType()` (Today's Flow + Plan band redraw) |
-| Docs commit | Tag points at the commit that added this file (same `life-dashboard.html` as `c525908` unless noted in git log) |
+| Tag | `baseline-2026-06-05` |
+| App code commit | `2f5d6b3` — personal Command Center before multi-user profile work |
+| Docs commit | Tag points at the commit that updated this file (`life-dashboard.html` same as `2f5d6b3`) |
 
 ### Restore code to this baseline
 
 ```bash
 cd ~/Desktop/Scheduler
 git fetch --tags   # if using a remote
-git checkout baseline-2026-06-04
+git checkout baseline-2026-06-05
 ```
 
 Restore only the app file (stay on your current branch):
 
 ```bash
-git checkout baseline-2026-06-04 -- life-dashboard.html
+git checkout baseline-2026-06-05 -- life-dashboard.html
 ```
 
 List what the tag contains:
 
 ```bash
-git show baseline-2026-06-04 --stat
+git show baseline-2026-06-05 --stat
 ```
 
 **Live site:** GitHub Pages follows `main`. Checking out a tag locally does not change Pages until you merge or push that state to `main`.
 
 ---
 
+## Changes since `baseline-2026-06-04` (`c525908` app / `3791fa4` docs)
+
+| Commit | Summary |
+|--------|---------|
+| `e222fd8` | **Auto day type** — `autoDayType()` uses `activeDayKey()` calendar (not wall clock). Fixes missing Work/Sleep between midnight and 4am rollover. |
+| `2f5d6b3` | **UI** — removed Daily Non-Negotiables tab; habits only on Today → Quick Glance chips. `renderHabits()` guarded when `#habits` absent. |
+| `e3dfb74` | Docs only — scheduling flowcharts (not part of app baseline) |
+
+**Unchanged since 2026-06-04:** sync merge model, weekend Plan modal, period-band scheduling engine, `planPreviewWakeMin(forDayType)` fix.
+
+---
+
 ## What “good” means at this baseline
 
-### Product surfaces (unchanged intent)
+### Product surfaces
 
-- **Today** — period-band schedule, Today's Flow timeline, today-only band overrides, sudden tasks, sidebar to-dos
+- **Today** — period-band schedule, Today's Flow timeline, today-only band overrides, sudden tasks, sidebar to-dos + scratchpad
+- **Quick Glance** — block checks, **habit chips** (no separate habits tab), study log shortcuts
+- **PMP Prep** — study log, domains, quiz (hidden after exam day)
+- **Job Search** — application pipeline, job to-dos, notes
 - **Weekend Plan modal** — weekly Fri/Sat templates (`DATA.weekendPeriodTemplate`); in-memory drafts until **Save plan**
 - **Sync** — Google Auth + Firestore `users/{uid}`; local `localStorage` when signed out
 - **Scheduling spec** — [DESIGN.md](./DESIGN.md) (period-band v1)
+
+**Tabs:** Today · PMP Prep · Job Search (no Daily Non-Negotiables tab).
 
 ### Mental model (do not conflate)
 
@@ -54,10 +71,12 @@ git show baseline-2026-06-04 --stat
 | **Today's bands** | `dayConfig[date]` | Today-only reorder/move/extras |
 | **Today's Flow** | Computed | `buildSeq()` → `renderSched()` — not a stored list |
 | **To-Do** | `DATA.todos` | Sidebar; separate from schedule blocks |
+| **Habits** | `DATA.habits` + Today chips | No dedicated tab; streak UI removed from main nav |
 
-### Day rollover
+### Day rollover & Auto day type
 
 - Calendar “today” rolls at **4:00 AM** local (`activeDayKey()`, `DAY_ROLLOVER_HOUR = 4`).
+- **Auto** day type uses **active day key’s** weekday (`calendarDayTypeForKey(activeDayKey())`), not wall-clock `getDay()` — so shift nights before 4am stay **workday** until rollover.
 
 ---
 
@@ -150,18 +169,20 @@ Firestore and `localStorage` are **not** reverted by `git checkout`. Baseline is
 - **Workday (Sun–Thu):** 3 bands + fixed Work (8pm–3am) + Sleep (3am→wake).
 - **Friday / Saturday:** 4 bands through night (8pm–midnight); no work block.
 - **Pre-exam (through 2026-06-22):** PMP in defaults; **post-exam:** PMP removed, job apps >2h focus.
-- **Key functions:** `buildSeq`, `buildPeriodWorkdaySeq`, `buildPeriodWeekendSeq`, `renderSched`, `renderPeriodBands`, `planPreviewWakeMin(forDayType)`.
+- **Key functions:** `buildSeq`, `buildPeriodWorkdaySeq`, `buildPeriodWeekendSeq`, `renderSched`, `renderPeriodBands`, `planPreviewWakeMin(forDayType)`, `calendarDayTypeForKey`, `autoDayType`.
 
 Full band windows and defaults: [DESIGN.md](./DESIGN.md).
 
 ---
 
-## Recent fixes included in baseline code
+## Fixes included in baseline code (`2f5d6b3`)
 
 - Weekend 4-band model + weekly Plan templates
 - Fri/Sat tab drafts without reload
 - Plan: remove preset chips, ✕ on rows, minutes + band capacity
 - `planPreviewWakeMin(forDayType)` — no shadowing of `dayType()`
+- Auto day type aligned with `activeDayKey` before 4am rollover
+- Habits on Today Quick Glance only (tab removed)
 
 ---
 
@@ -169,12 +190,12 @@ Full band windows and defaults: [DESIGN.md](./DESIGN.md).
 
 Paste or point the agent at this file and say:
 
-> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge or weekend Plan modal behavior unless I ask. Match tag `baseline-2026-06-04`.
+> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge or weekend Plan modal behavior unless I ask. Match tag `baseline-2026-06-05`.
 
 Optional project rule (`.cursor/rules` or User Rules):
 
 ```text
-When I say "return to baseline" or "restore baseline-2026-06-04", read docs/BASELINE.md and treat it as the contract for sync and scheduling behavior. Prefer minimal diffs; do not redesign mergeAppData or weekend Plan without explicit request.
+When I say "return to baseline" or "restore baseline-2026-06-05", read docs/BASELINE.md and treat it as the contract for sync and scheduling behavior. Prefer minimal diffs; do not redesign mergeAppData or weekend Plan without explicit request.
 ```
 
 ---
@@ -183,8 +204,18 @@ When I say "return to baseline" or "restore baseline-2026-06-04", read docs/BASE
 
 - Safer per-array sync merge
 - Drag-and-drop reorder (buttons only)
-- Google Calendar / Todoist, multi-user SaaS
-- Friends/profile onboarding
+- Google Calendar / Todoist
+- Multi-user onboarding / `DATA.profile` (planned next — use legacy migration when building)
+
+---
+
+## Archive: `baseline-2026-06-04`
+
+Earlier checkpoint before day-type fix and habits tab removal. App at `c525908`; docs at `3791fa4`.
+
+```bash
+git checkout baseline-2026-06-04 -- life-dashboard.html
+```
 
 ---
 
@@ -192,4 +223,4 @@ When I say "return to baseline" or "restore baseline-2026-06-04", read docs/BASE
 
 1. Commit when code + sync behavior are right again.
 2. `git tag -a baseline-YYYY-MM-DD -m "description"`
-3. Update this file (or add `BASELINE-YYYY-MM-DD.md`) with new tag, commit hash, and any sync rule changes.
+3. Update this file with new tag, commit hash, and changelog since prior baseline.
