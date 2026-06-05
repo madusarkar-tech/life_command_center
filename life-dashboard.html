@@ -404,7 +404,6 @@
 
 <nav class="tabs">
   <button class="active" data-v="today">Today</button>
-  <button data-v="habits">Daily Non-Negotiables</button>
   <button data-v="pmp" id="tabPmp">PMP Prep</button>
   <button data-v="jobs">Job Search</button>
 </nav>
@@ -550,14 +549,6 @@
         </details>
       </div>
     </div>
-  </div>
-</section>
-
-<section class="view" id="v-habits">
-  <div class="card">
-    <h2>🌿 Daily Non-Negotiables</h2>
-    <div class="h-sub">Same habits as Quick Glance on Today — tap to mark done. Streaks grow when you don’t skip a day.</div>
-    <div id="habits"></div>
   </div>
 </section>
 
@@ -2708,14 +2699,15 @@ function renderHabitChips(){
   });
 }
 function renderHabits(){
-  habits.innerHTML='';
+  const wrap=document.getElementById('habits');if(!wrap)return;
+  wrap.innerHTML='';
   habitsForDay().forEach(h=>{
     const done=isHabitDone(h.id);const st=streakOf(h.id);
     const sub=h.id==='jobsearch'?jobHabitSub():h.sub;
     const el=document.createElement('div');el.className='habit'+(done?' done':'');
     el.innerHTML=`<div class="ck"></div><div class="nm">${h.ico} ${h.nm}<small>${sub}</small></div><div class="streak${st?'':' zero'}">🔥 ${st} day${st===1?'':'s'}</div>`;
     el.onclick=()=>{setHabitDone(h.id,!done);save();renderHabits();renderHabitChips();renderGlance();};
-    habits.appendChild(el);
+    wrap.appendChild(el);
   });
 }
 function streakOf(id){
