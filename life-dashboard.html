@@ -294,7 +294,13 @@
   .period-band-hdr .band-fill.ok{color:var(--sage)}
   .period-band-hdr .band-fill.warn{color:var(--rust)}
   .period-band-hdr.overfull{border-bottom:2px solid rgba(180,80,60,.4)}
-  .period-task{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line-soft);font-size:13px;background:var(--surface)}
+  .period-task{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line-soft);font-size:13px;background:var(--surface);transition:background .15s,opacity .15s}
+  .period-task.draggable-task{cursor:grab;touch-action:none}
+  .period-task.draggable-task:active{cursor:grabbing}
+  .period-task.dragging{opacity:.45}
+  .period-task.drag-over{background:rgba(184,120,12,.1);box-shadow:inset 0 0 0 1px rgba(184,120,12,.35)}
+  .period-task .pt-drag{flex-shrink:0;width:18px;text-align:center;color:var(--muted2);font-size:14px;line-height:1;cursor:grab;user-select:none;-webkit-user-select:none}
+  .period-task .pt-drag:active{cursor:grabbing}
   .period-task .pt-dur{font-size:11px;font-weight:700;color:var(--muted2);flex-shrink:0;min-width:38px;text-align:right}
   .period-task:first-of-type{border-top:none}
   .period-task .pt-ico{width:22px;text-align:center}
@@ -462,7 +468,7 @@
             <summary class="period-summary">
               <span class="tri" aria-hidden="true"></span>
               <span class="sum-txt">Today's bands</span>
-              <span class="sum-hint">Tap to reorder</span>
+              <span class="sum-hint">Drag or ↑↓ to reorder</span>
             </summary>
             <div class="period-body">
               <div id="periodBands"></div>
@@ -652,7 +658,7 @@
     </div>
     <div class="modal-body">
       <div class="modal-tabs" id="weekendPlanTabs"></div>
-      <p class="modal-hint" id="weekendModalSub2">Weekly defaults auto-apply every week. Reorder, move, or remove tasks in each band.</p>
+      <p class="modal-hint" id="weekendModalSub2">Weekly defaults auto-apply every week. Drag or ↑↓ to reorder, → to move bands, ✕ to remove.</p>
       <div id="weekendPlanBands" class="period-bands-modal"></div>
       <div class="modal-foot">
         <button type="button" class="ghostbtn" id="copyLastWeekend">Copy last plan</button>
@@ -1317,15 +1323,35 @@ function effectivePeriodLists(dayKey){
   });
   return out;
 }
+function gymCommuteTotal(){return GYM_COMMUTE_EACH*2;}
+function gymWorkoutMinutesForEdit(b){
+  const ov=blockDurOv(activeDayKey());
+  if(ov.gym!=null)return ov.gym;
+  if(workoutState()==='home'||b.ico==='🏠')return b.dur;
+  const commute=gymCommuteTotal();
+  if(b.ico==='🏋️'&&b.dur>commute)return b.dur-commute;
+  return Math.max(GYM_MIN,b.dur);
+}
+function applyBlockDurDelta(b,delta){
+  touchDaySync(activeDayKey());
+  const dc=cfg();
+  if(b.id==='gym'){
+    dc.blockDur.gym=Math.max(GYM_MIN,gymWorkoutMinutesForEdit(b)+delta);
+    return;
+  }
+  dc.blockDur[b.id]=Math.max(5,b.dur+delta);
+}
 function gymBlockForPeriod(ws,ov,durCap){
   if(ws==='skip')return null;
   const workout=ov.gym!=null?ov.gym:(ws==='home'?45:60);
   if(ws==='home'){
     return{id:'gym',ico:'🏠',lab:'Home workout',sub:'Morning/afternoon/evening band',dur:Math.min(durCap||GYM_MAX,Math.max(GYM_MIN,workout))};
   }
-  const commute=GYM_COMMUTE_EACH*2;
+  const commute=gymCommuteTotal();
   const maxW=Math.max(0,(durCap||GYM_MAX)-commute);
-  const workoutM=Math.min(Math.max(GYM_MIN,maxW),GYM_MAX);
+  const workoutM=ov.gym!=null
+    ?Math.min(GYM_MAX,Math.max(GYM_MIN,Math.min(ov.gym,maxW>0?maxW:ov.gym)))
+    :Math.min(Math.max(GYM_MIN,maxW),GYM_MAX);
   if((durCap||999)>=GYM_THRESHOLD){
     return{id:'gym',ico:'🏋️',lab:'Gym + commute',sub:'30m each way · '+workoutM+'m workout',dur:workoutM+commute};
   }
@@ -1497,15 +1523,20 @@ function reorderPeriodTask(period,taskKey,dir,ctx){
   if(idx<0)return;
   const ni=idx+dir;
   if(ni<0||ni>=list.length)return;
+  reorderPeriodTaskToIndex(period,taskKey,ni,ctx);
+}
+function reorderPeriodTaskToIndex(period,taskKey,toIdx,ctx){
+  const dayKey=ctx&&ctx.dayKey?ctx.dayKey:activeDayKey();
+  if(ctx&&ctx.mode==='template'){reorderTemplatePeriodTaskToIndex(period,taskKey,toIdx,ctx.dayType);return;}
+  const lists=effectivePeriodLists(dayKey);
+  const list=(lists[period]||[]).slice();
+  const fromIdx=list.indexOf(taskKey);
+  if(fromIdx<0||toIdx<0||toIdx>=list.length||fromIdx===toIdx)return;
+  const item=list.splice(fromIdx,1)[0];
+  list.splice(toIdx,0,item);
   const c=dayCfg(dayKey);
   if(!c.periodOrder)c.periodOrder={};
-  if(!c.periodOrder[period])c.periodOrder[period]=list.slice();
-  const ord=c.periodOrder[period];
-  if(ord.indexOf(taskKey)<0)ord.push(taskKey);
-  const ai=ord.indexOf(taskKey);
-  const bi=ord.indexOf(list[ni]);
-  if(ai<0||bi<0)return;
-  [ord[ai],ord[bi]]=[ord[bi],ord[ai]];
+  c.periodOrder[period]=list.slice();
   touchDaySync(dayKey);
 }
 function addPeriodExtra(period,name,mins,ctx){
@@ -1589,14 +1620,7 @@ function moveTemplatePeriodTask(taskKey,toPeriod,dayType){
     t[toPeriod].push(taskKey);
   }
 }
-function reorderTemplatePeriodTask(period,taskKey,dir,dayType){
-  const lists=effectiveTemplateLists(dayType);
-  const list=(lists[period]||[]).slice();
-  const idx=list.indexOf(taskKey);
-  if(idx<0)return;
-  const ni=idx+dir;
-  if(ni<0||ni>=list.length)return;
-  [list[idx],list[ni]]=[list[ni],list[idx]];
+function writeTemplatePeriodList(period,list,dayType){
   const t=getWeekendTemplateDraft(dayType);
   if(!t.extras)t.extras={};
   const allExtras={};
@@ -1610,6 +1634,77 @@ function reorderTemplatePeriodTask(period,taskKey,dir,dayType){
     }else t[period].push(k);
   });
 }
+function reorderTemplatePeriodTask(period,taskKey,dir,dayType){
+  const lists=effectiveTemplateLists(dayType);
+  const list=(lists[period]||[]).slice();
+  const idx=list.indexOf(taskKey);
+  if(idx<0)return;
+  const ni=idx+dir;
+  if(ni<0||ni>=list.length)return;
+  reorderTemplatePeriodTaskToIndex(period,taskKey,ni,dayType);
+}
+function reorderTemplatePeriodTaskToIndex(period,taskKey,toIdx,dayType){
+  const lists=effectiveTemplateLists(dayType);
+  const list=(lists[period]||[]).slice();
+  const fromIdx=list.indexOf(taskKey);
+  if(fromIdx<0||toIdx<0||toIdx>=list.length||fromIdx===toIdx)return;
+  const item=list.splice(fromIdx,1)[0];
+  list.splice(toIdx,0,item);
+  writeTemplatePeriodList(period,list,dayType);
+}
+function applyPeriodDragReorder(period,taskKey,toIdx,wrap,ctx){
+  if(ctx.mode==='template'){
+    reorderTemplatePeriodTaskToIndex(period,taskKey,toIdx,ctx.dayType);
+    renderPeriodBands(wrap,ctx);
+  }else{
+    reorderPeriodTaskToIndex(period,taskKey,toIdx,ctx);
+    saveDay();
+    renderSched();
+  }
+}
+function wirePeriodTaskDrag(row,period,taskKey,idx,wrap,ctx){
+  if(!row||idx==null)return;
+  row.classList.add('draggable-task');
+  row.draggable=true;
+  row.dataset.period=period;
+  row.dataset.taskKey=taskKey;
+  row.dataset.idx=String(idx);
+  row.addEventListener('dragstart',e=>{
+    if(e.target.closest('button,input')){e.preventDefault();return;}
+    e.dataTransfer.setData('text/plain',taskKey);
+    e.dataTransfer.effectAllowed='move';
+    periodDragSrc={period,taskKey};
+    row.classList.add('dragging');
+  });
+  row.addEventListener('dragend',()=>{
+    row.classList.remove('dragging');
+    periodDragSrc=null;
+    row.closest('.period-band')?.querySelectorAll('.period-task.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  });
+  row.addEventListener('dragover',e=>{
+    if(!e.dataTransfer.types.includes('text/plain'))return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect='move';
+    const src=periodDragSrc;
+    if(!src||src.period!==period||src.taskKey===taskKey)return;
+    row.classList.add('drag-over');
+  });
+  row.addEventListener('dragleave',e=>{
+    if(e.currentTarget.contains(e.relatedTarget))return;
+    row.classList.remove('drag-over');
+  });
+  row.addEventListener('drop',e=>{
+    e.preventDefault();
+    row.classList.remove('drag-over');
+    const srcKey=e.dataTransfer.getData('text/plain')||periodDragSrc?.taskKey;
+    if(!srcKey||srcKey===taskKey)return;
+    const toIdx=parseInt(row.dataset.idx,10);
+    if(isNaN(toIdx))return;
+    applyPeriodDragReorder(period,srcKey,toIdx,wrap,ctx);
+    periodDragSrc=null;
+  });
+}
+let periodDragSrc=null;
 function planPreviewWakeMin(forDayType){
   return dayType()===forDayType?cfg().wake:'10:00';
 }
@@ -2489,7 +2584,7 @@ function renderPeriodBands(wrap,ctx){
       const row=document.createElement('div');
       row.className='period-task';
       const mins=taskMinutesForBandRow(taskKey,ctx);
-      row.innerHTML=`<span class="pt-ico">${periodTaskIco(taskKey,labelKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey,labelKey)}</span><span class="pt-dur">${mins}m</span><span class="pt-act"></span>`;
+      row.innerHTML=`<span class="pt-drag" title="Drag to reorder">⠿</span><span class="pt-ico">${periodTaskIco(taskKey,labelKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey,labelKey)}</span><span class="pt-dur">${mins}m</span><span class="pt-act"></span>`;
       const act=row.querySelector('.pt-act');
       if(idx>0){
         const up=document.createElement('button');
@@ -2531,6 +2626,7 @@ function renderPeriodBands(wrap,ctx){
         rm.onclick=()=>{removeTemplatePeriodTask(taskKey,ctx.dayType);renderPeriodBands(wrap,ctx);};
         act.appendChild(rm);
       }
+      wirePeriodTaskDrag(row,period,taskKey,idx,wrap,ctx);
       band.appendChild(row);
     });
     const addRow=document.createElement('div');
@@ -2696,10 +2792,10 @@ function renderSched(){
           if(found&&!found.fromTemplate){
             const pkeys=periodKeysForDayKey(activeDayKey());
             pkeys.forEach(p=>{const arr=c.periodExtras[p]||[];const hit=arr.find(x=>x.id===b.id);if(hit)hit.mins=Math.max(5,hit.mins+delta);});
-          }else{touchDaySync(activeDayKey());c.blockDur[b.id]=Math.max(5,b.dur+delta);}
+          }else applyBlockDurDelta(b,delta);
         }
         else if(b.custom){const t=c.tasks.find(x=>x.id===b.id);if(t)t.mins=Math.max(5,t.mins+delta);}
-        else{touchDaySync(activeDayKey());const c=cfg();c.blockDur[b.id]=Math.max(5,b.dur+delta);}
+        else applyBlockDurDelta(b,delta);
         saveDay();renderSched();renderGlance();
       });
     } else if(!isFlex) {
