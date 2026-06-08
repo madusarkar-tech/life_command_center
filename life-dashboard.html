@@ -319,6 +319,8 @@
   .period-task .pt-pick .pt-seg{display:inline-flex;border-radius:6px}
   .period-task .pt-pick .pt-seg button{padding:4px 8px;font-size:10px;font-weight:700}
   .period-task .pt-lab .pt-pick-note{display:block;font-size:10px;font-weight:600;color:var(--muted);margin-top:2px}
+  .period-task.pt-unpacked{background:rgba(184,74,50,.06);border-left:3px solid rgba(180,80,60,.35)}
+  .period-task.pt-unpacked .pt-lab .pt-unpacked-tag{display:inline;font-size:10px;font-weight:700;color:var(--rust);margin-left:4px}
   #segAlarmEnd.disabled{opacity:.45;pointer-events:none}
   .period-add-row{display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;border-top:1px dashed var(--line-soft)}
   .period-add-row input{flex:1;min-width:100px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px}
@@ -1097,6 +1099,7 @@ const ALARM_END_LEAD=5;
 const DEFAULT_ALARM_END_TASKS=['study1','study2','gym','jobapps','jobapps2','dinner','mealprep','dinnerprep','review','chores'];
 let alarmFired=new Set();
 let alarmDayKey=null;
+let lastSkippedBandTasks=[];
 const SLEEP_START=180; // 03:00
 const WEEKEND_MIDNIGHT=24*60;
 const WORKDAY_PERIOD_KEYS=['morning','afternoon','evening'];
@@ -1422,12 +1425,15 @@ function resolvePeriodBlock(taskKey,c,ws,ov,dayKey,durCap){
   if(durCap!=null)dur=Math.min(dur,durCap);
   return{...d,dur:Math.max(5,dur)};
 }
-function packPeriodBand(seq,warnings,bandKey,bandStart,bandEnd,taskKeys,c,ws,ov,dayKey){
+function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,c,ws,ov,dayKey){
   let cur=bandStart;
   const label=PERIOD_LABELS[bandKey];
   taskKeys.forEach(taskKey=>{
     const room=bandEnd-cur;
-    if(room<5)return;
+    if(room<5){
+      if(skipped)skipped.push({taskKey,bandKey,lab:periodTaskLabel(taskKey,dayKey)});
+      return;
+    }
     const block=resolvePeriodBlock(taskKey,c,ws,ov,dayKey,room);
     if(!block)return;
     const overflow=cur+block.dur>bandEnd;
@@ -1448,9 +1454,10 @@ function buildPeriodWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
   const lists=effectivePeriodLists(dayKey);
   const seq=[];
   const warnings=[];
-  packPeriodBand(seq,warnings,'morning',wakeMin,WORKDAY_PERIOD_END.morning,lists.morning,c,ws,ov,dayKey);
-  packPeriodBand(seq,warnings,'afternoon',WORKDAY_PERIOD_END.morning,WORKDAY_PERIOD_END.afternoon,lists.afternoon,c,ws,ov,dayKey);
-  packPeriodBand(seq,warnings,'evening',WORKDAY_PERIOD_END.afternoon,WORKDAY_PERIOD_END.evening,lists.evening,c,ws,ov,dayKey);
+  const skipped=[];
+  packPeriodBand(seq,warnings,skipped,'morning',wakeMin,WORKDAY_PERIOD_END.morning,lists.morning,c,ws,ov,dayKey);
+  packPeriodBand(seq,warnings,skipped,'afternoon',WORKDAY_PERIOD_END.morning,WORKDAY_PERIOD_END.afternoon,lists.afternoon,c,ws,ov,dayKey);
+  packPeriodBand(seq,warnings,skipped,'evening',WORKDAY_PERIOD_END.afternoon,WORKDAY_PERIOD_END.evening,lists.evening,c,ws,ov,dayKey);
   let bfEnd=wakeMin+60;
   const bf=seq.find(b=>b.id==='breakfast');
   if(bf)bfEnd=bf.end;
@@ -1467,7 +1474,7 @@ function buildPeriodWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
   });
   if(cur<WORK_START)pushFlexGap(withFlex,cur,WORK_START,'Before work');
   const endMin=withFlex.reduce((m,b)=>Math.max(m,b.end||0),WORKDAY_PERIOD_END.evening);
-  return{seq:withFlex,endMin,overlapWarnings:warnings,suddenConflicts:applied.conflicts};
+  return{seq:withFlex,endMin,overlapWarnings:warnings,suddenConflicts:applied.conflicts,skippedBandTasks:skipped};
 }
 function buildPeriodWeekendSeq(c,ws,ov,dayKey,suddenTasks){
   const dt=dayTypeForKey(dayKey);
@@ -1477,10 +1484,11 @@ function buildPeriodWeekendSeq(c,ws,ov,dayKey,suddenTasks){
   const lists=effectivePeriodLists(dayKey);
   const seq=[];
   const warnings=[];
+  const skipped=[];
   let bandStart=wakeMin;
   keys.forEach(period=>{
     const bandEnd=ends[period];
-    packPeriodBand(seq,warnings,period,bandStart,bandEnd,lists[period]||[],c,ws,ov,dayKey);
+    packPeriodBand(seq,warnings,skipped,period,bandStart,bandEnd,lists[period]||[],c,ws,ov,dayKey);
     bandStart=bandEnd;
   });
   const gapOpts={wakeMin,earliest:wakeMin+60,dayEnd:WEEKEND_MIDNIGHT};
@@ -1495,7 +1503,7 @@ function buildPeriodWeekendSeq(c,ws,ov,dayKey,suddenTasks){
   });
   if(cur<WEEKEND_MIDNIGHT)pushFlexGap(withFlex,cur,WEEKEND_MIDNIGHT,'After midnight');
   const endMin=withFlex.reduce((m,b)=>Math.max(m,b.end||0),ends.night||WEEKEND_MIDNIGHT);
-  return{seq:withFlex,endMin,overlapWarnings:warnings,suddenConflicts:applied.conflicts};
+  return{seq:withFlex,endMin,overlapWarnings:warnings,suddenConflicts:applied.conflicts,skippedBandTasks:skipped};
 }
 function clearPeriodOverrides(dayKey){
   const c=dayCfg(dayKey);
@@ -1757,6 +1765,28 @@ function taskMinutesForBandRow(taskKey,ctx){
 }
 function sumBandMinutes(period,list,ctx){
   return(list||[]).reduce((s,k)=>s+taskMinutesForBandRow(k,ctx),0);
+}
+function bandCapacityStatus(period,ctx,extraMins){
+  const dayKey=ctx.dayKey||(ctx.mode==='template'?ctx.dayType:activeDayKey());
+  const dt=ctx.dayType||dayTypeForKey(dayKey);
+  const wake=ctx.mode==='template'?planPreviewWakeMin(dt):(dayKey===activeDayKey()?cfg().wake:dayCfg(dayKey).wake);
+  const lists=ctx.mode==='template'?effectiveTemplateLists(dt):effectivePeriodLists(dayKey);
+  const used=sumBandMinutes(period,lists[period]||[],ctx)+(extraMins||0);
+  const cap=bandCapacityMinutes(period,dt,wake);
+  return{cap,used,over:cap>0&&used>cap,shortBy:cap>0?Math.max(0,used-cap):0};
+}
+function flashBandCapacityWarning(period,extraMins,ctx){
+  const st=bandCapacityStatus(period,ctx,extraMins);
+  if(!st.over)return false;
+  const before=st.used-(extraMins||0);
+  const addTxt=extraMins?' · adding '+extraMins+'m':'';
+  flash('⚠ '+PERIOD_LABELS[period]+' band full ('+before+'/'+st.cap+'m'+addTxt+') — over by '+st.shortBy+'m. Shorten or move tasks.',4800);
+  return true;
+}
+function skippedBandConflicts(skipped){
+  return(skipped||[]).map(s=>({
+    msg:PERIOD_LABELS[s.bandKey]+' band — "'+s.lab+"\" didn't fit on Today's Flow (no room left). Shorten or move tasks."
+  }));
 }
 function addTemplatePeriodExtra(period,name,mins,dayType){
   const t=getWeekendTemplateDraft(dayType);
@@ -2439,14 +2469,18 @@ function buildSeq(){
   let base;
   if(dt==='workday'){
     base=buildWorkdaySeq(c,ws,ov,dayKey,c.suddenTasks||[]);
-    const mergedConflicts=[...(base.overlapWarnings||[]),...(base.suddenConflicts||[])];
+    const skipped=base.skippedBandTasks||[];
+    lastSkippedBandTasks=skipped;
+    const mergedConflicts=[...(base.overlapWarnings||[]),...(base.suddenConflicts||[]),...skippedBandConflicts(skipped)];
     lastScheduleConflicts=mergedConflicts;
-    return {seq:base.seq,endMin:base.endMin,conflicts:mergedConflicts};
+    return {seq:base.seq,endMin:base.endMin,conflicts:mergedConflicts,skippedBandTasks:skipped};
   }
   base=buildPeriodWeekendSeq(c,ws,ov,dayKey,c.suddenTasks||[]);
-  const mergedConflicts=[...(base.overlapWarnings||[]),...(base.suddenConflicts||[])];
+  const skipped=base.skippedBandTasks||[];
+  lastSkippedBandTasks=skipped;
+  const mergedConflicts=[...(base.overlapWarnings||[]),...(base.suddenConflicts||[]),...skippedBandConflicts(skipped)];
   lastScheduleConflicts=mergedConflicts;
-  return {seq:base.seq,endMin:base.endMin,conflicts:mergedConflicts};
+  return {seq:base.seq,endMin:base.endMin,conflicts:mergedConflicts,skippedBandTasks:skipped};
 }
 
 function renderClocks(){
@@ -2635,6 +2669,7 @@ function renderPeriodBands(wrap,ctx){
   const showFill=true;
   const previewWake=ctx.mode==='template'?planPreviewWakeMin(ctx.dayType):cfg().wake;
   wrap.innerHTML='';
+  const skippedKeys=ctx.mode==='today'?new Set(lastSkippedBandTasks.map(s=>s.taskKey)):new Set();
   keys.forEach(period=>{
     const band=document.createElement('div');
     band.className='period-band';
@@ -2660,6 +2695,11 @@ function renderPeriodBands(wrap,ctx){
       if(ctx.mode==='today'&&taskKey==='nonFixed'&&isWorkday()){
         labEl.innerHTML=periodTaskLabel(taskKey,labelKey)+'<small class="pt-pick-note">'+nonFixedPickLabel(cfg())+'</small>';
       }else labEl.textContent=periodTaskLabel(taskKey,labelKey);
+      if(skippedKeys.has(taskKey)){
+        row.classList.add('pt-unpacked');
+        labEl.insertAdjacentHTML('beforeend','<span class="pt-unpacked-tag">· not on timeline</span>');
+        row.title='Band ran out of room — shorten or move other tasks';
+      }
       const durEl=row.querySelector('.pt-dur');
       if(ctx.mode==='today'&&taskKey==='gym'&&workoutState()==='skip'){
         durEl.textContent='Skipped';
@@ -2701,8 +2741,8 @@ function renderPeriodBands(wrap,ctx){
           mb.textContent='→ '+PERIOD_LABELS[p].slice(0,3);
           mb.title='Move to '+PERIOD_LABELS[p];
           mb.onclick=()=>{
-            if(ctx.mode==='template'){moveTemplatePeriodTask(taskKey,p,ctx.dayType);renderPeriodBands(wrap,ctx);}
-            else{movePeriodTask(taskKey,p,ctx);saveDay();renderSched();}
+            if(ctx.mode==='template'){moveTemplatePeriodTask(taskKey,p,ctx.dayType);renderPeriodBands(wrap,ctx);flashBandCapacityWarning(p,0,{mode:'template',dayType:ctx.dayType,dayKey:ctx.dayType});}
+            else{movePeriodTask(taskKey,p,ctx);saveDay();flashBandCapacityWarning(p,0,ctx);renderSched();}
           };
           act.appendChild(mb);
         });
@@ -2744,6 +2784,8 @@ function renderPeriodBands(wrap,ctx){
     addBtn.type='button';addBtn.className='btn sm';addBtn.textContent='Add';
     addBtn.onclick=()=>{
       if(!nmIn.value.trim()){nmIn.focus();return;}
+      const mins=Math.max(5,parseInt(minIn.value,10)||30);
+      flashBandCapacityWarning(period,mins,ctx);
       if(ctx.mode==='template'){addTemplatePeriodExtra(period,nmIn.value,minIn.value,ctx.dayType);renderPeriodBands(wrap,ctx);}
       else{addPeriodExtra(period,nmIn.value,minIn.value,ctx);nmIn.value='';saveDay();renderSched();}
     };
