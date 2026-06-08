@@ -285,7 +285,7 @@
   .period-disclosure:not([open]) .period-body{display:none}
   .period-bands-modal{max-height:min(62vh,520px);overflow-y:auto;margin-bottom:12px}
   .modal-hint{font-size:12px;color:var(--muted);margin:0 0 10px;line-height:1.4}
-  .period-plan-foot{padding:8px 4px 4px;text-align:right}
+  .period-plan-foot{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;padding:8px 4px 4px}
   .period-band{margin-bottom:12px;border:1px solid var(--line-soft);border-radius:10px;overflow:hidden}
   .period-band:last-child{margin-bottom:0}
   .period-band-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2)}
@@ -301,7 +301,10 @@
   .period-task.drag-over{background:rgba(184,120,12,.1);box-shadow:inset 0 0 0 1px rgba(184,120,12,.35)}
   .period-task .pt-drag{flex-shrink:0;width:18px;text-align:center;color:var(--muted2);font-size:14px;line-height:1;cursor:grab;user-select:none;-webkit-user-select:none}
   .period-task .pt-drag:active{cursor:grabbing}
-  .period-task .pt-dur{font-size:11px;font-weight:700;color:var(--muted2);flex-shrink:0;min-width:38px;text-align:right}
+  .period-task .pt-dur{font-size:11px;font-weight:700;color:var(--muted2);flex-shrink:0;min-width:38px;text-align:right;display:flex;justify-content:flex-end;align-items:center}
+  .period-task .stepper button{width:22px;height:22px;font-size:13px}
+  .period-task .stepper .val{min-width:36px;font-size:11px}
+  .period-dur-hint{font-size:12px;color:var(--gold);font-weight:600;margin:0 0 8px;padding-top:10px;line-height:1.35}
   .period-task:first-of-type{border-top:none}
   .period-task .pt-ico{width:22px;text-align:center}
   .period-task .pt-lab{flex:1;font-weight:600;min-width:0}
@@ -458,21 +461,18 @@
         <div class="ctl-row">
           <span class="statusline" id="statusLine"></span>
         </div>
-        <div class="ctl-row">
-          <button class="ghostbtn" id="editBtn">⚙️ Edit block lengths</button>
-          <span class="resetlink" id="resetDur" style="display:none">↺ reset this day's lengths</span>
-          <span class="edithint" id="editHint" style="display:none">Length changes apply to today only.</span>
-        </div>
         <div id="periodPlanPanel" style="display:none">
           <details class="period-disclosure" id="periodPlanDisclosure">
             <summary class="period-summary">
               <span class="tri" aria-hidden="true"></span>
               <span class="sum-txt">Today's bands</span>
-              <span class="sum-hint">Drag or ↑↓ to reorder</span>
+              <span class="sum-hint">−/+ minutes · drag to reorder</span>
             </summary>
             <div class="period-body">
+              <p class="period-dur-hint">Adjust minutes on each row — changes apply to today only.</p>
               <div id="periodBands"></div>
               <div class="period-plan-foot">
+                <span class="resetlink" id="resetDur" style="display:none">↺ reset today's lengths</span>
                 <span class="resetlink" id="resetPeriod" style="display:none">↺ reset today's order</span>
               </div>
             </div>
@@ -916,8 +916,6 @@ const Store={
 };
 let DATA=null;
 function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodPlanOpen:false,periodTemplate:null,weekendPeriodTemplate:null};}
-let editMode=false;
-
 const PMP=new Date('2026-06-22T00:00:00');
 const PMP_EXAM_KEY='2026-06-22';
 const JOB=new Date('2026-08-01T00:00:00');
@@ -1340,6 +1338,27 @@ function applyBlockDurDelta(b,delta){
     return;
   }
   dc.blockDur[b.id]=Math.max(5,b.dur+delta);
+}
+function applyBandTaskDurDelta(taskKey,ctx,delta){
+  const dayKey=ctx.dayKey||activeDayKey();
+  touchDaySync(dayKey);
+  const c=cfg();
+  const ws=workoutState();
+  const ov=blockDurOv(dayKey);
+  const block=resolvePeriodBlock(taskKey,c,ws,ov,dayKey,null);
+  if(!block)return;
+  if(taskKey.startsWith('extra:')){
+    const found=findPeriodExtra(dayKey,taskKey.slice(6));
+    if(found&&!found.fromTemplate){
+      periodKeysForDayKey(dayKey).forEach(p=>{
+        const arr=c.periodExtras[p]||[];
+        const hit=arr.find(x=>x.id===block.id);
+        if(hit)hit.mins=Math.max(5,hit.mins+delta);
+      });
+    }else applyBlockDurDelta(block,delta);
+    return;
+  }
+  applyBlockDurDelta(block,delta);
 }
 function gymBlockForPeriod(ws,ov,durCap){
   if(ws==='skip')return null;
@@ -2584,7 +2603,18 @@ function renderPeriodBands(wrap,ctx){
       const row=document.createElement('div');
       row.className='period-task';
       const mins=taskMinutesForBandRow(taskKey,ctx);
-      row.innerHTML=`<span class="pt-drag" title="Drag to reorder">⠿</span><span class="pt-ico">${periodTaskIco(taskKey,labelKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey,labelKey)}</span><span class="pt-dur">${mins}m</span><span class="pt-act"></span>`;
+      row.innerHTML=`<span class="pt-drag" title="Drag to reorder">⠿</span><span class="pt-ico">${periodTaskIco(taskKey,labelKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey,labelKey)}</span><span class="pt-dur"></span><span class="pt-act"></span>`;
+      const durEl=row.querySelector('.pt-dur');
+      if(ctx.mode==='today'){
+        durEl.innerHTML=`<span class="stepper"><button type="button" data-step="-1">−</button><span class="val">${mins}m</span><button type="button" data-step="1">+</button></span>`;
+        durEl.querySelectorAll('.stepper button').forEach(btn=>{
+          btn.onclick=(e)=>{
+            e.stopPropagation();
+            applyBandTaskDurDelta(taskKey,ctx,parseInt(btn.dataset.step,10)*5);
+            saveDay();renderSched();renderGlance();
+          };
+        });
+      }else durEl.textContent=mins+'m';
       const act=row.querySelector('.pt-act');
       if(idx>0){
         const up=document.createElement('button');
@@ -2711,6 +2741,8 @@ function renderPeriodPlan(){
   renderPeriodBands(wrap,{mode:'today',dayKey,dayType:dt});
   const resetP=document.getElementById('resetPeriod');
   if(resetP)resetP.style.display=hasPeriodOverrides(dayKey)?'inline':'none';
+  const resetD=document.getElementById('resetDur');
+  if(resetD)resetD.style.display=Object.keys(blockDurOv(dayKey)).length?'inline':'none';
   const disc=document.getElementById('periodPlanDisclosure');
   if(disc&&!disc.dataset.wired){
     disc.dataset.wired='1';
@@ -2758,12 +2790,6 @@ function renderSched(){
   } else {
     statusLine.className='statusline off';statusLine.textContent='🌙 Day wraps around '+fmt12(minToTime(endMin))+' — no shift, sleep when ready';
   }
-  // edit-mode chrome
-  editBtn.classList.toggle('on',editMode);
-  editBtn.textContent=editMode?'✓ Done editing':'⚙️ Edit block lengths';
-  const hasOv=Object.keys(blockDurOv(activeDayKey())).length;
-  resetDur.style.display=(editMode&&hasOv)?'inline':'none';
-  editHint.style.display=editMode?'inline':'none';
   // meal-prep banner (workdays only)
   renderMealBanner();
   // render blocks
@@ -2772,33 +2798,16 @@ function renderSched(){
   seq.forEach(b=>{
     const startHH=minToTime(b.start);const done=!!checks[b.id];const now=!done&&nowMin()>=b.start&&nowMin()<b.end;
     const isFlex=!!b.flex;
-    const el=document.createElement('div');el.className='blk'+(done?' done':'')+(now?' now':'')+(editMode?' info':'')+(isFlex?' flex info':'')+(b.anchored?' anchored':'')+(b.overflow?' overflow':'')+(b.period?' period-'+b.period:'');
+    const el=document.createElement('div');el.className='blk'+(done?' done':'')+(now?' now':'')+(isFlex?' flex info':'')+(b.anchored?' anchored':'')+(b.overflow?' overflow':'')+(b.period?' period-'+b.period:'');
     let rightHTML;
-    if(editMode&&!isFlex){
-      rightHTML=`<span class="stepper"><button data-step="-1">−</button><span class="val">${b.dur}m</span><button data-step="1">+</button></span>${(b.custom||b.sudden||(b.periodCustom&&!b.templateExtra))?'<span class="delx">✕</span>':''}`;
-    } else if(!isFlex) {
-      rightHTML=`${(b.custom||b.sudden)?'<span class="delx">✕</span>':''}<div class="chk"></div>`;
+    if(!isFlex){
+      rightHTML=`${(b.custom||b.sudden||(b.periodCustom&&!b.templateExtra))?'<span class="delx">✕</span>':''}<div class="chk"></div>`;
     } else rightHTML='';
     const endLbl=b.end!=null?fmt12(minToTime(b.end)):'';
     el.innerHTML=`<div class="time">${fmt12(startHH)}${endLbl?'<br><span style="font-size:11px;color:var(--muted2)">→ '+endLbl+'</span>':''}</div>
       <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.overflow?'<span class="overflowtag">OVERLAP</span>':''}${b.custom&&!b.sudden?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.nonFixed?'<span class="custag">PICK</span>':''}${b.period?'<span class="period-tag">'+PERIOD_LABELS[b.period]+'</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.sub} · ${b.dur}m</small></span></div>
       <div class="right">${rightHTML}</div>`;
-    if(editMode&&!isFlex){
-      el.querySelectorAll('.stepper button').forEach(btn=>btn.onclick=(e)=>{
-        e.stopPropagation();const delta=parseInt(btn.dataset.step)*5;
-        if(b.sudden){touchDaySync(activeDayKey());const t=(c.suddenTasks||[]).find(x=>x.id===b.id);if(t)t.mins=Math.max(5,t.mins+delta);}
-        else if(b.periodCustom){
-          const found=findPeriodExtra(activeDayKey(),b.id);
-          if(found&&!found.fromTemplate){
-            const pkeys=periodKeysForDayKey(activeDayKey());
-            pkeys.forEach(p=>{const arr=c.periodExtras[p]||[];const hit=arr.find(x=>x.id===b.id);if(hit)hit.mins=Math.max(5,hit.mins+delta);});
-          }else applyBlockDurDelta(b,delta);
-        }
-        else if(b.custom){const t=c.tasks.find(x=>x.id===b.id);if(t)t.mins=Math.max(5,t.mins+delta);}
-        else applyBlockDurDelta(b,delta);
-        saveDay();renderSched();renderGlance();
-      });
-    } else if(!isFlex) {
+    if(!isFlex) {
       const chk=el.querySelector('.chk');
       if(chk)chk.onclick=(e)=>{e.stopPropagation();if(b.id&&!b.id.startsWith('flex_'))toggleBlockDone(b.id);};
     }
@@ -3532,11 +3541,11 @@ document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
 });
 
 function wire(){
-  editBtn.onclick=()=>{editMode=!editMode;renderSched();};
   addTodo.onclick=()=>{const v=todoInput.value.trim();if(!v){todoInput.focus();return;}DATA.todos.push({id:'td_'+Date.now(),text:v,done:false,created:todayKey(),due:todoDue.value||null});todoInput.value='';todoDue.value='';save();renderTodos();renderNowBanner();};
   todoInput.addEventListener('keydown',e=>{if(e.key==='Enter')addTodo.click();});
   clearDone.onclick=()=>{DATA.todos=DATA.todos.filter(t=>!t.done);save();renderTodos();renderNowBanner();};
-  resetDur.onclick=()=>{touchDaySync(activeDayKey());cfg().blockDur={};saveDay();renderSched();renderGlance();};
+  const resetDurEl=document.getElementById('resetDur');
+  if(resetDurEl)resetDurEl.onclick=()=>{touchDaySync(activeDayKey());cfg().blockDur={};saveDay();renderSched();renderGlance();flash('Today\'s lengths reset');};
   const resetPeriodBtn=document.getElementById('resetPeriod');
   if(resetPeriodBtn)resetPeriodBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodOverrides(activeDayKey());saveDay();renderSched();renderGlance();flash('Today\'s band order reset');};
   document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;saveDay();renderClocks();renderSched();renderNowBanner();renderGlance();});
