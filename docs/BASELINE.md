@@ -10,8 +10,9 @@ Use this when you want future work (or a new chat) to treat the app as **known-g
 | Item | Value |
 |------|--------|
 | Tag | `baseline-2026-06-08` |
-| App code commit | `9c3fe45` — band duration edit, inline workout/extra pickers, task alarms, cleaner timeline labels |
-| Tag points at | `9c3fe45` (`life-dashboard.html`); `docs/BASELINE.md` + `docs/HANDOFF.md` updated on `main` in the following docs commit |
+| App at tag | `9c3fe45` — band duration edit, inline workout/extra pickers, task alarms, cleaner timeline labels |
+| **`main` HEAD (app)** | `3356525` — adds band capacity warnings (toast on add/move; didn't-fit banner + band row tags) |
+| Docs | Updated on `main` with each docs commit; tag points at app `9c3fe45` |
 
 ### Restore code to this baseline
 
@@ -33,7 +34,15 @@ List what the tag contains:
 git show baseline-2026-06-08 --stat
 ```
 
-**Live site:** GitHub Pages follows `main`. Checking out a tag locally does not change Pages until you merge or push that state to `main`.
+**Live site:** GitHub Pages follows `main` (currently `3356525`). Checking out tag `baseline-2026-06-08` locally does not change Pages until you merge or push that state to `main`.
+
+---
+
+## Changes since `baseline-2026-06-08` (`9c3fe45` app)
+
+| Commit | Summary |
+|--------|---------|
+| `3356525` | **Band capacity warnings** — `flashBandCapacityWarning` / `bandCapacityStatus` on add activity and move between bands; `packPeriodBand` records `skippedBandTasks` when &lt;5m room left; `#conflictBanner` via `skippedBandConflicts`; band rows tagged **· not on timeline** (`pt-unpacked`). Fix: apostrophe syntax in conflict message (had blocked page load). |
 
 ---
 
@@ -66,7 +75,7 @@ git show baseline-2026-06-08 --stat
 ### Product surfaces
 
 - **Today** — period-band schedule, Today's Flow timeline (duration-only labels + checkboxes), today-only band overrides, sudden tasks, **alarms**, sidebar to-dos + scratchpad
-- **Today's bands** (collapsible) — reorder (↑↓ / drag), move between bands, add extras, **blockDur −/+ steppers**, **Gym/Home/Skip** on gym row, **Extra picker** on non-fixed row (workdays), **⏱ end-warn** toggles per task
+- **Today's bands** (collapsible) — reorder (↑↓ / drag), move between bands, add extras, **blockDur −/+ steppers**, **Gym/Home/Skip** on gym row, **Extra picker** on non-fixed row (workdays), **⏱ end-warn** toggles, **capacity toast on add/move**, **· not on timeline** when task didn't pack
 - **Quick Glance** — block checks, **habit chips** (no separate habits tab), study log shortcuts
 - **PMP Prep** — study log, domains, quiz (hidden after exam day)
 - **Job Search** — application pipeline, job to-dos, notes
@@ -81,8 +90,8 @@ git show baseline-2026-06-08 --stat
 | Concept | Storage | Notes |
 |---------|---------|--------|
 | **Plan** | `weekendPeriodTemplate` + modal drafts | Weekly Fri/Sat defaults; flushed on Save only |
-| **Today's bands** | `dayConfig[date]` | Today-only reorder/move/extras/`blockDur`; workout & nonFixed picks on band rows |
-| **Today's Flow** | Computed | `buildSeq()` → `renderSched()` — not a stored list; read-only durations |
+| **Today's bands** | `dayConfig[date]` | Today-only reorder/move/extras/`blockDur`; workout & nonFixed picks on band rows; band list can exceed window — see skipped warnings |
+| **Today's Flow** | Computed | `buildSeq()` → `renderSched()` — not a stored list; read-only durations; may omit band tasks with no room |
 | **Alarms** | `DATA.alarmOn`, `alarmEndOn`, `alarmEndTasks` | Start-of-block default on; 5m end warn per ⏱; `checkTaskAlarms()` every 15s |
 | **To-Do** | `DATA.todos` | Sidebar; separate from schedule blocks |
 | **Habits** | `DATA.habits` + Today chips | No dedicated tab |
@@ -198,13 +207,13 @@ Firestore and `localStorage` are **not** reverted by `git checkout`. Baseline is
 - **Workday (Sun–Thu):** 3 bands + fixed Work (8pm–3am) + Sleep (3am→wake).
 - **Friday / Saturday:** 4 bands through night (8pm–midnight); no work block.
 - **Pre-exam (through 2026-06-22):** PMP in defaults; **post-exam:** PMP removed, job apps >2h focus.
-- **Key functions:** `buildSeq`, `buildPeriodWorkdaySeq`, `buildPeriodWeekendSeq`, `renderSched`, `renderPeriodBands`, `applyBandTaskDurDelta`, `appendBandTaskPickers`, `wirePeriodTaskDrag`, `checkTaskAlarms`, `renderAlarmControls`, `planPreviewWakeMin(forDayType)`, `calendarDayTypeForKey`, `autoDayType`.
+- **Key functions:** `buildSeq`, `buildPeriodWorkdaySeq`, `buildPeriodWeekendSeq`, `packPeriodBand`, `renderSched`, `renderPeriodBands`, `applyBandTaskDurDelta`, `appendBandTaskPickers`, `bandCapacityStatus`, `flashBandCapacityWarning`, `skippedBandConflicts`, `wirePeriodTaskDrag`, `checkTaskAlarms`, `renderAlarmControls`, `planPreviewWakeMin(forDayType)`, `calendarDayTypeForKey`, `autoDayType`.
 
 Full band windows and defaults: [DESIGN.md](./DESIGN.md).
 
 ---
 
-## Fixes included in baseline code (`9c3fe45`)
+## Fixes included in baseline code (`3356525` on `main`; tag `9c3fe45`)
 
 - Weekend 4-band model + weekly Plan templates
 - Fri/Sat tab drafts without reload; drag reorder in Plan modal
@@ -216,6 +225,7 @@ Full band windows and defaults: [DESIGN.md](./DESIGN.md).
 - Gym `blockDur` = workout minutes; band duration steppers
 - Task alarms (start + optional 5m end warn)
 - Workout/Extra pickers on band rows; timeline duration-only labels
+- Band capacity warnings: toast on overfull add/move; conflict banner + row tag for unpacked tasks
 
 ---
 

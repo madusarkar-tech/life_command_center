@@ -61,23 +61,43 @@ PMP blocks removed; morning open time is for custom activities (add via band UI)
 - **periodOrder** — ↑↓ reorder within a band today only.
 - **periodMoves** — move a task to another band today only (e.g. gym → morning).
 - **periodExtras** — custom named activities in a band (post-exam open time).
+- **blockDur** — today-only duration per task key; edited via **−/+ steppers** on band rows (not a separate timeline edit mode).
 - **Reset today's order** — clears overrides; defaults return.
 
 Sync via existing Firebase `dayConfig` merge.
 
+### Band row controls (workdays)
+
+- **Gym row:** Gym / Home / Skip picker (replaces former top Workout row).
+- **Non-fixed row:** Auto / Read / AI / QGIS / Skip picker (replaces former top Extra row).
+- **⏱ toggle:** optional 5-minute end warning for that task (`alarmEndTasks`).
+
+### Today's Flow (computed timeline)
+
+- Built from band packing (`packPeriodBand`); read-only for durations.
+- Labels show **duration only** (e.g. `60m`) — no subtitle hints like “1h from wake”.
+- Checkboxes for block completion; **Alarms** / **End warn** toggles in the header.
+
 ### Still applies
 
 - **Wake** / “Just woke up” — starts morning band.
-- **Workout** Gym / Home / Skip — affects gym duration in whichever band gym sits.
 - **Sudden tasks** — applied after band packing; can displace/replace blocks.
-- **Edit block lengths** — `blockDur` per day.
-- **Non-fixed** Extra control — resolves `nonFixed` slot in afternoon.
+
+### Task alarms
+
+- **Start-of-block** alerts when a scheduled block begins (default on via `alarmOn`).
+- **End warning** — optional 5 minutes before block end, per task via ⏱ on band rows (`alarmEndOn`, `alarmEndTasks`).
+- `checkTaskAlarms()` runs every 15s while the tab is open; Web Audio beep + toast; browser notifications if permitted.
 
 ### Minimums & warnings
 
 - PMP habit: ≥120m from `study1`/`study2` + sessions (through exam day).
 - Job: ≥30m pre-exam; >2h post-exam from job blocks.
-- Band **overfull** warning if stacked tasks exceed band end time.
+- **Band capacity:** band task list can exceed the band window. When `packPeriodBand` cannot fit a task (&lt;5m room left), it is skipped on the timeline:
+  - Toast on add/move when the band is already overfull (`flashBandCapacityWarning`).
+  - **#conflictBanner** lists tasks that did not pack (`skippedBandConflicts`).
+  - Band rows show **· not on timeline** for unpacked tasks.
+  - Overfull add/move is still allowed — shorten durations or move tasks to fix.
 
 ## Friday & Saturday (weekend days)
 
@@ -93,16 +113,19 @@ Sync via existing Firebase `dayConfig` merge.
 | Control | Behavior |
 |---------|----------|
 | Wake time / “Just woke up” | Morning band starts at wake |
-| Day type (Auto / Workday / Friday / Saturday) | Auto uses weekday |
-| Workout: Gym / Home / Skip | Gym block duration/placement |
+| Day type (Auto / Workday / Friday / Saturday) | Auto uses active day key (4am rollover) |
+| Workout: Gym / Home / Skip | On gym band row; affects gym duration |
+| Non-fixed: Auto / Read / AI / QGIS / Skip | On non-fixed band row (workdays) |
 | Sudden tasks | Anytime or fixed window |
 | Weekend plan | Weekly Fri/Sat band templates (Plan modal) |
-| Edit block lengths | Today only (`blockDur`) |
-| Today's bands | Reorder / move tasks between bands (workday: 3 + work; weekend: 4) |
+| Block lengths (`blockDur`) | −/+ steppers on Today's band rows |
+| Task alarms | Start-of-block (default on); ⏱ end warn per task |
+| Today's bands | Reorder / move / drag between bands (workday: 3 + work; weekend: 4) |
 
 ## What the dashboard does *not* do (yet)
 
 - Cloud backup beyond Firebase sign-in
 - Google Calendar / Todoist integration
+- **Gym spillover** — if morning band is full, gym should try afternoon/evening before dropping lower-priority tasks (user wants; not built)
 
 See [BUILD-HISTORY.md](BUILD-HISTORY.md) for feature evolution.

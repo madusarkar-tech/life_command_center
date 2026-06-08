@@ -81,12 +81,28 @@ Last Claude turn ran out of credits before shipping **“most urgent due item in
 
 Original artifact used `window.storage` when available; otherwise in-memory only. Repo version adds **localStorage** fallback so data survives refresh when opened locally.
 
+## Recent updates (June 2026)
+
+After the initial repo import, development continued in Cursor:
+
+| Date / commit | Feature |
+|---------------|---------|
+| `fe372d0` | Safe per-array sync merge for todos, jobTodos, habits, jobs |
+| `9aa5ed8` | Gym `blockDur` fix; drag reorder in Today's bands + Plan modal |
+| `cc80484` | Block duration editing moved to −/+ steppers on band rows |
+| `9c3fe45` | Task alarms (start + optional 5m end warn); Gym/Home/Skip and Extra pickers on band rows; duration-only timeline labels |
+| `3356525` | Band capacity warnings — toast on overfull add/move, conflict banner, **· not on timeline** row tags |
+
+Baseline tag: `baseline-2026-06-08` at `9c3fe45`; `main` ahead at `3356525`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
+
 ## Files in this repo
 
 | File | Role |
 |------|------|
 | `life-dashboard.html` | Entire application |
 | `docs/DESIGN.md` | Constraints and schedule rules |
+| `docs/BASELINE.md` | Baseline contract for sync and scheduling |
+| `docs/HANDOFF.md` | Short onboarding for new chats |
 | `docs/BUILD-HISTORY.md` | This file |
 | `README.md` | How to run and what’s included |
 
