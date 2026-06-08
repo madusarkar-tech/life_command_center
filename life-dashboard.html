@@ -313,6 +313,13 @@
   .period-task .pt-act button:hover{color:var(--text);border-color:var(--gold)}
   .period-task .pt-act button.pt-rm{color:var(--rust);border-color:rgba(180,80,60,.35)}
   .period-task .pt-act button.pt-rm:hover{color:#fff;background:var(--rust);border-color:var(--rust)}
+  .period-task .pt-act button.pt-alarm.on{color:var(--gold);border-color:var(--gold);background:rgba(184,120,12,.12)}
+  .period-task.has-pick{flex-wrap:wrap}
+  .period-task .pt-pick{flex:1 1 100%;padding:4px 0 2px 30px}
+  .period-task .pt-pick .pt-seg{display:inline-flex;border-radius:6px}
+  .period-task .pt-pick .pt-seg button{padding:4px 8px;font-size:10px;font-weight:700}
+  .period-task .pt-lab .pt-pick-note{display:block;font-size:10px;font-weight:600;color:var(--muted);margin-top:2px}
+  #segAlarmEnd.disabled{opacity:.45;pointer-events:none}
   .period-add-row{display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;border-top:1px dashed var(--line-soft)}
   .period-add-row input{flex:1;min-width:100px;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px}
   .period-tag{font-size:10px;font-weight:800;padding:2px 6px;border-radius:20px;background:rgba(127,168,201,.15);color:var(--sky);margin-left:6px;vertical-align:middle}
@@ -440,26 +447,19 @@
           <span class="wake-locked" id="wakeLockedLbl" style="display:none"></span>
         </div>
         <div class="ctl-row">
-          <span class="lbl2">Workout</span>
-          <div class="seg" id="segWorkout">
-            <button data-w="gym">Gym</button>
-            <button data-w="home">Home · 20m+</button>
-            <button data-w="skip">Skip</button>
-          </div>
-        </div>
-        <div class="ctl-row" id="nonFixedRow" style="display:none">
-          <span class="lbl2">Extra</span>
-          <div class="seg" id="segNonFixed">
-            <button type="button" data-nf="auto">Auto</button>
-            <button type="button" data-nf="read">Read</button>
-            <button type="button" data-nf="aiwork">AI</button>
-            <button type="button" data-nf="qgis">QGIS</button>
-            <button type="button" data-nf="none">Skip</button>
-          </div>
-          <span class="ctl-note" id="nonFixedNote"></span>
-        </div>
-        <div class="ctl-row">
           <span class="statusline" id="statusLine"></span>
+        </div>
+        <div class="ctl-row" id="alarmRow">
+          <span class="lbl2">Alarms</span>
+          <div class="seg" id="segAlarm">
+            <button type="button" data-a="on">On</button>
+            <button type="button" data-a="off">Off</button>
+          </div>
+          <div class="seg" id="segAlarmEnd">
+            <button type="button" data-ae="on">End warn</button>
+            <button type="button" data-ae="off">Off</button>
+          </div>
+          <span class="ctl-note" id="alarmNote">Start of each block · 5m end warning on ⏱ tasks</span>
         </div>
         <div id="periodPlanPanel" style="display:none">
           <details class="period-disclosure" id="periodPlanDisclosure">
@@ -469,7 +469,7 @@
               <span class="sum-hint">−/+ minutes · drag to reorder</span>
             </summary>
             <div class="period-body">
-              <p class="period-dur-hint">Adjust minutes on each row — changes apply to today only.</p>
+              <p class="period-dur-hint">Adjust minutes on each row — today only. Gym/Home/Skip and extra picks live on those band rows.</p>
               <div id="periodBands"></div>
               <div class="period-plan-foot">
                 <span class="resetlink" id="resetDur" style="display:none">↺ reset today's lengths</span>
@@ -915,7 +915,7 @@ const Store={
   }
 };
 let DATA=null;
-function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodPlanOpen:false,periodTemplate:null,weekendPeriodTemplate:null};}
+function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodPlanOpen:false,periodTemplate:null,weekendPeriodTemplate:null,alarmOn:true,alarmEndOn:true,alarmEndTasks:null};}
 const PMP=new Date('2026-06-22T00:00:00');
 const PMP_EXAM_KEY='2026-06-22';
 const JOB=new Date('2026-08-01T00:00:00');
@@ -1093,6 +1093,10 @@ const TEMPLATES={
   ]
 };
 const WORK_START=1200; // 20:00, workdays only
+const ALARM_END_LEAD=5;
+const DEFAULT_ALARM_END_TASKS=['study1','study2','gym','jobapps','jobapps2','dinner','mealprep','dinnerprep','review','chores'];
+let alarmFired=new Set();
+let alarmDayKey=null;
 const SLEEP_START=180; // 03:00
 const WEEKEND_MIDNIGHT=24*60;
 const WORKDAY_PERIOD_KEYS=['morning','afternoon','evening'];
@@ -2572,6 +2576,54 @@ function renderWeekendBanner(){
   });
   txt.textContent=parts.join(' · ');
 }
+function wireBandMiniSeg(container,buttons,activeVal,onPick){
+  const seg=document.createElement('div');
+  seg.className='seg pt-seg';
+  buttons.forEach(({val,label,title})=>{
+    const b=document.createElement('button');
+    b.type='button';
+    b.textContent=label;
+    if(title)b.title=title;
+    b.classList.toggle('on',val===activeVal);
+    b.onclick=(e)=>{e.stopPropagation();onPick(val);};
+    seg.appendChild(b);
+  });
+  container.appendChild(seg);
+}
+function appendBandTaskPickers(row,taskKey,ctx){
+  if(ctx.mode!=='today')return;
+  const pick=document.createElement('div');
+  pick.className='pt-pick';
+  if(taskKey==='gym'){
+    wireBandMiniSeg(pick,[
+      {val:'gym',label:'Gym',title:'Gym + commute'},
+      {val:'home',label:'Home',title:'Home workout · 20m+'},
+      {val:'skip',label:'Skip',title:'No workout today'}
+    ],workoutState(),v=>{
+      touchDaySync(activeDayKey());
+      cfg().workout=v;
+      saveDay();renderSched();renderNowBanner();renderGlance();
+    });
+    row.classList.add('has-pick');
+    row.insertBefore(pick,row.querySelector('.pt-dur'));
+  }else if(taskKey==='nonFixed'&&isWorkday()){
+    const c=cfg();
+    const nfSel=c.nonFixedPick||'auto';
+    wireBandMiniSeg(pick,[
+      {val:'auto',label:'Auto',title:'Rotates by date'},
+      {val:'read',label:'Read'},
+      {val:'aiwork',label:'AI'},
+      {val:'qgis',label:'QGIS'},
+      {val:'none',label:'Skip',title:'Skip non-fixed block'}
+    ],nfSel,v=>{
+      touchDaySync(activeDayKey());
+      cfg().nonFixedPick=v==='auto'?null:v;
+      saveDay();renderSched();renderNowBanner();renderGlance();
+    });
+    row.classList.add('has-pick');
+    row.insertBefore(pick,row.querySelector('.pt-dur'));
+  }
+}
 function renderPeriodBands(wrap,ctx){
   if(!wrap)return;
   const dayKey=ctx.dayKey||activeDayKey();
@@ -2603,9 +2655,17 @@ function renderPeriodBands(wrap,ctx){
       const row=document.createElement('div');
       row.className='period-task';
       const mins=taskMinutesForBandRow(taskKey,ctx);
-      row.innerHTML=`<span class="pt-drag" title="Drag to reorder">⠿</span><span class="pt-ico">${periodTaskIco(taskKey,labelKey)}</span><span class="pt-lab">${periodTaskLabel(taskKey,labelKey)}</span><span class="pt-dur"></span><span class="pt-act"></span>`;
+      row.innerHTML=`<span class="pt-drag" title="Drag to reorder">⠿</span><span class="pt-ico">${periodTaskIco(taskKey,labelKey)}</span><span class="pt-lab"></span><span class="pt-dur"></span><span class="pt-act"></span>`;
+      const labEl=row.querySelector('.pt-lab');
+      if(ctx.mode==='today'&&taskKey==='nonFixed'&&isWorkday()){
+        labEl.innerHTML=periodTaskLabel(taskKey,labelKey)+'<small class="pt-pick-note">'+nonFixedPickLabel(cfg())+'</small>';
+      }else labEl.textContent=periodTaskLabel(taskKey,labelKey);
       const durEl=row.querySelector('.pt-dur');
-      if(ctx.mode==='today'){
+      if(ctx.mode==='today'&&taskKey==='gym'&&workoutState()==='skip'){
+        durEl.textContent='Skipped';
+      }else if(ctx.mode==='today'&&taskKey==='nonFixed'&&cfg().nonFixedPick==='none'){
+        durEl.textContent='Skipped';
+      }else if(ctx.mode==='today'){
         durEl.innerHTML=`<span class="stepper"><button type="button" data-step="-1">−</button><span class="val">${mins}m</span><button type="button" data-step="1">+</button></span>`;
         durEl.querySelectorAll('.stepper button').forEach(btn=>{
           btn.onclick=(e)=>{
@@ -2656,6 +2716,21 @@ function renderPeriodBands(wrap,ctx){
         rm.onclick=()=>{removeTemplatePeriodTask(taskKey,ctx.dayType);renderPeriodBands(wrap,ctx);};
         act.appendChild(rm);
       }
+      if(ctx.mode==='today'&&DATA.alarmOn&&DATA.alarmEndOn!==false){
+        const aw=document.createElement('button');
+        aw.type='button';
+        aw.className='pt-alarm'+(isAlarmEndEnabledForTaskKey(taskKey)?' on':'');
+        aw.textContent='⏱';
+        aw.title=isAlarmEndEnabledForTaskKey(taskKey)?'5m end warning on':'5m end warning off';
+        aw.onclick=(e)=>{
+          e.stopPropagation();
+          toggleAlarmEndTask(taskKey);
+          renderPeriodBands(wrap,ctx);
+          renderAlarmControls();
+        };
+        act.appendChild(aw);
+      }
+      appendBandTaskPickers(row,taskKey,ctx);
       wirePeriodTaskDrag(row,period,taskKey,idx,wrap,ctx);
       band.appendChild(row);
     });
@@ -2751,17 +2826,11 @@ function renderPeriodPlan(){
   if(disc&&disc.open!==!!DATA.periodPlanOpen)disc.open=!!DATA.periodPlanOpen;
 }
 function renderSched(){
-  const c=cfg();const ws=workoutState();const dt=dayType();
+  const c=cfg();const dt=dayType();
+  renderAlarmControls();
   renderPeriodPlan();
   document.querySelectorAll('#segDay button').forEach(b=>b.classList.toggle('on',b.dataset.d===(c.dayType||'auto')));
   dayLabel.textContent=DAYNAMES[dt];
-  document.querySelectorAll('#segWorkout button').forEach(b=>b.classList.toggle('on',b.dataset.w===ws));
-  const nfRow=document.getElementById('nonFixedRow');
-  const nfNote=document.getElementById('nonFixedNote');
-  if(nfRow)nfRow.style.display=isWorkday()?'flex':'none';
-  const nfSel=c.nonFixedPick||'auto';
-  document.querySelectorAll('#segNonFixed button').forEach(b=>b.classList.toggle('on',b.dataset.nf===nfSel));
-  if(nfNote&&isWorkday())nfNote.textContent=nonFixedPickLabel(c);
   wakeTime.value=c.wake;
   wakeTime.disabled=!!c.wakeLocked;
   const wLbl=document.getElementById('wakeLockedLbl');
@@ -2805,7 +2874,7 @@ function renderSched(){
     } else rightHTML='';
     const endLbl=b.end!=null?fmt12(minToTime(b.end)):'';
     el.innerHTML=`<div class="time">${fmt12(startHH)}${endLbl?'<br><span style="font-size:11px;color:var(--muted2)">→ '+endLbl+'</span>':''}</div>
-      <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.overflow?'<span class="overflowtag">OVERLAP</span>':''}${b.custom&&!b.sudden?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.nonFixed?'<span class="custag">PICK</span>':''}${b.period?'<span class="period-tag">'+PERIOD_LABELS[b.period]+'</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.sub} · ${b.dur}m</small></span></div>
+      <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.overflow?'<span class="overflowtag">OVERLAP</span>':''}${b.custom&&!b.sudden?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.nonFixed?'<span class="custag">PICK</span>':''}${b.period?'<span class="period-tag">'+PERIOD_LABELS[b.period]+'</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.dur}m</small></span></div>
       <div class="right">${rightHTML}</div>`;
     if(!isFlex) {
       const chk=el.querySelector('.chk');
@@ -2892,7 +2961,7 @@ function renderNowBanner(){
   const {seq}=buildSeq();
   const cur=curBlock(seq);
   if(cur){
-    focusEl.innerHTML=`<strong style="color:var(--gold)">${cur.ico} ${cur.lab}</strong> · ${cur.sub}`;
+    focusEl.innerHTML=`<strong style="color:var(--gold)">${cur.ico} ${cur.lab}</strong> · ${cur.dur}m`;
   }else{
     focusEl.innerHTML='<span style="color:var(--muted)">Off-grid — next block coming up. Check Today\'s Flow below.</span>';
   }
@@ -3187,6 +3256,99 @@ function flash(msg,duration){
   f.classList.add('show');
   clearTimeout(flashT);
   flashT=setTimeout(()=>{f.classList.remove('show');f.textContent=flashDefault;},duration||1100);
+}
+function getAlarmEndTaskSet(){
+  if(DATA.alarmEndTasks===undefined||DATA.alarmEndTasks===null)return new Set(DEFAULT_ALARM_END_TASKS);
+  return new Set(DATA.alarmEndTasks);
+}
+function alarmEndKeyFromTaskKey(taskKey){
+  return taskKey.startsWith('extra:')?taskKey.slice(6):taskKey;
+}
+function alarmEndKeyForBlock(b){
+  if(b.nonFixed)return 'nonFixed';
+  return b.id;
+}
+function isAlarmEndEnabledForTaskKey(taskKey){
+  return getAlarmEndTaskSet().has(alarmEndKeyFromTaskKey(taskKey));
+}
+function toggleAlarmEndTask(taskKey){
+  const id=alarmEndKeyFromTaskKey(taskKey);
+  const set=getAlarmEndTaskSet();
+  if(set.has(id))set.delete(id);else set.add(id);
+  DATA.alarmEndTasks=[...set];
+  save();
+}
+async function ensureAlarmPermission(){
+  if(!('Notification' in window))return false;
+  if(Notification.permission==='granted')return true;
+  if(Notification.permission==='denied')return false;
+  try{return(await Notification.requestPermission())==='granted';}catch(e){return false;}
+}
+function playAlarmTone(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator();
+    const g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.frequency.value=880;
+    g.gain.setValueAtTime(0.12,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.45);
+    o.start(ctx.currentTime);
+    o.stop(ctx.currentTime+0.45);
+  }catch(e){}
+}
+function dispatchAlarm(block,kind){
+  const title=kind==='start'?'Start: '+block.lab:'5 min left: '+block.lab;
+  const body=kind==='start'?fmt12(minToTime(block.start))+' · '+block.dur+'m':'Ends '+fmt12(minToTime(block.end));
+  flash('🔔 '+title,4200);
+  playAlarmTone();
+  if('Notification' in window&&Notification.permission==='granted'){
+    try{new Notification(title,{body,tag:'lcc-'+activeDayKey()+'-'+block.id+'-'+kind});}catch(e){}
+  }
+}
+function resetAlarmFiredIfNeeded(){
+  const dayKey=activeDayKey();
+  if(alarmDayKey!==dayKey){alarmFired.clear();alarmDayKey=dayKey;}
+}
+function checkTaskAlarms(){
+  if(!DATA||!DATA.alarmOn)return;
+  resetAlarmFiredIfNeeded();
+  const dayKey=activeDayKey();
+  const {seq}=buildSeq();
+  const checks=dayChecks();
+  const n=nowMin();
+  const endSet=getAlarmEndTaskSet();
+  seq.forEach(b=>{
+    if(b.flex||b.start==null||b.end==null)return;
+    if(checks[b.id])return;
+    const startKey=dayKey+':'+b.id+':start:'+b.start;
+    if(n>=b.start&&n<b.start+2&&!alarmFired.has(startKey)){
+      dispatchAlarm(b,'start');
+      alarmFired.add(startKey);
+    }
+    if(DATA.alarmEndOn&&endSet.has(alarmEndKeyForBlock(b))){
+      const warnAt=Math.max(b.start,b.end-ALARM_END_LEAD);
+      const endKey=dayKey+':'+b.id+':end:'+b.end;
+      if(n>=warnAt&&n<b.end&&!alarmFired.has(endKey)){
+        dispatchAlarm(b,'end');
+        alarmFired.add(endKey);
+      }
+    }
+  });
+}
+function renderAlarmControls(){
+  const on=!!DATA.alarmOn;
+  const endOn=DATA.alarmEndOn!==false;
+  document.querySelectorAll('#segAlarm button').forEach(b=>b.classList.toggle('on',b.dataset.a===(on?'on':'off')));
+  document.querySelectorAll('#segAlarmEnd button').forEach(b=>b.classList.toggle('on',b.dataset.ae===(endOn?'on':'off')));
+  const segEnd=document.getElementById('segAlarmEnd');
+  if(segEnd)segEnd.classList.toggle('disabled',!on);
+  const note=document.getElementById('alarmNote');
+  if(note){
+    if(!on)note.textContent='Off — turn on for block-start alerts';
+    else if(!endOn)note.textContent='Start of each block · end warnings off';
+    else note.textContent='Start of each block · 5m end warning on ⏱ tasks';
+  }
 }
 function setSyncDot(state){
   const dot=document.getElementById('syncDot');if(!dot)return;
@@ -3549,12 +3711,15 @@ function wire(){
   const resetPeriodBtn=document.getElementById('resetPeriod');
   if(resetPeriodBtn)resetPeriodBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodOverrides(activeDayKey());saveDay();renderSched();renderGlance();flash('Today\'s band order reset');};
   document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;saveDay();renderClocks();renderSched();renderNowBanner();renderGlance();});
-  document.querySelectorAll('#segWorkout button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().workout=b.dataset.w;saveDay();renderSched();renderNowBanner();renderGlance();});
-  document.querySelectorAll('#segNonFixed button').forEach(b=>b.onclick=()=>{
-    touchDaySync(activeDayKey());
-    const v=b.dataset.nf;
-    cfg().nonFixedPick=v==='auto'?null:v;
-    saveDay();renderSched();renderNowBanner();renderGlance();
+  document.querySelectorAll('#segAlarm button').forEach(b=>b.onclick=async()=>{
+    const turningOn=b.dataset.a==='on';
+    DATA.alarmOn=turningOn;
+    if(turningOn)await ensureAlarmPermission();
+    save();renderSched();
+  });
+  document.querySelectorAll('#segAlarmEnd button').forEach(b=>b.onclick=()=>{
+    DATA.alarmEndOn=b.dataset.ae==='on';
+    save();renderSched();
   });
   const tName=document.getElementById('tName');
   const tMin=document.getElementById('tMin');
@@ -3732,7 +3897,9 @@ async function init(){
   if(!appWired){wire();appWired=true;}
   setupVisibilitySync();
   renderAll();
+  checkTaskAlarms();
   let lastActiveDay=activeDayKey();
+  setInterval(checkTaskAlarms,15000);
   setInterval(()=>{
     const day=activeDayKey();
     if(day!==lastActiveDay){lastActiveDay=day;reloadData();}
