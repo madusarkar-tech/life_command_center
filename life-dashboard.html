@@ -476,6 +476,7 @@
               <div class="period-plan-foot">
                 <span class="resetlink" id="resetDur" style="display:none">↺ reset today's lengths</span>
                 <span class="resetlink" id="resetPeriod" style="display:none">↺ reset today's order</span>
+                <span class="resetlink" id="resetSkips" style="display:none">↺ unskip all tasks</span>
               </div>
             </div>
           </details>
@@ -1293,6 +1294,28 @@ function hasPeriodOverrides(dayKey){
   const c=dayCfg(dayKey);
   return!!(c.periodOrder||c.periodMoves||c.periodExtras);
 }
+function isPeriodTaskSkipped(taskKey,dayKey){
+  const sk=dayCfg(dayKey).periodSkips;
+  return!!(sk&&sk[taskKey]);
+}
+function hasPeriodSkips(dayKey){
+  const sk=dayCfg(dayKey).periodSkips;
+  return!!(sk&&Object.keys(sk).some(k=>sk[k]));
+}
+function skipPeriodTask(taskKey,dayKey){
+  touchDaySync(dayKey);
+  const c=dayCfg(dayKey);
+  if(!c.periodSkips)c.periodSkips={};
+  c.periodSkips[taskKey]=true;
+}
+function clearPeriodSkips(dayKey){
+  dayCfg(dayKey).periodSkips=null;
+}
+function skipKeyForTimelineBlock(b,dayKey){
+  if(b.nonFixed)return 'nonFixed';
+  if(b.templateExtra||(b.custom&&findPeriodExtra(dayKey,b.id)))return 'extra:'+b.id;
+  return b.id;
+}
 function effectivePeriodLists(dayKey){
   const dt=dayTypeForKey(dayKey);
   const keys=periodKeysForDayType(dt);
@@ -1308,7 +1331,7 @@ function effectivePeriodLists(dayKey){
   });
   const out={};
   keys.forEach(p=>{
-    const items=Object.keys(taskPeriod).filter(t=>taskPeriod[t]===p);
+    const items=Object.keys(taskPeriod).filter(t=>taskPeriod[t]===p&&!isPeriodTaskSkipped(t,dayKey));
     let list=[];
     if(order[p]&&order[p].length){
       order[p].forEach(t=>{if(items.includes(t))list.push(t);});
@@ -1316,11 +1339,13 @@ function effectivePeriodLists(dayKey){
     }else list=items.slice();
     if(tex)(tex[p]||[]).forEach(ex=>{
       const ek='extra:'+(ex.id||'tex_'+Date.now());
+      if(isPeriodTaskSkipped(ek,dayKey))return;
       const dest=moves[ek]||p;
       if(dest===p)list.push(ek);
     });
     (c.periodExtras&&c.periodExtras[p]||[]).forEach(ex=>{
       const ek='extra:'+(ex.id||'pex_'+Date.now());
+      if(isPeriodTaskSkipped(ek,dayKey))return;
       const dest=moves[ek]||p;
       if(dest===p)list.push(ek);
     });
@@ -1837,6 +1862,7 @@ function dayCfg(k){
   if(!c.periodOrder)c.periodOrder=null;
   if(!c.periodMoves)c.periodMoves=null;
   if(!c.periodExtras)c.periodExtras=null;
+  if(!c.periodSkips)c.periodSkips=null;
   return c;
 }
 function blockDurOv(dayKey){
@@ -2755,6 +2781,19 @@ function renderPeriodBands(wrap,ctx){
         rm.title='Remove from weekly plan';
         rm.onclick=()=>{removeTemplatePeriodTask(taskKey,ctx.dayType);renderPeriodBands(wrap,ctx);};
         act.appendChild(rm);
+      }else{
+        const rm=document.createElement('button');
+        rm.type='button';
+        rm.className='pt-rm';
+        rm.textContent='✕';
+        rm.title='Skip for today';
+        rm.onclick=()=>{
+          skipPeriodTask(taskKey,dayKey);
+          saveDay();
+          renderSched();
+          flash(periodTaskLabel(taskKey,dayKey)+' skipped today');
+        };
+        act.appendChild(rm);
       }
       if(ctx.mode==='today'&&DATA.alarmOn&&DATA.alarmEndOn!==false){
         const aw=document.createElement('button');
@@ -2858,6 +2897,8 @@ function renderPeriodPlan(){
   renderPeriodBands(wrap,{mode:'today',dayKey,dayType:dt});
   const resetP=document.getElementById('resetPeriod');
   if(resetP)resetP.style.display=hasPeriodOverrides(dayKey)?'inline':'none';
+  const resetS=document.getElementById('resetSkips');
+  if(resetS)resetS.style.display=hasPeriodSkips(dayKey)?'inline':'none';
   const resetD=document.getElementById('resetDur');
   if(resetD)resetD.style.display=Object.keys(blockDurOv(dayKey)).length?'inline':'none';
   const disc=document.getElementById('periodPlanDisclosure');
@@ -2912,7 +2953,7 @@ function renderSched(){
     const el=document.createElement('div');el.className='blk'+(done?' done':'')+(now?' now':'')+(isFlex?' flex info':'')+(b.anchored?' anchored':'')+(b.overflow?' overflow':'')+(b.period?' period-'+b.period:'');
     let rightHTML;
     if(!isFlex){
-      rightHTML=`${(b.custom||b.sudden||(b.periodCustom&&!b.templateExtra))?'<span class="delx">✕</span>':''}<div class="chk"></div>`;
+      rightHTML=`<span class="delx" title="Skip for today">✕</span><div class="chk"></div>`;
     } else rightHTML='';
     const endLbl=b.end!=null?fmt12(minToTime(b.end)):'';
     el.innerHTML=`<div class="time">${fmt12(startHH)}${endLbl?'<br><span style="font-size:11px;color:var(--muted2)">→ '+endLbl+'</span>':''}</div>
@@ -2923,14 +2964,18 @@ function renderSched(){
       if(chk)chk.onclick=(e)=>{e.stopPropagation();if(b.id&&!b.id.startsWith('flex_'))toggleBlockDone(b.id);};
     }
     const dx=el.querySelector('.delx');if(dx)dx.onclick=(e)=>{e.stopPropagation();
-      if(b.sudden){touchDaySync(activeDayKey());c.suddenTasks=(c.suddenTasks||[]).filter(t=>t.id!==b.id);saveDay();}
+      const dk=activeDayKey();
+      if(b.sudden){touchDaySync(dk);c.suddenTasks=(c.suddenTasks||[]).filter(t=>t.id!==b.id);saveDay();}
       else if(b.periodCustom&&!b.templateExtra){
-        periodKeysForDayKey(activeDayKey()).forEach(p=>{
+        periodKeysForDayKey(dk).forEach(p=>{
           c.periodExtras=(c.periodExtras||{});
           c.periodExtras[p]=(c.periodExtras[p]||[]).filter(x=>x.id!==b.id);
         });
         saveDay();
-      }else{c.tasks=c.tasks.filter(t=>t.id!==b.id);save();}
+      }else if(b.id&&!b.id.startsWith('flex_')){
+        skipPeriodTask(skipKeyForTimelineBlock(b,dk),dk);
+        saveDay();
+      }
       renderSched();renderGlance();};
     sched.appendChild(el);
   });
@@ -3752,6 +3797,8 @@ function wire(){
   if(resetDurEl)resetDurEl.onclick=()=>{touchDaySync(activeDayKey());cfg().blockDur={};saveDay();renderSched();renderGlance();flash('Today\'s lengths reset');};
   const resetPeriodBtn=document.getElementById('resetPeriod');
   if(resetPeriodBtn)resetPeriodBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodOverrides(activeDayKey());saveDay();renderSched();renderGlance();flash('Today\'s band order reset');};
+  const resetSkipsBtn=document.getElementById('resetSkips');
+  if(resetSkipsBtn)resetSkipsBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodSkips(activeDayKey());saveDay();renderSched();renderGlance();flash('Skipped tasks restored');};
   document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;saveDay();renderClocks();renderSched();renderNowBanner();renderGlance();});
   document.querySelectorAll('#segAlarm button').forEach(b=>b.onclick=async()=>{
     const turningOn=b.dataset.a==='on';
