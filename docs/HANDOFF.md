@@ -9,7 +9,7 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 
 > Update **HEAD** below when `main` moves.
 
-**HEAD:** `82529d5` (pushed to `main`; baseline tag `baseline-2026-06-09` at app `884cd10`)
+**HEAD:** `86824c8` on `main` · **Baseline tag:** `baseline-2026-06-09` (app `884cd10`)
 
 **Spec:** [DESIGN.md](./DESIGN.md) · **Baseline:** [BASELINE.md](./BASELINE.md) (tag `baseline-2026-06-09`)
 
