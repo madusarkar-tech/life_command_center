@@ -471,7 +471,7 @@
               <span class="sum-hint">−/+ minutes · drag to reorder</span>
             </summary>
             <div class="period-body">
-              <p class="period-dur-hint">Adjust minutes on each row — today only. Gym/Home/Skip and extra picks live on those band rows.</p>
+              <p class="period-dur-hint">Adjust minutes on each row — today only. Sudden tasks (⚡) appear here too — reorder or move bands. Gym/Home/Skip on gym row.</p>
               <div id="periodBands"></div>
               <div class="period-plan-foot">
                 <span class="resetlink" id="resetDur" style="display:none">↺ reset today's lengths</span>
@@ -999,6 +999,7 @@ function migrateData(){
   }
   ensureWeekendPeriodTemplate();
   migrateWeekendPlansToBands();
+  repairSuddenBandLinks();
 }
 function dayChecks(){
   const k=activeDayKey();
@@ -1124,6 +1125,7 @@ function periodKeysForDayType(dt){return isWeekendDayType(dt)?WEEKEND_PERIOD_KEY
 function periodEndMap(dt){return isWeekendDayType(dt)?WEEKEND_PERIOD_END:WORKDAY_PERIOD_END;}
 function periodWindowsFor(dt){return isWeekendDayType(dt)?PERIOD_WINDOWS_WEEKEND:PERIOD_WINDOWS_WORKDAY;}
 function isMovablePeriodTask(taskKey,dayKey){
+  if(isSuddenTaskKey(taskKey))return true;
   if(taskKey.startsWith('extra:'))return true;
   const dt=dayTypeForKey(dayKey);
   return isWeekendDayType(dt)?MOVABLE_WEEKEND_TASKS.has(taskKey):MOVABLE_PERIOD_TASKS.has(taskKey);
@@ -1268,6 +1270,12 @@ function findPeriodExtra(dayKey,extraId){
   return null;
 }
 function periodTaskLabel(key,dayKey){
+  if(key.startsWith('sudden:')){
+    const t=findSuddenTask(dayKey||activeDayKey(),key.slice(7));
+    if(!t)return 'Sudden';
+    if(t.mode==='window')return t.name+' · '+fmt12(t.windowStart)+'–'+fmt12(t.windowEnd);
+    return t.name;
+  }
   if(key.startsWith('extra:')){
     const found=findPeriodExtra(dayKey||activeDayKey(),key.slice(6));
     const name=found&&found.hit&&(found.hit.name||'').trim();
@@ -1283,6 +1291,7 @@ function periodTaskLabel(key,dayKey){
   return map[key]||key;
 }
 function periodTaskIco(key,dayKey){
+  if(key.startsWith('sudden:'))return '⚡';
   if(key.startsWith('extra:')){
     const found=findPeriodExtra(dayKey||activeDayKey(),key.slice(6));
     return found&&found.hit?(found.hit.ico||'✨'):'✨';
@@ -1303,6 +1312,7 @@ function hasPeriodSkips(dayKey){
   return!!(sk&&Object.keys(sk).some(k=>sk[k]));
 }
 function skipPeriodTask(taskKey,dayKey){
+  if(isSuddenTaskKey(taskKey)){removeSuddenTask(suddenIdFromKey(taskKey),dayKey);return;}
   touchDaySync(dayKey);
   const c=dayCfg(dayKey);
   if(!c.periodSkips)c.periodSkips={};
@@ -1312,9 +1322,184 @@ function clearPeriodSkips(dayKey){
   dayCfg(dayKey).periodSkips=null;
 }
 function skipKeyForTimelineBlock(b,dayKey){
+  if(b.sudden)return 'sudden:'+b.id;
   if(b.nonFixed)return 'nonFixed';
   if(b.templateExtra||(b.custom&&findPeriodExtra(dayKey,b.id)))return 'extra:'+b.id;
   return b.id;
+}
+function isSuddenTaskKey(taskKey){return taskKey.startsWith('sudden:');}
+function suddenTaskKey(id){return 'sudden:'+id;}
+function suddenIdFromKey(taskKey){return taskKey.slice(7);}
+function iterateSuddenTargetingDay(scheduleDayKey,fn){
+  const seen=new Set();
+  Object.keys(DATA.dayConfig||{}).forEach(storageKey=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(storageKey))return;
+    (dayCfg(storageKey).suddenTasks||[]).forEach(task=>{
+      const target=(task.targetDayKey||storageKey).slice(0,10);
+      if(target!==scheduleDayKey)return;
+      const uid=(task.id||task.name||'')+'::'+storageKey;
+      if(seen.has(uid))return;
+      seen.add(uid);
+      fn(task,storageKey);
+    });
+  });
+}
+function findSuddenTask(scheduleDayKey,id){
+  let hit=null;
+  iterateSuddenTargetingDay(scheduleDayKey,(task)=>{if(task.id===id)hit=task;});
+  return hit;
+}
+function suddenTasksForScheduleDay(dayKey){
+  const out=[];
+  iterateSuddenTargetingDay(dayKey,(task)=>out.push(task));
+  return out;
+}
+function suddenTaskMinutes(task){
+  if(task.mode==='window'){
+    const ws=toMin(task.windowStart),we=toMin(task.windowEnd);
+    return Math.max(5,we-ws);
+  }
+  return Math.max(5,task.mins||30);
+}
+function defaultPeriodForSudden(task,dayKey){
+  const keys=periodKeysForDayKey(dayKey);
+  const ends=periodEndMap(dayTypeForKey(dayKey));
+  const wakeMin=toMin(dayCfg(dayKey).wake);
+  let atMin=wakeMin;
+  if(task.mode==='window'){
+    const ws=toMin(task.windowStart),we=toMin(task.windowEnd);
+    atMin=Math.floor((ws+we)/2);
+  }else if(task.recordedMin!=null)atMin=task.recordedMin;
+  let bandStart=wakeMin;
+  for(let i=0;i<keys.length;i++){
+    const p=keys[i];
+    const bandEnd=ends[p];
+    if(atMin>=bandStart&&atMin<bandEnd)return p;
+    bandStart=bandEnd;
+  }
+  return keys[0];
+}
+function suddenBandPeriod(task,dayKey){
+  const tk=suddenTaskKey(task.id);
+  const moves=dayCfg(dayKey).periodMoves||{};
+  if(moves[tk]&&periodKeysForDayKey(dayKey).includes(moves[tk]))return moves[tk];
+  return defaultPeriodForSudden(task,dayKey);
+}
+function repairSuddenBandLinks(){
+  Object.keys(DATA.dayConfig||{}).forEach(storageKey=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(storageKey))return;
+    (dayCfg(storageKey).suddenTasks||[]).forEach(task=>{
+      if(!task.id)task.id='st_'+Date.now()+Math.random().toString(36).slice(2,7);
+      const target=(task.targetDayKey||storageKey).slice(0,10);
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(target))return;
+      if(!task.targetDayKey)task.targetDayKey=target;
+      const c=dayCfg(target);
+      const tk=suddenTaskKey(task.id);
+      if(!c.periodMoves)c.periodMoves={};
+      if(!c.periodMoves[tk])c.periodMoves[tk]=defaultPeriodForSudden(task,target);
+    });
+  });
+}
+function removeSuddenTask(id,scheduleDayKey){
+  const dk=scheduleDayKey||activeDayKey();
+  Object.keys(DATA.dayConfig||{}).forEach(storageKey=>{
+    const c=dayCfg(storageKey);
+    const arr=c.suddenTasks||[];
+    const next=arr.filter(t=>t.id!==id);
+    if(next.length<arr.length){
+      c.suddenTasks=next;
+      touchDaySync(storageKey);
+    }
+  });
+  const c=dayCfg(dk);
+  const tk=suddenTaskKey(id);
+  if(c.periodMoves&&c.periodMoves[tk])delete c.periodMoves[tk];
+  if(c.periodSkips&&c.periodSkips[tk])delete c.periodSkips[tk];
+  if(c.periodOrder){
+    periodKeysForDayKey(dk).forEach(p=>{
+      if(c.periodOrder[p])c.periodOrder[p]=c.periodOrder[p].filter(k=>k!==tk);
+    });
+  }
+}
+function taskKeyFromPackedBlock(b,dayKey){
+  if(b.sudden)return 'sudden:'+b.id;
+  if(b.nonFixed)return 'nonFixed';
+  if(b.templateExtra||(b.custom&&findPeriodExtra(dayKey,b.id)))return 'extra:'+b.id;
+  return b.id;
+}
+function workoutStateForDay(dayKey){
+  const c=dayCfg(dayKey);
+  return c.workout||'gym';
+}
+function packScheduleBlocksOnly(dayKey,c,ws,ov){
+  const dt=dayTypeForKey(dayKey);
+  const lists=effectivePeriodLists(dayKey);
+  const wakeMin=toMin(c.wake);
+  const seq=[];
+  const warnings=[];
+  const skipped=[];
+  const noSudden=list=>(list||[]).filter(k=>!isSuddenTaskKey(k));
+  if(dt==='workday'){
+    packPeriodBand(seq,warnings,skipped,'morning',wakeMin,WORKDAY_PERIOD_END.morning,noSudden(lists.morning),c,ws,ov,dayKey);
+    packPeriodBand(seq,warnings,skipped,'afternoon',WORKDAY_PERIOD_END.morning,WORKDAY_PERIOD_END.afternoon,noSudden(lists.afternoon),c,ws,ov,dayKey);
+    packPeriodBand(seq,warnings,skipped,'evening',WORKDAY_PERIOD_END.afternoon,WORKDAY_PERIOD_END.evening,noSudden(lists.evening),c,ws,ov,dayKey);
+  }else{
+    const ends=periodEndMap(dt);
+    const keys=periodKeysForDayType(dt);
+    let bandStart=wakeMin;
+    keys.forEach(period=>{
+      const bandEnd=ends[period];
+      packPeriodBand(seq,warnings,skipped,period,bandStart,bandEnd,noSudden(lists[period]),c,ws,ov,dayKey);
+      bandStart=bandEnd;
+    });
+  }
+  return seq.filter(b=>!b.flex);
+}
+function tryMoveTaskToOtherBand(taskKey,dayKey,excludePeriod,c,ws,ov){
+  const dt=dayTypeForKey(dayKey);
+  const keys=periodKeysForDayType(dt).filter(p=>p!==excludePeriod);
+  const pref=taskKey==='gym'?['afternoon','evening','morning','night']:keys;
+  const block=resolvePeriodBlock(taskKey,c,ws,ov,dayKey,null);
+  if(!block)return false;
+  const prevMoves=c.periodMoves?{...c.periodMoves}:null;
+  for(const p of pref){
+    if(!keys.includes(p))continue;
+    if(!c.periodMoves)c.periodMoves={};
+    c.periodMoves[taskKey]=p;
+    const lists=effectivePeriodLists(dayKey);
+    const used=sumBandMinutes(p,lists[p]||[],{mode:'today',dayKey,dayType:dt});
+    const cap=bandCapacityMinutes(p,dt,c.wake);
+    if(cap<=0||used<=cap){touchDaySync(dayKey);return true;}
+    if(prevMoves)c.periodMoves={...prevMoves};
+    else delete c.periodMoves[taskKey];
+  }
+  return false;
+}
+const DISPLACE_PRIO={gym:0,nonFixed:1,study1:2,study2:2,jobapps:3,jobapps2:3,dinnerprep:4,breakfast:5};
+function displaceSuddenOverlaps(task,dayKey,c,ws,ov){
+  if(task.mode!=='window')return[];
+  const sw=toMin(task.windowStart),se=toMin(task.windowEnd);
+  const moved=[];
+  let guard=0;
+  while(guard++<12){
+    const seq=packScheduleBlocksOnly(dayKey,c,ws,ov);
+    const overlapping=seq.filter(b=>blocksOverlap(b,sw,se)).sort((a,b)=>{
+      const pa=DISPLACE_PRIO[taskKeyFromPackedBlock(a,dayKey)]??9;
+      const pb=DISPLACE_PRIO[taskKeyFromPackedBlock(b,dayKey)]??9;
+      return pa-pb;
+    });
+    if(!overlapping.length)break;
+    const b=overlapping[0];
+    if(b.anchored)break;
+    const tk=taskKeyFromPackedBlock(b,dayKey);
+    if(isSuddenTaskKey(tk)||!isMovablePeriodTask(tk,dayKey))break;
+    if(tryMoveTaskToOtherBand(tk,dayKey,b.period,c,ws,ov)){
+      moved.push(periodTaskLabel(tk,dayKey));
+      continue;
+    }
+    break;
+  }
+  return moved;
 }
 function effectivePeriodLists(dayKey){
   const dt=dayTypeForKey(dayKey);
@@ -1327,16 +1512,13 @@ function effectivePeriodLists(dayKey){
   const taskPeriod={};
   keys.forEach(p=>{(base[p]||[]).forEach(t=>{taskPeriod[t]=p;});});
   Object.keys(moves).forEach(t=>{
+    if(isSuddenTaskKey(t))return;
     if(isMovablePeriodTask(t,dayKey)&&keys.includes(moves[t]))taskPeriod[t]=moves[t];
   });
   const out={};
   keys.forEach(p=>{
     const items=Object.keys(taskPeriod).filter(t=>taskPeriod[t]===p&&!isPeriodTaskSkipped(t,dayKey));
-    let list=[];
-    if(order[p]&&order[p].length){
-      order[p].forEach(t=>{if(items.includes(t))list.push(t);});
-      items.forEach(t=>{if(!list.includes(t))list.push(t);});
-    }else list=items.slice();
+    let list=items.slice();
     if(tex)(tex[p]||[]).forEach(ex=>{
       const ek='extra:'+(ex.id||'tex_'+Date.now());
       if(isPeriodTaskSkipped(ek,dayKey))return;
@@ -1349,6 +1531,18 @@ function effectivePeriodLists(dayKey){
       const dest=moves[ek]||p;
       if(dest===p)list.push(ek);
     });
+    suddenTasksForScheduleDay(dayKey).forEach(task=>{
+      const tk=suddenTaskKey(task.id);
+      if(isPeriodTaskSkipped(tk,dayKey))return;
+      const dest=moves[tk]||defaultPeriodForSudden(task,dayKey);
+      if(dest===p)list.push(tk);
+    });
+    if(order[p]&&order[p].length){
+      const ordered=[];
+      order[p].forEach(t=>{if(list.includes(t))ordered.push(t);});
+      list.forEach(t=>{if(!ordered.includes(t))ordered.push(t);});
+      list=ordered;
+    }
     out[p]=list;
   });
   return out;
@@ -1374,6 +1568,17 @@ function applyBlockDurDelta(b,delta){
 function applyBandTaskDurDelta(taskKey,ctx,delta){
   const dayKey=ctx.dayKey||activeDayKey();
   touchDaySync(dayKey);
+  if(isSuddenTaskKey(taskKey)){
+    const t=findSuddenTask(dayKey,suddenIdFromKey(taskKey));
+    if(!t)return;
+    if(t.mode==='window'&&t.windowStart){
+      const ws=toMin(t.windowStart);
+      const newDur=Math.max(5,suddenTaskMinutes(t)+delta);
+      t.mins=newDur;
+      t.windowEnd=minToTime(ws+newDur);
+    }else t.mins=Math.max(5,(t.mins||30)+delta);
+    return;
+  }
   const c=cfg();
   const ws=workoutState();
   const ov=blockDurOv(dayKey);
@@ -1409,6 +1614,13 @@ function gymBlockForPeriod(ws,ov,durCap){
   return{id:'gym',ico:'🏠',lab:'Home workout',sub:'Fits band · '+Math.min(durCap||GYM_MAX,GYM_MAX)+'m',dur:Math.min(durCap||GYM_MAX,Math.max(GYM_MIN,workoutM))};
 }
 function resolvePeriodBlock(taskKey,c,ws,ov,dayKey,durCap){
+  if(taskKey.startsWith('sudden:')){
+    const t=findSuddenTask(dayKey,taskKey.slice(7));
+    if(!t)return null;
+    const dur=suddenTaskMinutes(t);
+    const capped=durCap!=null?Math.min(dur,durCap):dur;
+    return{id:t.id,ico:'⚡',lab:t.name,sub:t.mode==='window'?'Sudden · fixed time':'Sudden · anytime',dur:Math.max(5,capped),sudden:true,custom:true};
+  }
   if(taskKey.startsWith('extra:')){
     const found=findPeriodExtra(dayKey,taskKey.slice(6));
     if(!found)return null;
@@ -1454,6 +1666,7 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
   let cur=bandStart;
   const label=PERIOD_LABELS[bandKey];
   taskKeys.forEach(taskKey=>{
+    if(isSuddenTaskKey(taskKey))return;
     const room=bandEnd-cur;
     if(room<5){
       if(skipped)skipped.push({taskKey,bandKey,lab:periodTaskLabel(taskKey,dayKey)});
@@ -1775,6 +1988,10 @@ function bandCapacityMinutes(period,dt,wakeMin){
 }
 function taskMinutesForBandRow(taskKey,ctx){
   const labelKey=ctx.mode==='template'?ctx.dayType:(ctx.dayKey||activeDayKey());
+  if(isSuddenTaskKey(taskKey)){
+    const t=findSuddenTask(labelKey,suddenIdFromKey(taskKey));
+    return t?suddenTaskMinutes(t):0;
+  }
   if(taskKey.startsWith('extra:')){
     const found=findPeriodExtra(labelKey,taskKey.slice(6));
     if(found&&found.hit)return Math.max(5,found.hit.mins||30);
@@ -1952,8 +2169,9 @@ function addSuddenTask(opts){
   touchDaySync(targetDayKey);
   const c=dayCfg(targetDayKey);
   const now=new Date();
-  c.suddenTasks.push({
-    id:'st_'+Date.now(),
+  const id='st_'+Date.now();
+  const task={
+    id,
     name:opts.name,
     mins:opts.mins,
     mode:opts.mode,
@@ -1963,9 +2181,17 @@ function addSuddenTask(opts){
     recordedDayKey:activeDayKey(),
     recordedMin:now.getHours()*60+now.getMinutes(),
     targetDayKey
-  });
+  };
+  c.suddenTasks.push(task);
+  const tk=suddenTaskKey(id);
+  if(!c.periodMoves)c.periodMoves={};
+  c.periodMoves[tk]=defaultPeriodForSudden(task,targetDayKey);
+  const ws=workoutStateForDay(targetDayKey);
+  const ov=blockDurOv(targetDayKey);
+  const moved=displaceSuddenOverlaps(task,targetDayKey,c,ws,ov);
   saveDay();
   renderSuddenList();
+  return{moved};
 }
 
 function dateFromKey(k){
@@ -2601,9 +2827,8 @@ function renderSuddenList(){
       const planned=dayLbl?' · Planned '+dayLbl:'';
       el.innerHTML=`<span class="si-txt">⚡ ${t.name.replace(/</g,'&lt;')}</span><span class="si-meta">${meta}${planned}${prong}</span><span class="si-del" title="Remove">✕</span>`;
       el.querySelector('.si-del').onclick=()=>{
-        const dc=dayCfg(t.storageKey||t.displayDay);
-        touchDaySync(t.storageKey||t.displayDay);
-        dc.suddenTasks=(dc.suddenTasks||[]).filter(x=>x.id!==t.id);
+        const dk=t.storageKey||t.displayDay;
+        removeSuddenTask(t.id,dk);
         saveDay();renderSched();renderGlance();renderSuddenList();
       };
       wrap.appendChild(el);
@@ -2714,7 +2939,7 @@ function renderPeriodBands(wrap,ctx){
     band.appendChild(hdr);
     items.forEach((taskKey,idx)=>{
       const row=document.createElement('div');
-      row.className='period-task';
+      row.className='period-task'+(isSuddenTaskKey(taskKey)?' pt-sudden':'');
       const mins=taskMinutesForBandRow(taskKey,ctx);
       row.innerHTML=`<span class="pt-drag" title="Drag to reorder">⠿</span><span class="pt-ico">${periodTaskIco(taskKey,labelKey)}</span><span class="pt-lab"></span><span class="pt-dur"></span><span class="pt-act"></span>`;
       const labEl=row.querySelector('.pt-lab');
@@ -2729,8 +2954,17 @@ function renderPeriodBands(wrap,ctx){
       const durEl=row.querySelector('.pt-dur');
       if(ctx.mode==='today'&&taskKey==='gym'&&workoutState()==='skip'){
         durEl.textContent='Skipped';
-      }else if(ctx.mode==='today'&&taskKey==='nonFixed'&&cfg().nonFixedPick==='none'){
+      }else       if(ctx.mode==='today'&&taskKey==='nonFixed'&&cfg().nonFixedPick==='none'){
         durEl.textContent='Skipped';
+      }else if(ctx.mode==='today'&&isSuddenTaskKey(taskKey)){
+        durEl.innerHTML=`<span class="stepper"><button type="button" data-step="-1">−</button><span class="val">${mins}m</span><button type="button" data-step="1">+</button></span>`;
+        durEl.querySelectorAll('.stepper button').forEach(btn=>{
+          btn.onclick=(e)=>{
+            e.stopPropagation();
+            applyBandTaskDurDelta(taskKey,ctx,parseInt(btn.dataset.step,10)*5);
+            saveDay();renderSched();renderGlance();
+          };
+        });
       }else if(ctx.mode==='today'){
         durEl.innerHTML=`<span class="stepper"><button type="button" data-step="-1">−</button><span class="val">${mins}m</span><button type="button" data-step="1">+</button></span>`;
         durEl.querySelectorAll('.stepper button').forEach(btn=>{
@@ -2786,12 +3020,19 @@ function renderPeriodBands(wrap,ctx){
         rm.type='button';
         rm.className='pt-rm';
         rm.textContent='✕';
-        rm.title='Skip for today';
+        rm.title=isSuddenTaskKey(taskKey)?'Remove sudden task':'Skip for today';
         rm.onclick=()=>{
-          skipPeriodTask(taskKey,dayKey);
-          saveDay();
-          renderSched();
-          flash(periodTaskLabel(taskKey,dayKey)+' skipped today');
+          if(isSuddenTaskKey(taskKey)){
+            removeSuddenTask(suddenIdFromKey(taskKey),dayKey);
+            saveDay();
+            renderSched();
+            flash('Sudden task removed');
+          }else{
+            skipPeriodTask(taskKey,dayKey);
+            saveDay();
+            renderSched();
+            flash(periodTaskLabel(taskKey,dayKey)+' skipped today');
+          }
         };
         act.appendChild(rm);
       }
@@ -2965,7 +3206,7 @@ function renderSched(){
     }
     const dx=el.querySelector('.delx');if(dx)dx.onclick=(e)=>{e.stopPropagation();
       const dk=activeDayKey();
-      if(b.sudden){touchDaySync(dk);c.suddenTasks=(c.suddenTasks||[]).filter(t=>t.id!==b.id);saveDay();}
+      if(b.sudden){removeSuddenTask(b.id,dk);saveDay();}
       else if(b.periodCustom&&!b.templateExtra){
         periodKeysForDayKey(dk).forEach(p=>{
           c.periodExtras=(c.periodExtras||{});
@@ -3848,17 +4089,20 @@ function wire(){
     }
     const mode=tMode?tMode.value:'anytime';
     try{
+      let result;
       if(mode==='window'){
         if(!tWinStart||!tWinEnd||!tWinStart.value||!tWinEnd.value){flash('Set start & end time');return;}
         if(toMin(tWinEnd.value)<=toMin(tWinStart.value)){flash('End must be after start');return;}
-        addSuddenTask({name:n,mins:m,mode:'window',windowStart:tWinStart.value,windowEnd:tWinEnd.value,targetDayKey});
-      }else addSuddenTask({name:n,mins:m,mode:'anytime',targetDayKey});
+        result=addSuddenTask({name:n,mins:m,mode:'window',windowStart:tWinStart.value,windowEnd:tWinEnd.value,targetDayKey});
+      }else result=addSuddenTask({name:n,mins:m,mode:'anytime',targetDayKey});
       tName.value='';tMin.value='';
       if(tWinStart)tWinStart.value='';
       if(tWinEnd)tWinEnd.value='';
       renderSched();renderGlance();
       const planned=targetDayKey!==activeDayKey();
-      flash(planned?'Planned for '+formatDayKeyLabel(targetDayKey):'Sudden task added');
+      let msg=planned?'Planned for '+formatDayKeyLabel(targetDayKey):'Sudden task added — see Today\'s bands';
+      if(result&&result.moved&&result.moved.length)msg+=' · moved '+result.moved.join(', ');
+      flash(msg);
     }catch(err){
       console.error('Sudden add failed',err);
       flash('Could not add — check times and try again');
