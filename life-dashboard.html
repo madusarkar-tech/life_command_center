@@ -319,6 +319,10 @@
   .period-task .pt-pick .pt-seg{display:inline-flex;border-radius:6px}
   .period-task .pt-pick .pt-seg button{padding:4px 8px;font-size:10px;font-weight:700}
   .period-task .pt-lab .pt-pick-note{display:block;font-size:10px;font-weight:600;color:var(--muted);margin-top:2px}
+  .period-task .pt-pin-wrap{flex-shrink:0;display:flex;align-items:center}
+  .period-task .pt-pin{width:76px;font-size:11px;padding:3px 5px;border:1px solid var(--line);border-radius:6px;background:var(--bg2);color:var(--text);font-family:inherit}
+  .period-task .pt-pin:focus{border-color:var(--gold);outline:none}
+  .period-task.has-pin .pt-pin-wrap{margin-left:2px}
   .period-task.pt-unpacked{background:rgba(184,74,50,.06);border-left:3px solid rgba(180,80,60,.35)}
   .period-task.pt-unpacked .pt-lab .pt-unpacked-tag{display:inline;font-size:10px;font-weight:700;color:var(--rust);margin-left:4px}
   #segAlarmEnd.disabled{opacity:.45;pointer-events:none}
@@ -471,12 +475,13 @@
               <span class="sum-hint">−/+ minutes · drag to reorder</span>
             </summary>
             <div class="period-body">
-              <p class="period-dur-hint">Adjust minutes on each row — today only. Sudden tasks (⚡) appear here too — reorder or move bands. Gym/Home/Skip on gym row.</p>
+              <p class="period-dur-hint">Adjust minutes on each row — today only. Set <strong>time</strong> to pin a start on the timeline (e.g. gym at 11am). Sudden fixed windows use their own times.</p>
               <div id="periodBands"></div>
               <div class="period-plan-foot">
                 <span class="resetlink" id="resetDur" style="display:none">↺ reset today's lengths</span>
                 <span class="resetlink" id="resetPeriod" style="display:none">↺ reset today's order</span>
                 <span class="resetlink" id="resetSkips" style="display:none">↺ unskip all tasks</span>
+                <span class="resetlink" id="resetPins" style="display:none">↺ clear pinned times</span>
               </div>
             </div>
           </details>
@@ -1321,6 +1326,33 @@ function skipPeriodTask(taskKey,dayKey){
 function clearPeriodSkips(dayKey){
   dayCfg(dayKey).periodSkips=null;
 }
+function getPeriodPinStart(taskKey,dayKey){
+  const p=dayCfg(dayKey).periodPinnedStart;
+  return p&&p[taskKey]?p[taskKey]:null;
+}
+function hasPeriodPins(dayKey){
+  const p=dayCfg(dayKey).periodPinnedStart;
+  return!!(p&&Object.keys(p).length);
+}
+function setPeriodPinStart(taskKey,dayKey,hhmm){
+  touchDaySync(dayKey);
+  const c=dayCfg(dayKey);
+  if(!c.periodPinnedStart)c.periodPinnedStart={};
+  if(!hhmm){
+    delete c.periodPinnedStart[taskKey];
+    if(!Object.keys(c.periodPinnedStart).length)c.periodPinnedStart=null;
+  }else c.periodPinnedStart[taskKey]=hhmm;
+}
+function clearPeriodPins(dayKey){
+  dayCfg(dayKey).periodPinnedStart=null;
+}
+function taskShowsPinUi(taskKey,dayKey){
+  if(isSuddenTaskKey(taskKey)){
+    const t=findSuddenTask(dayKey,suddenIdFromKey(taskKey));
+    return!!(t&&t.mode!=='window');
+  }
+  return true;
+}
 function skipKeyForTimelineBlock(b,dayKey){
   if(b.sudden)return 'sudden:'+b.id;
   if(b.nonFixed)return 'nonFixed';
@@ -1328,6 +1360,7 @@ function skipKeyForTimelineBlock(b,dayKey){
   return b.id;
 }
 function isSuddenTaskKey(taskKey){return taskKey.startsWith('sudden:');}
+function isUserBandTask(taskKey){return taskKey.startsWith('extra:')||isSuddenTaskKey(taskKey);}
 function suddenTaskKey(id){return 'sudden:'+id;}
 function suddenIdFromKey(taskKey){return taskKey.slice(7);}
 function iterateSuddenTargetingDay(scheduleDayKey,fn){
@@ -1415,6 +1448,7 @@ function removeSuddenTask(id,scheduleDayKey){
   const tk=suddenTaskKey(id);
   if(c.periodMoves&&c.periodMoves[tk])delete c.periodMoves[tk];
   if(c.periodSkips&&c.periodSkips[tk])delete c.periodSkips[tk];
+  if(c.periodPinnedStart&&c.periodPinnedStart[tk])delete c.periodPinnedStart[tk];
   if(c.periodOrder){
     periodKeysForDayKey(dk).forEach(p=>{
       if(c.periodOrder[p])c.periodOrder[p]=c.periodOrder[p].filter(k=>k!==tk);
@@ -1665,66 +1699,90 @@ function resolvePeriodBlock(taskKey,c,ws,ov,dayKey,durCap){
 function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,c,ws,ov,dayKey){
   let cur=bandStart;
   const label=PERIOD_LABELS[bandKey];
+  const placeInBand=(taskKey,block,fixedStart,fixedEnd)=>{
+    let start,end,dur;
+    if(fixedStart!=null&&fixedEnd!=null){
+      start=fixedStart;
+      end=fixedEnd;
+      dur=Math.max(5,end-start);
+      block.start=start;
+      block.end=end;
+      block.dur=dur;
+      block.period=bandKey;
+      if(end>bandEnd||start<bandStart){
+        block.overflow=true;
+        warnings.push({msg:label+' — “'+block.lab+'” fixed window extends outside '+label.toLowerCase()+' band'});
+      }
+      if(start>cur+4)pushFlexGap(seq,cur,start,'Open time · '+label);
+      else if(start<cur){
+        block.overflow=true;
+        warnings.push({msg:'“'+block.lab+'” at '+fmt12(minToTime(start))+' overlaps earlier blocks — reorder or shorten'});
+      }
+      seq.push(block);
+      cur=Math.max(cur,end);
+      return;
+    }
+    const pinMin=getPeriodPinStart(taskKey,dayKey);
+    const pinAt=pinMin!=null?Math.max(pinMin,bandStart):null;
+    start=pinAt!=null?pinAt:cur;
+    if(pinAt!=null&&start<cur){
+      block.overflow=true;
+      warnings.push({msg:'“'+block.lab+'” pinned at '+fmt12(minToTime(start))+' — overlaps earlier band tasks'});
+    }
+    if(start>cur+4)pushFlexGap(seq,cur,start,'Open time · '+label);
+    const room=bandEnd-start;
+    if(room<5){
+      if(isUserBandTask(taskKey)){
+        dur=Math.max(5,block.dur);
+        block.dur=dur;
+        block.start=start;
+        block.end=start+dur;
+        block.period=bandKey;
+        block.overflow=true;
+        warnings.push({msg:label+' — “'+block.lab+'” has no room left in band — runs past '+fmt12(minToTime(bandEnd))+'. Shorten or move tasks.'});
+        seq.push(block);
+        cur=Math.max(cur,block.end);
+        return;
+      }
+      if(skipped)skipped.push({taskKey,bandKey,lab:periodTaskLabel(taskKey,dayKey)});
+      cur=Math.max(cur,start);
+      return;
+    }
+    dur=Math.min(block.dur,room);
+    block.dur=dur;
+    block.start=start;
+    block.end=start+dur;
+    block.period=bandKey;
+    if(pinAt!=null)block.pinned=true;
+    if(block.end>bandEnd){
+      block.overflow=true;
+      warnings.push({msg:label+' band overfull — '+block.lab+' runs past '+fmt12(minToTime(bandEnd))});
+    }
+    seq.push(block);
+    cur=Math.max(cur,block.end);
+  };
   taskKeys.forEach(taskKey=>{
     if(isSuddenTaskKey(taskKey)){
       const t=findSuddenTask(dayKey,suddenIdFromKey(taskKey));
       if(!t)return;
       const block=resolvePeriodBlock(taskKey,c,ws,ov,dayKey,null);
       if(!block)return;
-      block.period=bandKey;
       if(t.mode==='window'&&t.windowStart&&t.windowEnd){
         const wStart=toMin(t.windowStart),wEnd=toMin(t.windowEnd);
-        block.start=wStart;
-        block.end=wEnd;
-        block.dur=Math.max(5,wEnd-wStart);
-        if(wEnd>bandEnd||wStart<bandStart){
-          block.overflow=true;
-          warnings.push({msg:label+' — “'+t.name+'” fixed window extends outside '+label.toLowerCase()+' band'});
-        }
-        if(cur<wStart&&cur>bandStart-1){
-          const prev=seq.filter(b=>!b.flex&&b.period===bandKey).pop();
-          if(prev&&prev.end>wStart){
-            block.overflow=true;
-            warnings.push({msg:'“'+t.name+'” overlaps “'+prev.lab+'” — reorder or shorten blocks in '+label.toLowerCase()});
-          }
-        }
-        seq.push(block);
-        cur=Math.max(cur,wEnd);
-        return;
-      }
-      const room=bandEnd-cur;
-      if(room<5){
-        if(skipped)skipped.push({taskKey,bandKey,lab:periodTaskLabel(taskKey,dayKey)});
-        return;
-      }
-      block.dur=Math.min(block.dur,room);
-      block.start=cur;
-      block.end=cur+block.dur;
-      if(block.end>bandEnd){
-        block.overflow=true;
-        warnings.push({msg:label+' band overfull — '+block.lab+' runs past '+fmt12(minToTime(bandEnd))});
-      }
-      seq.push(block);
-      cur=block.end;
+        placeInBand(taskKey,block,wStart,wEnd);
+      }else placeInBand(taskKey,block,null,null);
       return;
     }
-    const room=bandEnd-cur;
-    if(room<5){
+    const pinMin=getPeriodPinStart(taskKey,dayKey);
+    const userTask=isUserBandTask(taskKey);
+    const roomForCap=pinMin!=null?bandEnd-Math.max(toMin(pinMin),bandStart):bandEnd-cur;
+    if(roomForCap<5&&!userTask){
       if(skipped)skipped.push({taskKey,bandKey,lab:periodTaskLabel(taskKey,dayKey)});
       return;
     }
-    const block=resolvePeriodBlock(taskKey,c,ws,ov,dayKey,room);
+    const block=resolvePeriodBlock(taskKey,c,ws,ov,dayKey,userTask||pinMin!=null?null:roomForCap);
     if(!block)return;
-    const overflow=cur+block.dur>bandEnd;
-    block.start=cur;
-    block.end=cur+block.dur;
-    block.period=bandKey;
-    if(overflow){
-      block.overflow=true;
-      warnings.push({msg:label+' band overfull — '+block.lab+' runs past '+fmt12(minToTime(bandEnd))});
-    }
-    seq.push(block);
-    cur=block.end;
+    placeInBand(taskKey,block,null,null);
   });
   if(cur<bandEnd-4)pushFlexGap(seq,cur,bandEnd,'Open time · '+label);
 }
@@ -1861,7 +1919,15 @@ function addPeriodExtra(period,name,mins,ctx){
   const c=cfg();
   if(!c.periodExtras)c.periodExtras={};
   if(!c.periodExtras[period])c.periodExtras[period]=[];
-  c.periodExtras[period].push({id:'pex_'+Date.now(),name:(name||'Activity').trim(),mins:Math.max(5,parseInt(mins,10)||30),ico:'✨'});
+  const id='pex_'+Date.now();
+  const minsVal=Math.max(5,parseInt(mins,10)||30);
+  c.periodExtras[period].push({id,name:(name||'Activity').trim(),mins:minsVal,ico:'✨'});
+  const tk='extra:'+id;
+  const lists=effectivePeriodLists(activeDayKey());
+  const list=(lists[period]||[]).slice();
+  if(!list.includes(tk))list.push(tk);
+  if(!c.periodOrder)c.periodOrder={};
+  c.periodOrder[period]=list;
   touchDaySync(activeDayKey());
 }
 let weekendTemplateDrafts=null;
@@ -2047,7 +2113,7 @@ function taskMinutesForBandRow(taskKey,ctx){
   else planCfg.wake=planPreviewWakeMin(ctx.dayType);
   const ws=workoutState();
   const ov=ctx.mode==='template'?{}:blockDurOv(ctx.dayKey||activeDayKey());
-  const block=resolvePeriodBlock(taskKey,planCfg,ws,ov,activeDayKey(),null);
+  const block=resolvePeriodBlock(taskKey,planCfg,ws,ov,labelKey,null);
   return block?block.dur:0;
 }
 function sumBandMinutes(period,list,ctx){
@@ -2125,6 +2191,7 @@ function dayCfg(k){
   if(!c.periodMoves)c.periodMoves=null;
   if(!c.periodExtras)c.periodExtras=null;
   if(!c.periodSkips)c.periodSkips=null;
+  if(!c.periodPinnedStart)c.periodPinnedStart=null;
   return c;
 }
 function blockDurOv(dayKey){
@@ -2920,6 +2987,30 @@ function wireBandMiniSeg(container,buttons,activeVal,onPick){
   });
   container.appendChild(seg);
 }
+function appendBandPinControl(row,taskKey,ctx){
+  if(ctx.mode!=='today')return;
+  const dayKey=ctx.dayKey||activeDayKey();
+  if(!taskShowsPinUi(taskKey,dayKey))return;
+  const pin=getPeriodPinStart(taskKey,dayKey);
+  const wrap=document.createElement('span');
+  wrap.className='pt-pin-wrap';
+  const inp=document.createElement('input');
+  inp.type='time';
+  inp.className='pt-pin';
+  inp.title='Pin start time on timeline (today only)';
+  if(pin)inp.value=pin;
+  inp.onchange=(e)=>{
+    e.stopPropagation();
+    setPeriodPinStart(taskKey,dayKey,inp.value||null);
+    saveDay();
+    renderSched();
+    flash(inp.value?periodTaskLabel(taskKey,dayKey)+' pinned at '+fmt12(inp.value):'Pin cleared');
+  };
+  inp.onclick=(e)=>e.stopPropagation();
+  wrap.appendChild(inp);
+  row.classList.add('has-pin');
+  row.insertBefore(wrap,row.querySelector('.pt-dur'));
+}
 function appendBandTaskPickers(row,taskKey,ctx){
   if(ctx.mode!=='today')return;
   const pick=document.createElement('div');
@@ -3096,6 +3187,7 @@ function renderPeriodBands(wrap,ctx){
         act.appendChild(aw);
       }
       appendBandTaskPickers(row,taskKey,ctx);
+      appendBandPinControl(row,taskKey,ctx);
       wirePeriodTaskDrag(row,period,taskKey,idx,wrap,ctx);
       band.appendChild(row);
     });
@@ -3185,6 +3277,8 @@ function renderPeriodPlan(){
   if(resetP)resetP.style.display=hasPeriodOverrides(dayKey)?'inline':'none';
   const resetS=document.getElementById('resetSkips');
   if(resetS)resetS.style.display=hasPeriodSkips(dayKey)?'inline':'none';
+  const resetPin=document.getElementById('resetPins');
+  if(resetPin)resetPin.style.display=hasPeriodPins(dayKey)?'inline':'none';
   const resetD=document.getElementById('resetDur');
   if(resetD)resetD.style.display=Object.keys(blockDurOv(dayKey)).length?'inline':'none';
   const disc=document.getElementById('periodPlanDisclosure');
@@ -3243,7 +3337,7 @@ function renderSched(){
     } else rightHTML='';
     const endLbl=b.end!=null?fmt12(minToTime(b.end)):'';
     el.innerHTML=`<div class="time">${fmt12(startHH)}${endLbl?'<br><span style="font-size:11px;color:var(--muted2)">→ '+endLbl+'</span>':''}</div>
-      <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.overflow?'<span class="overflowtag">OVERLAP</span>':''}${b.custom&&!b.sudden?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.nonFixed?'<span class="custag">PICK</span>':''}${b.period?'<span class="period-tag">'+PERIOD_LABELS[b.period]+'</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.dur}m</small></span></div>
+      <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.overflow?'<span class="overflowtag">OVERLAP</span>':''}${b.custom&&!b.sudden?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.nonFixed?'<span class="custag">PICK</span>':''}${b.period?'<span class="period-tag">'+PERIOD_LABELS[b.period]+'</span>':''}${b.pinned?'<span class="custag">PIN</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.dur}m</small></span></div>
       <div class="right">${rightHTML}</div>`;
     if(!isFlex) {
       const chk=el.querySelector('.chk');
@@ -4085,6 +4179,8 @@ function wire(){
   if(resetPeriodBtn)resetPeriodBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodOverrides(activeDayKey());saveDay();renderSched();renderGlance();flash('Today\'s band order reset');};
   const resetSkipsBtn=document.getElementById('resetSkips');
   if(resetSkipsBtn)resetSkipsBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodSkips(activeDayKey());saveDay();renderSched();renderGlance();flash('Skipped tasks restored');};
+  const resetPinsBtn=document.getElementById('resetPins');
+  if(resetPinsBtn)resetPinsBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodPins(activeDayKey());saveDay();renderSched();renderGlance();flash('Pinned times cleared');};
   document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;saveDay();renderClocks();renderSched();renderNowBanner();renderGlance();});
   document.querySelectorAll('#segAlarm button').forEach(b=>b.onclick=async()=>{
     const turningOn=b.dataset.a==='on';
