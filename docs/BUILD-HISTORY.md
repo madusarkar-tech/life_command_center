@@ -96,7 +96,7 @@ After the initial repo import, development continued in Cursor:
 | `2889e92` | Sudden ↔ bands sync; cross-day lookup; auto-displace on add |
 | `884cd10` | Sudden packing follows band order; fixed-window suddens keep clock time |
 
-Baseline tag: `baseline-2026-06-09` at `884cd10`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
+Baseline tag: `baseline-2026-06-09` at app `884cd10`; docs at `4ba29fb`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
 
 ## Files in this repo
 

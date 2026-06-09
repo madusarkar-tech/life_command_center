@@ -40,7 +40,7 @@ No output = local only. See [docs/GITHUB-SETUP.md](docs/GITHUB-SETUP.md) to push
 
 Design details: [docs/DESIGN.md](docs/DESIGN.md) · Build history: [docs/BUILD-HISTORY.md](docs/BUILD-HISTORY.md) · Onboarding: [docs/HANDOFF.md](docs/HANDOFF.md)
 
-**Stable baseline:** tag `baseline-2026-06-09` (app `884cd10` — sudden ↔ bands, skip-for-today, capacity warnings) — contract in [docs/BASELINE.md](docs/BASELINE.md). Say *"Return to baseline"* in a new chat to anchor agents there.
+**Stable baseline:** tag `baseline-2026-06-09` (app `884cd10`; docs on `main` at `4ba29fb`) — contract in [docs/BASELINE.md](docs/BASELINE.md). Say *"Return to baseline"* in a new chat to anchor agents there.
 
 ## Data persistence
 

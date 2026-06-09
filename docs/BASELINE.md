@@ -33,7 +33,7 @@ List what the tag contains:
 git show baseline-2026-06-09 --stat
 ```
 
-**Live site:** GitHub Pages follows `main` (currently `884cd10`).
+**Live site:** GitHub Pages follows `main` (currently `4ba29fb`; app at tag `884cd10`).
 
 ---
 
