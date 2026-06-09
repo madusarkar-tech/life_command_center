@@ -1666,7 +1666,48 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
   let cur=bandStart;
   const label=PERIOD_LABELS[bandKey];
   taskKeys.forEach(taskKey=>{
-    if(isSuddenTaskKey(taskKey))return;
+    if(isSuddenTaskKey(taskKey)){
+      const t=findSuddenTask(dayKey,suddenIdFromKey(taskKey));
+      if(!t)return;
+      const block=resolvePeriodBlock(taskKey,c,ws,ov,dayKey,null);
+      if(!block)return;
+      block.period=bandKey;
+      if(t.mode==='window'&&t.windowStart&&t.windowEnd){
+        const wStart=toMin(t.windowStart),wEnd=toMin(t.windowEnd);
+        block.start=wStart;
+        block.end=wEnd;
+        block.dur=Math.max(5,wEnd-wStart);
+        if(wEnd>bandEnd||wStart<bandStart){
+          block.overflow=true;
+          warnings.push({msg:label+' — “'+t.name+'” fixed window extends outside '+label.toLowerCase()+' band'});
+        }
+        if(cur<wStart&&cur>bandStart-1){
+          const prev=seq.filter(b=>!b.flex&&b.period===bandKey).pop();
+          if(prev&&prev.end>wStart){
+            block.overflow=true;
+            warnings.push({msg:'“'+t.name+'” overlaps “'+prev.lab+'” — reorder or shorten blocks in '+label.toLowerCase()});
+          }
+        }
+        seq.push(block);
+        cur=Math.max(cur,wEnd);
+        return;
+      }
+      const room=bandEnd-cur;
+      if(room<5){
+        if(skipped)skipped.push({taskKey,bandKey,lab:periodTaskLabel(taskKey,dayKey)});
+        return;
+      }
+      block.dur=Math.min(block.dur,room);
+      block.start=cur;
+      block.end=cur+block.dur;
+      if(block.end>bandEnd){
+        block.overflow=true;
+        warnings.push({msg:label+' band overfull — '+block.lab+' runs past '+fmt12(minToTime(bandEnd))});
+      }
+      seq.push(block);
+      cur=block.end;
+      return;
+    }
     const room=bandEnd-cur;
     if(room<5){
       if(skipped)skipped.push({taskKey,bandKey,lab:periodTaskLabel(taskKey,dayKey)});
@@ -1687,6 +1728,10 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
   });
   if(cur<bandEnd-4)pushFlexGap(seq,cur,bandEnd,'Open time · '+label);
 }
+function suddenTasksNotInSeq(seq,suddenTasks){
+  const packed=new Set((seq||[]).filter(b=>b.sudden).map(b=>b.id));
+  return(suddenTasks||[]).filter(t=>!packed.has(t.id));
+}
 function buildPeriodWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
   const wakeMin=toMin(c.wake);
   const lists=effectivePeriodLists(dayKey);
@@ -1700,7 +1745,7 @@ function buildPeriodWorkdaySeq(c,ws,ov,dayKey,suddenTasks){
   const bf=seq.find(b=>b.id==='breakfast');
   if(bf)bfEnd=bf.end;
   const gapOpts={wakeMin,earliest:bfEnd,dayEnd:WORK_START};
-  const applied=applySuddenTasks(seq,suddenTasks||[],dayKey,'workday',gapOpts);
+  const applied=applySuddenTasks(seq,suddenTasksNotInSeq(seq,suddenTasks),dayKey,'workday',gapOpts);
   sortSeqByStart(applied.seq);
   warnings.push(...annotateWorkdayOverlaps(applied.seq));
   const withFlex=[];
@@ -1730,7 +1775,7 @@ function buildPeriodWeekendSeq(c,ws,ov,dayKey,suddenTasks){
     bandStart=bandEnd;
   });
   const gapOpts={wakeMin,earliest:wakeMin+60,dayEnd:WEEKEND_MIDNIGHT};
-  const applied=applySuddenTasks(seq,suddenTasks||[],dayKey,dt,gapOpts);
+  const applied=applySuddenTasks(seq,suddenTasksNotInSeq(seq,suddenTasks),dayKey,dt,gapOpts);
   sortSeqByStart(applied.seq);
   const withFlex=[];
   let cur=wakeMin;
