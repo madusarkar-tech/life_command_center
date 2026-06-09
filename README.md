@@ -34,13 +34,13 @@ No output = local only. See [docs/GITHUB-SETUP.md](docs/GITHUB-SETUP.md) to push
 
 | Tab | Purpose |
 |-----|---------|
-| **Today** | Period bands, Today's Flow timeline, band reorder/duration/alarms, sudden tasks, to-dos, habit chips in Quick Glance |
+| **Today** | Period bands (sudden tasks ⚡, skip ✕, reorder), Today's Flow timeline, alarms, to-dos, habit chips in Quick Glance |
 | **PMP Prep** | Study log, domain sliders, countdown to June 22, 2026 (hidden after exam day) |
 | **Job Search** | Application pipeline, deadline Aug 1, 2026; primary flexible schedule focus after June 22, 2026 (>2h/day on workdays) |
 
 Design details: [docs/DESIGN.md](docs/DESIGN.md) · Build history: [docs/BUILD-HISTORY.md](docs/BUILD-HISTORY.md) · Onboarding: [docs/HANDOFF.md](docs/HANDOFF.md)
 
-**Stable baseline:** tag `baseline-2026-06-08` (app `9c3fe45`; `main` at `3356525` with band capacity warnings) — contract in [docs/BASELINE.md](docs/BASELINE.md). Say *"Return to baseline"* in a new chat to anchor agents there.
+**Stable baseline:** tag `baseline-2026-06-09` (app `884cd10` — sudden ↔ bands, skip-for-today, capacity warnings) — contract in [docs/BASELINE.md](docs/BASELINE.md). Say *"Return to baseline"* in a new chat to anchor agents there.
 
 ## Data persistence
 

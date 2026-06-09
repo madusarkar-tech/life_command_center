@@ -92,8 +92,11 @@ After the initial repo import, development continued in Cursor:
 | `cc80484` | Block duration editing moved to −/+ steppers on band rows |
 | `9c3fe45` | Task alarms (start + optional 5m end warn); Gym/Home/Skip and Extra pickers on band rows; duration-only timeline labels |
 | `3356525` | Band capacity warnings — toast on overfull add/move, conflict banner, **· not on timeline** row tags |
+| `aab8824` | Skip for today — `periodSkips`; ✕ on band rows + timeline |
+| `2889e92` | Sudden ↔ bands sync; cross-day lookup; auto-displace on add |
+| `884cd10` | Sudden packing follows band order; fixed-window suddens keep clock time |
 
-Baseline tag: `baseline-2026-06-08` at `9c3fe45`; `main` ahead at `3356525`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
+Baseline tag: `baseline-2026-06-09` at `884cd10`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
 
 ## Files in this repo
 

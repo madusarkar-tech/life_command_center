@@ -1,40 +1,39 @@
 # Baseline checkpoint
 
-**Established:** 2026-06-08 (current) · **Archive:** 2026-06-05 (`2f5d6b3`)  
-**Return phrase:** `Return to baseline` or `Restore baseline-2026-06-08`
+**Established:** 2026-06-09 (current) · **Archive:** 2026-06-08 (`9c3fe45`)  
+**Return phrase:** `Return to baseline` or `Restore baseline-2026-06-09`
 
-Use this when you want future work (or a new chat) to treat the app as **known-good** and avoid accidental changes to sync or weekend Plan behavior unless you explicitly ask otherwise.
+Use this when you want future work (or a new chat) to treat the app as **known-good** and avoid accidental changes to sync, sudden/band scheduling, or weekend Plan behavior unless you explicitly ask otherwise.
 
 ## Git reference (current)
 
 | Item | Value |
 |------|--------|
-| Tag | `baseline-2026-06-08` |
-| App at tag | `9c3fe45` — band duration edit, inline workout/extra pickers, task alarms, cleaner timeline labels |
-| **`main` HEAD (app)** | `3356525` — adds band capacity warnings (toast on add/move; didn't-fit banner + band row tags) |
-| Docs | Updated on `main` with each docs commit; tag points at app `9c3fe45` |
+| Tag | `baseline-2026-06-09` |
+| App at tag | `884cd10` — sudden ↔ bands sync, skip-for-today, band-order sudden packing |
+| Docs | Updated on `main` in the docs commit following the tag |
 
 ### Restore code to this baseline
 
 ```bash
 cd ~/Desktop/Scheduler
-git fetch --tags   # if using a remote
-git checkout baseline-2026-06-08
+git fetch --tags
+git checkout baseline-2026-06-09
 ```
 
 Restore only the app file (stay on your current branch):
 
 ```bash
-git checkout baseline-2026-06-08 -- life-dashboard.html
+git checkout baseline-2026-06-09 -- life-dashboard.html
 ```
 
 List what the tag contains:
 
 ```bash
-git show baseline-2026-06-08 --stat
+git show baseline-2026-06-09 --stat
 ```
 
-**Live site:** GitHub Pages follows `main` (currently `3356525`). Checking out tag `baseline-2026-06-08` locally does not change Pages until you merge or push that state to `main`.
+**Live site:** GitHub Pages follows `main` (currently `884cd10`).
 
 ---
 
@@ -42,7 +41,10 @@ git show baseline-2026-06-08 --stat
 
 | Commit | Summary |
 |--------|---------|
-| `3356525` | **Band capacity warnings** — `flashBandCapacityWarning` / `bandCapacityStatus` on add activity and move between bands; `packPeriodBand` records `skippedBandTasks` when &lt;5m room left; `#conflictBanner` via `skippedBandConflicts`; band rows tagged **· not on timeline** (`pt-unpacked`). Fix: apostrophe syntax in conflict message (had blocked page load). |
+| `3356525` | **Band capacity warnings** — `flashBandCapacityWarning` / `bandCapacityStatus`; `skippedBandTasks`; `#conflictBanner`; **· not on timeline** (`pt-unpacked`). Syntax fix in conflict message. |
+| `aab8824` | **Skip for today** — `periodSkips`; ✕ on band rows + timeline; **↺ unskip all tasks**. |
+| `2889e92` | **Sudden ↔ bands** — suddens in `effectivePeriodLists` as `sudden:st_*`; cross-`dayConfig` lookup (`iterateSuddenTargetingDay`); auto `periodMoves` + `displaceSuddenOverlaps` on add; `repairSuddenBandLinks` on load. |
+| `884cd10` | **Band-order sudden packing** — `packPeriodBand` packs suddens in band order; fixed-window suddens keep clock time; `suddenTasksNotInSeq` avoids double-apply in `applySuddenTasks`. |
 
 ---
 
@@ -50,23 +52,24 @@ git show baseline-2026-06-08 --stat
 
 | Commit | Summary |
 |--------|---------|
-| `fe372d0` | **Safe per-array sync merge** — `mergeArrayFields` unions `todos`, `jobTodos`, `habits`, `jobs` after winner-take-all base; never replaces non-empty with empty; same-id conflicts prefer newer document side. `dayConfig` merge unchanged. |
-| `9aa5ed8` | **Gym blockDur fix** — `blockDur.gym` = workout minutes; `gymBlockForPeriod()` honors `ov.gym`. **Drag reorder** — Today's bands + weekend Plan modal (`wirePeriodTaskDrag`, ⠿ grip). |
-| `ea84a8f` | **HANDOFF.md** — minimal handoff doc for new chats. |
-| `cc80484` | **Duration edit in bands** — `blockDur` −/+ steppers on Today's band rows; removed timeline “Edit block lengths” mode. |
-| `9c3fe45` | **Task alarms** — block-start alerts (default on) + optional 5m end warnings via ⏱ on band rows; Alarms/End warn toggles. **Inline pickers** — Gym/Home/Skip and Extra (Auto/Read/AI/QGIS/Skip) on gym & non-fixed band rows; removed top controls. **Cleaner labels** — Today's Flow and Right now show duration only (no `sub` clutter). |
+| `fe372d0` | Safe per-array sync merge for `todos`, `jobTodos`, `habits`, `jobs` |
+| `9aa5ed8` | Gym `blockDur` fix; drag reorder in bands + Plan modal |
+| `ea84a8f` | `HANDOFF.md` |
+| `cc80484` | Duration edit in bands (−/+ steppers) |
+| `9c3fe45` | Task alarms; inline Gym/Home/Skip + Extra pickers; duration-only timeline labels |
+| *(see above)* | Capacity warnings, skip-for-today, sudden ↔ bands |
 
 ---
 
-## Changes since `baseline-2026-06-04` (`c525908` app / `3791fa4` docs)
+## Changes since `baseline-2026-06-04` (`c525908` app)
 
 | Commit | Summary |
 |--------|---------|
-| `e222fd8` | **Auto day type** — `autoDayType()` uses `activeDayKey()` calendar (not wall clock). Fixes missing Work/Sleep between midnight and 4am rollover. |
-| `2f5d6b3` | **UI** — removed Daily Non-Negotiables tab; habits only on Today → Quick Glance chips. `renderHabits()` guarded when `#habits` absent. |
-| `e3dfb74` | Docs only — scheduling flowcharts (not part of app baseline) |
+| `e222fd8` | Auto day type uses `activeDayKey()` calendar |
+| `2f5d6b3` | Habits on Today Quick Glance only (tab removed) |
+| `e3dfb74` | Docs only — scheduling flowcharts |
 
-**Unchanged since 2026-06-04:** weekend Plan modal guard, period-band scheduling engine core, `planPreviewWakeMin(forDayType)` fix. Sync uses document-level winner-take-all **base**; array fields merged separately (see below).
+**Unchanged since 2026-06-04:** weekend Plan modal guard, period-band engine core, `planPreviewWakeMin(forDayType)`. Sync: document-level winner-take-all **base**; `dayConfig` + array fields merged separately.
 
 ---
 
@@ -74,189 +77,121 @@ git show baseline-2026-06-08 --stat
 
 ### Product surfaces
 
-- **Today** — period-band schedule, Today's Flow timeline (duration-only labels + checkboxes), today-only band overrides, sudden tasks, **alarms**, sidebar to-dos + scratchpad
-- **Today's bands** (collapsible) — reorder (↑↓ / drag), move between bands, add extras, **blockDur −/+ steppers**, **Gym/Home/Skip** on gym row, **Extra picker** on non-fixed row (workdays), **⏱ end-warn** toggles, **capacity toast on add/move**, **· not on timeline** when task didn't pack
-- **Quick Glance** — block checks, **habit chips** (no separate habits tab), study log shortcuts
-- **PMP Prep** — study log, domains, quiz (hidden after exam day)
-- **Job Search** — application pipeline, job to-dos, notes
-- **Weekend Plan modal** — weekly Fri/Sat templates (`DATA.weekendPeriodTemplate`); in-memory drafts until **Save plan**; drag reorder
-- **Sync** — Google Auth + Firestore `users/{uid}`; local `localStorage` when signed out
-- **Scheduling spec** — [DESIGN.md](./DESIGN.md) (period-band v1)
+- **Today** — period-band schedule, Today's Flow timeline, sudden tasks, alarms, to-dos, habit chips
+- **Today's bands** — reorder (↑↓ / drag), move between bands, add extras, **blockDur −/+**, Gym/Home/Skip + Extra pickers, **⏱ end-warn**, **⚡ sudden tasks**, **✕ skip for today**, capacity toast, **· not on timeline** when unpacked
+- **Quick Glance** — block checks, habit chips, study shortcuts
+- **PMP Prep** / **Job Search** — unchanged
+- **Weekend Plan modal** — weekly Fri/Sat templates; drafts until Save; drag reorder
+- **Sync** — Google Auth + Firestore; localStorage when signed out
 
-**Tabs:** Today · PMP Prep · Job Search (no Daily Non-Negotiables tab).
+**Tabs:** Today · PMP Prep · Job Search
 
 ### Mental model (do not conflate)
 
 | Concept | Storage | Notes |
 |---------|---------|--------|
-| **Plan** | `weekendPeriodTemplate` + modal drafts | Weekly Fri/Sat defaults; flushed on Save only |
-| **Today's bands** | `dayConfig[date]` | Today-only reorder/move/extras/`blockDur`; workout & nonFixed picks on band rows; band list can exceed window — see skipped warnings |
-| **Today's Flow** | Computed | `buildSeq()` → `renderSched()` — not a stored list; read-only durations; may omit band tasks with no room |
-| **Alarms** | `DATA.alarmOn`, `alarmEndOn`, `alarmEndTasks` | Start-of-block default on; 5m end warn per ⏱; `checkTaskAlarms()` every 15s |
-| **To-Do** | `DATA.todos` | Sidebar; separate from schedule blocks |
+| **Plan** | `weekendPeriodTemplate` + modal drafts | Weekly Fri/Sat; Save only |
+| **Today's bands** | `dayConfig[date]` | `periodOrder`, `periodMoves`, `periodExtras`, `periodSkips`, `blockDur`; suddens as `sudden:st_*` keys |
+| **Sudden tasks** | `dayConfig[*].suddenTasks` | May live in any date bucket; `targetDayKey` selects schedule day; bands + timeline share packing |
+| **Today's Flow** | Computed | `packPeriodBand` → optional `applySuddenTasks` for unpackable remainder |
+| **Alarms** | `DATA.alarmOn`, `alarmEndOn`, `alarmEndTasks` | Start-of-block default on; 5m end warn per ⏱ |
+| **To-Do** | `DATA.todos` | Sidebar |
 | **Habits** | `DATA.habits` + Today chips | No dedicated tab |
 
 ### Day rollover & Auto day type
 
 - Calendar “today” rolls at **4:00 AM** local (`activeDayKey()`, `DAY_ROLLOVER_HOUR = 4`).
-- **Auto** day type uses **active day key’s** weekday (`calendarDayTypeForKey(activeDayKey())`), not wall-clock `getDay()` — so shift nights before 4am stay **workday** until rollover.
+- **Auto** uses `calendarDayTypeForKey(activeDayKey())`, not wall-clock `getDay()`.
 
 ---
 
 ## Sync behavior snapshot (source of truth for agents)
 
-Implementation: `life-dashboard.html` — `Store`, `mergeAppData`, `mergeDayConfig`, `mergeDayEntry`, `mergeDayFields`.
+Implementation: `life-dashboard.html` — `Store`, `mergeAppData`, `mergeDayConfig`, `mergeArrayFields`.
 
-**Unchanged since `fe372d0`.** Alarm fields (`alarmOn`, `alarmEndOn`, `alarmEndTasks`) follow document-level winner-take-all like other top-level `DATA` keys.
+**Unchanged since `fe372d0`.** New day fields (`periodSkips`, sudden `periodMoves`) live inside `dayConfig` and merge per-day.
 
 ### Layers
 
 | Layer | Keys / path |
 |-------|-------------|
-| Local | `localStorage` `lifehub:data`, `lifehub:meta` (`updatedAt`) |
-| Cloud | Firestore `users/{uid}` document `{ data, updatedAt }` |
+| Local | `localStorage` `lifehub:data`, `lifehub:meta` |
+| Cloud | Firestore `users/{uid}` `{ data, updatedAt }` |
 
-### Load path (`Store.load`)
+### Load / save / listener
 
-1. Read local snapshot.
-2. If signed in, fetch cloud doc.
-3. If no local → write cloud to local and use cloud.
-4. If both exist → `mergeAppData(local, cloud, localUpdatedAt, cloudUpdatedAt)` → write merged result to local.
-
-### Save path (`Store.save`)
-
-1. Always `writeLocal(d)`.
-2. Signed out → flash “Saved”, no cloud write.
-3. Signed in → `setSyncDot('pending')`; **urgent** saves call `pushCloud` immediately with `suppressCloudApply` ~1.5s; normal saves **debounce** `pushCloud` ~600–800ms.
-
-### Realtime listener (`Store.startCloudListener`)
-
-- `onSnapshot` on `users/{uid}`.
-- Skips: missing data, `hasPendingWrites`, `suppressCloudApply` window, weekend Plan modal open (see below).
-- Applies via `Store.applyRemoteData` → may flash “Updated from sync”.
+Same as prior baseline: `Store.load` → `mergeAppData`; `Store.save` → local + debounced/urgent `pushCloud`; `onSnapshot` with `suppressCloudApply` and weekend Plan modal guard.
 
 ### Top-level merge (`mergeAppData`)
 
-**Winner-take-all by document timestamp** (`localUpdatedAt` vs cloud `updatedAt`):
+Winner-take-all by document timestamp; exceptions: `dayConfig` (per-date merge), `todos`/`jobTodos`/`habits`/`jobs` (`mergeArrayFields`).
 
-- The newer snapshot becomes the base (`JSON.parse` copy).
-- **Exception:** `dayConfig` is always merged per date (see below).
-- **Exception:** `todos`, `jobTodos`, `habits`, `jobs` are merged via `mergeArrayFields` (see below).
-- **Patch:** if winner lacks `scheduleChecks` but loser has it, copy `scheduleChecks` from loser.
+### Per-day merge (`mergeDayConfig`)
 
-**Other fields on the winning snapshot include (non-exhaustive):**  
-`sessions`, `domains`, `weekendPeriodTemplate`, `periodTemplate`, `alarmOn`, `alarmEndOn`, `alarmEndTasks`, notes fields, `mealPrep`, etc.
-
-### Per-array merge (`mergeArrayFields`)
-
-After the base snapshot is chosen, these fields are **replaced** with a merged result from **both** local and cloud:
-
-| Field | Merge rule |
-|-------|------------|
-| `todos` | Union by `id`; newer document wins on same id; empty newer never wipes non-empty older |
-| `jobTodos` | Same as `todos` |
-| `habits` | Union date arrays per habit id (sorted unique dates) |
-| `jobs` | Union by `id` or composite key `company+role+status`; newer wins on conflict |
-
-Implementation: `mergeIdArrays`, `mergeHabitsMap`, `jobMergeKey` in `life-dashboard.html`.
-
-**Still not merged field-by-field:** `sessions`, `weekendPeriodTemplate`, notes, etc. — still from winning snapshot only.
-
-### Per-day merge (`mergeDayConfig` / `mergeDayEntry`)
-
-For each `YYYY-MM-DD` key in local and cloud `dayConfig`:
-
-1. Compare `loc._syncAt` vs `clo._syncAt` on that day entry.
-2. Newer entry wins as base; older is “other”.
-3. Tie on `_syncAt` → use document-level times (`cloudTime >= localTime` → cloud wins).
-4. `mergeDayFields(older, newer)`:
-   - Start from **newer** copy.
-   - Union **suddenTasks** by `id` from older into newer (no duplicates).
-   - `_syncAt = max(older, newer)`.
-
-Day edits that should bump sync: call `touchDaySync(dayKey)` → sets `dayConfig[day]._syncAt = Date.now()`.
+Newer `dayConfig[date]._syncAt` wins; `suddenTasks` union by id; `periodSkips`/`periodMoves`/`periodOrder`/`periodExtras` on winning day entry.
 
 ### Weekend Plan modal guard
 
-- `isWeekendPlanModalOpen()` → `#weekendModal` has class `open`.
-- While open: `Store.applyRemoteData` returns **false** (no merge from cloud into UI).
-- Drafts live in `weekendTemplateDrafts` `{ friday, saturday }`; **Save plan** → `flushWeekendTemplateDraftsToData()` then persist.
-- Do not apply remote data over open modal edits.
-
-### Push suppression
-
-- `suppressCloudApply = Date.now() + 1500` around `pushCloud` and urgent saves to avoid echo from own writes.
-
-### First sign-in
-
-- `Store.seedCloudFromLocal(uid)` uploads local only if cloud doc has no `data`.
-
-### Auth / dev
-
-- Google sign-in requires **http://localhost** (or hosted HTTPS), not `file://`.
-- Config: `firebase-config.js` (see `firebase-config.example.js`, [FIREBASE-SETUP.md](./FIREBASE-SETUP.md)).
-
-### Data not in Git
-
-Firestore and `localStorage` are **not** reverted by `git checkout`. Baseline is **code + rules**; user data stays in Firebase unless you export/restore manually.
+`isWeekendPlanModalOpen()` blocks `applyRemoteData` while modal open.
 
 ---
 
 ## Scheduling engine (freeze reference)
 
-- **Workday (Sun–Thu):** 3 bands + fixed Work (8pm–3am) + Sleep (3am→wake).
-- **Friday / Saturday:** 4 bands through night (8pm–midnight); no work block.
-- **Pre-exam (through 2026-06-22):** PMP in defaults; **post-exam:** PMP removed, job apps >2h focus.
-- **Key functions:** `buildSeq`, `buildPeriodWorkdaySeq`, `buildPeriodWeekendSeq`, `packPeriodBand`, `renderSched`, `renderPeriodBands`, `applyBandTaskDurDelta`, `appendBandTaskPickers`, `bandCapacityStatus`, `flashBandCapacityWarning`, `skippedBandConflicts`, `wirePeriodTaskDrag`, `checkTaskAlarms`, `renderAlarmControls`, `planPreviewWakeMin(forDayType)`, `calendarDayTypeForKey`, `autoDayType`.
+- **Workday:** 3 bands + Work (8pm–3am) + Sleep (3am→wake).
+- **Weekend:** 4 bands through night (8pm–midnight).
+- **Key functions:** `buildSeq`, `buildPeriodWorkdaySeq`, `buildPeriodWeekendSeq`, `packPeriodBand`, `effectivePeriodLists`, `iterateSuddenTargetingDay`, `displaceSuddenOverlaps`, `suddenTasksNotInSeq`, `applySuddenTasks`, `skipPeriodTask`, `repairSuddenBandLinks`, `bandCapacityStatus`, `flashBandCapacityWarning`, `skippedBandConflicts`, `renderPeriodBands`, `wirePeriodTaskDrag`, `checkTaskAlarms`, `planPreviewWakeMin`, `calendarDayTypeForKey`, `autoDayType`.
 
-Full band windows and defaults: [DESIGN.md](./DESIGN.md).
+Full band windows: [DESIGN.md](./DESIGN.md).
 
 ---
 
-## Fixes included in baseline code (`3356525` on `main`; tag `9c3fe45`)
+## Fixes included in baseline code (`884cd10`)
 
 - Weekend 4-band model + weekly Plan templates
-- Fri/Sat tab drafts without reload; drag reorder in Plan modal
-- Plan: ✕ on rows, minutes + band capacity
-- `planPreviewWakeMin(forDayType)` — no shadowing of `dayType()`
-- Auto day type aligned with `activeDayKey` before 4am rollover
-- Habits on Today Quick Glance only (tab removed)
-- Safe per-array sync merge for `todos`, `jobTodos`, `habits`, `jobs`
-- Gym `blockDur` = workout minutes; band duration steppers
-- Task alarms (start + optional 5m end warn)
-- Workout/Extra pickers on band rows; timeline duration-only labels
-- Band capacity warnings: toast on overfull add/move; conflict banner + row tag for unpacked tasks
+- Safe per-array sync merge
+- Gym `blockDur`, band duration steppers, drag reorder
+- Task alarms; inline workout/extra pickers; duration-only timeline
+- Band capacity warnings
+- Skip for today (`periodSkips`)
+- Sudden tasks in Today's bands; cross-day lookup; overlap displacement on add
+- Sudden packing follows band order; fixed-window suddens keep clock time
 
 ---
 
 ## For Cursor / new chats
 
-Paste or point the agent at this file and say:
-
-> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge or weekend Plan modal behavior unless I ask. Match tag `baseline-2026-06-08`.
-
-Optional project rule (`.cursor/rules` or User Rules):
+> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, sudden/band packing, or weekend Plan modal behavior unless I ask. Match tag `baseline-2026-06-09`.
 
 ```text
-When I say "return to baseline" or "restore baseline-2026-06-08", read docs/BASELINE.md and treat it as the contract for sync and scheduling behavior. Prefer minimal diffs; do not redesign mergeAppData or weekend Plan without explicit request.
+When I say "return to baseline" or "restore baseline-2026-06-09", read docs/BASELINE.md and treat it as the contract. Prefer minimal diffs.
 ```
 
-See also [HANDOFF.md](./HANDOFF.md) for a shorter onboarding summary.
+See [HANDOFF.md](./HANDOFF.md).
 
 ---
 
 ## Out of scope at this baseline
 
+- Pinned task start times (Step 3)
 - Google Calendar / Todoist
-- Multi-user onboarding / `DATA.profile` (planned next — use legacy migration when building)
-- Full replacement of document-level winner-take-all for **all** fields (arrays above are the exception)
-- Gym spillover across bands when morning is full (user wants; not built)
+- Multi-user `DATA.profile`
+- Full replacement of document-level winner-take-all
+- Gym spillover across bands when morning is full
 
 ---
 
+## Archive: `baseline-2026-06-08`
+
+Prior checkpoint before skip-for-today and sudden ↔ bands. App at `9c3fe45` (+ `3356525` capacity warnings on `main` before `aab8824`).
+
+```bash
+git checkout baseline-2026-06-08 -- life-dashboard.html
+```
+
 ## Archive: `baseline-2026-06-05`
 
-Prior checkpoint before band duration UI, alarms, and inline pickers. App at `2f5d6b3`.
+App at `2f5d6b3`.
 
 ```bash
 git checkout baseline-2026-06-05 -- life-dashboard.html
@@ -264,7 +199,7 @@ git checkout baseline-2026-06-05 -- life-dashboard.html
 
 ## Archive: `baseline-2026-06-04`
 
-Earlier checkpoint before day-type fix and habits tab removal. App at `c525908`; docs at `3791fa4`.
+App at `c525908`.
 
 ```bash
 git checkout baseline-2026-06-04 -- life-dashboard.html
@@ -274,6 +209,6 @@ git checkout baseline-2026-06-04 -- life-dashboard.html
 
 ## Creating a *new* baseline later
 
-1. Commit when code + sync behavior are right again.
+1. Commit when code + sync behavior are right.
 2. `git tag -a baseline-YYYY-MM-DD -m "description"`
-3. Update this file with new tag, commit hash, and changelog since prior baseline.
+3. Update this file + HANDOFF.md; push tag.

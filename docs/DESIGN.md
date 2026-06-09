@@ -59,10 +59,12 @@ PMP blocks removed; morning open time is for custom activities (add via band UI)
 ### Today-only overrides (`dayConfig[date]`)
 
 - **periodOrder** — ↑↓ reorder within a band today only.
-- **periodMoves** — move a task to another band today only (e.g. gym → morning).
+- **periodMoves** — move a task to another band today only (e.g. gym → morning); sudden tasks use keys `sudden:st_*`.
 - **periodExtras** — custom named activities in a band (post-exam open time).
+- **periodSkips** — ✕ skip a task for today only; **↺ unskip all tasks** restores defaults.
 - **blockDur** — today-only duration per task key; edited via **−/+ steppers** on band rows (not a separate timeline edit mode).
-- **Reset today's order** — clears overrides; defaults return.
+- **suddenTasks** — sudden / planned appointments; appear in bands as ⚡ rows; packed in band order.
+- **Reset today's order** — clears `periodOrder` / `periodMoves` / `periodExtras`; does not clear skips or suddens.
 
 Sync via existing Firebase `dayConfig` merge.
 
@@ -78,10 +80,18 @@ Sync via existing Firebase `dayConfig` merge.
 - Labels show **duration only** (e.g. `60m`) — no subtitle hints like “1h from wake”.
 - Checkboxes for block completion; **Alarms** / **End warn** toggles in the header.
 
+### Sudden tasks & bands
+
+- Stored in `dayConfig[date].suddenTasks` (may be in any date bucket; `targetDayKey` selects schedule day).
+- Shown in **Today's bands** as ⚡ with reorder, move, duration, remove.
+- **Fixed window** (e.g. 10–11am): keeps clock time on timeline; band reorder changes what packs before/after.
+- **Anytime**: packed sequentially in band order like other tasks.
+- On add with overlap: `displaceSuddenOverlaps` tries `periodMoves` for displaced tasks (gym → afternoon/evening first).
+- Remaining suddens not packed in bands may still flow through `applySuddenTasks`.
+
 ### Still applies
 
 - **Wake** / “Just woke up” — starts morning band.
-- **Sudden tasks** — applied after band packing; can displace/replace blocks.
 
 ### Task alarms
 
@@ -116,7 +126,8 @@ Sync via existing Firebase `dayConfig` merge.
 | Day type (Auto / Workday / Friday / Saturday) | Auto uses active day key (4am rollover) |
 | Workout: Gym / Home / Skip | On gym band row; affects gym duration |
 | Non-fixed: Auto / Read / AI / QGIS / Skip | On non-fixed band row (workdays) |
-| Sudden tasks | Anytime or fixed window |
+| Sudden tasks | Anytime or fixed window; ⚡ in Today's bands; skip via ✕ |
+| Skip for today | ✕ on band row or timeline → `periodSkips` |
 | Weekend plan | Weekly Fri/Sat band templates (Plan modal) |
 | Block lengths (`blockDur`) | −/+ steppers on Today's band rows |
 | Task alarms | Start-of-block (default on); ⏱ end warn per task |
@@ -126,6 +137,7 @@ Sync via existing Firebase `dayConfig` merge.
 
 - Cloud backup beyond Firebase sign-in
 - Google Calendar / Todoist integration
-- **Gym spillover** — if morning band is full, gym should try afternoon/evening before dropping lower-priority tasks (user wants; not built)
+- **Pinned start times** — set exact clock time for a band task (e.g. gym at 11am in open time)
+- **Gym spillover** — if morning band is full, gym should try afternoon/evening before dropping lower-priority tasks (partial: displacement on sudden add only)
 
 See [BUILD-HISTORY.md](BUILD-HISTORY.md) for feature evolution.
