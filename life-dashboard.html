@@ -809,6 +809,49 @@ function mergeArrayFields(out,local,cloud,localTime,cloudTime){
   out.habits=mergeHabitsMap(local.habits,cloud.habits);
   out.jobs=mergeIdArrays(local.jobs,cloud.jobs,localIsNewer,jobMergeKey);
 }
+const NOTE_LWW_FIELDS=[
+  {text:'todayNotes',ts:'todayNotesUpdatedAt'},
+  {text:'pmpNotes',ts:'pmpNotesUpdatedAt'},
+  {text:'jobNotes',ts:'jobNotesUpdatedAt'}
+];
+function noteFieldUpdatedAt(side,textKey,tsKey,docTime,otherHasFieldTs){
+  const ts=side&&side[tsKey];
+  if(typeof ts==='number'&&ts>0)return ts;
+  const text=side&&side[textKey];
+  if(text==null||text==='')return 0;
+  if(otherHasFieldTs)return 0;
+  return docTime||0;
+}
+function pickNoteFieldWinner(local,cloud,textKey,tsKey,localTime,cloudTime){
+  const lHas=typeof local?.[tsKey]==='number'&&local[tsKey]>0;
+  const cHas=typeof cloud?.[tsKey]==='number'&&cloud[tsKey]>0;
+  const lTs=noteFieldUpdatedAt(local,textKey,tsKey,localTime,cHas);
+  const cTs=noteFieldUpdatedAt(cloud,textKey,tsKey,cloudTime,lHas);
+  const lText=local&&local[textKey]!=null?String(local[textKey]):'';
+  const cText=cloud&&cloud[textKey]!=null?String(cloud[textKey]):'';
+  if(lTs>cTs)return{text:lText,ts:lTs};
+  if(cTs>lTs)return{text:cText,ts:cTs};
+  // Tie: non-empty over empty, then longer text (same timestamp).
+  if(!lText&&cText)return{text:cText,ts:cTs||lTs};
+  if(lText&&!cText)return{text:lText,ts:lTs||cTs};
+  if(cText.length>lText.length)return{text:cText,ts:Math.max(cTs,lTs)};
+  return{text:lText,ts:Math.max(lTs,cTs)};
+}
+function mergeNoteFields(out,local,cloud,localTime,cloudTime){
+  NOTE_LWW_FIELDS.forEach(({text,ts})=>{
+    const w=pickNoteFieldWinner(local,cloud,text,ts,localTime,cloudTime);
+    out[text]=w.text;
+    if(w.ts>0)out[ts]=w.ts;
+    else if(out[ts]!=null)delete out[ts];
+  });
+}
+function commitNoteField(textKey,value){
+  if((DATA[textKey]||'')===value)return;
+  DATA[textKey]=value;
+  const tsKey=NOTE_LWW_FIELDS.find(f=>f.text===textKey)?.ts;
+  if(tsKey)DATA[tsKey]=Date.now();
+  save();
+}
 function mergeAppData(local,cloud,localTime,cloudTime){
   if(!local)return cloud?JSON.parse(JSON.stringify(cloud)):null;
   if(!cloud)return JSON.parse(JSON.stringify(local));
@@ -818,6 +861,7 @@ function mergeAppData(local,cloud,localTime,cloudTime){
   out.dayConfig=mergeDayConfig(local.dayConfig||{},cloud.dayConfig||{},localTime,cloudTime);
   if(!out.scheduleChecks&&other.scheduleChecks)out.scheduleChecks=JSON.parse(JSON.stringify(other.scheduleChecks));
   mergeArrayFields(out,local,cloud,localTime,cloudTime);
+  mergeNoteFields(out,local,cloud,localTime,cloudTime);
   return out;
 }
 function dataSnapshotEqual(a,b){
@@ -4312,7 +4356,7 @@ function wire(){
     pmpNotesEl.value=DATA.pmpNotes||'';
     pmpNotesEl.addEventListener('input',()=>{
       clearTimeout(pmpNotesTimer);
-      pmpNotesTimer=setTimeout(()=>{DATA.pmpNotes=pmpNotesEl.value;save();},400);
+      pmpNotesTimer=setTimeout(()=>commitNoteField('pmpNotes',pmpNotesEl.value),400);
     });
   }
   let jobNotesTimer;
@@ -4321,7 +4365,7 @@ function wire(){
     jobNotesEl.value=DATA.jobNotes||'';
     jobNotesEl.addEventListener('input',()=>{
       clearTimeout(jobNotesTimer);
-      jobNotesTimer=setTimeout(()=>{DATA.jobNotes=jobNotesEl.value;save();},400);
+      jobNotesTimer=setTimeout(()=>commitNoteField('jobNotes',jobNotesEl.value),400);
     });
   }
   const scratchDisclosure=document.getElementById('scratchDisclosure');
@@ -4336,7 +4380,7 @@ function wire(){
     todayScratchEl.value=DATA.todayNotes||'';
     todayScratchEl.addEventListener('input',()=>{
       clearTimeout(todayScratchTimer);
-      todayScratchTimer=setTimeout(()=>{DATA.todayNotes=todayScratchEl.value;save();},400);
+      todayScratchTimer=setTimeout(()=>commitNoteField('todayNotes',todayScratchEl.value),400);
     });
   }
   const checkQuizBtn=document.getElementById('checkQuiz');
