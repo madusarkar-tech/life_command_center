@@ -62,17 +62,19 @@ PMP blocks removed; morning open time is for custom activities (add via band UI)
 - **periodMoves** — move a task to another band today only (e.g. gym → morning); sudden tasks use keys `sudden:st_*`.
 - **periodExtras** — custom named activities in a band (post-exam open time).
 - **periodSkips** — ✕ skip a task for today only; **↺ unskip all tasks** restores defaults.
+- **periodPinnedStart** — 📌 pin a task to a clock time within its band (e.g. gym at 11:00); `packPeriodBand` honors pins.
 - **blockDur** — today-only duration per task key; edited via **−/+ steppers** on band rows (not a separate timeline edit mode).
-- **suddenTasks** — sudden / planned appointments; appear in bands as ⚡ rows; packed in band order.
-- **Reset today's order** — clears `periodOrder` / `periodMoves` / `periodExtras`; does not clear skips or suddens.
+- **suddenTasks** — sudden / planned appointments; appear in bands as ⚡ rows; packed in band order; also shown on **Week** tab.
+- **Reset today's order** — clears `periodOrder` / `periodMoves` / `periodExtras`; does not clear skips, pins, or suddens.
 
-Sync via existing Firebase `dayConfig` merge.
+Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge (`mergeDayEntry`).
 
 ### Band row controls (workdays)
 
 - **Gym row:** Gym / Home / Skip picker (replaces former top Workout row).
 - **Non-fixed row:** Auto / Read / AI / QGIS / Skip picker (replaces former top Extra row).
 - **⏱ toggle:** optional 5-minute end warning for that task (`alarmEndTasks`).
+- **📌 pin:** set a start time within the band window (`periodPinnedStart`).
 
 ### Today's Flow (computed timeline)
 
@@ -88,6 +90,20 @@ Sync via existing Firebase `dayConfig` merge.
 - **Anytime**: packed sequentially in band order like other tasks.
 - On add with overlap: `displaceSuddenOverlaps` tries `periodMoves` for displaced tasks (gym → afternoon/evening first).
 - Remaining suddens not packed in bands may still flow through `applySuddenTasks`.
+
+### Week calendar tab
+
+- **Grid:** Sun–Sat columns, hours **5:00 AM – midnight** (`WEEK_CAL_START_H` / `WEEK_CAL_END_H`).
+- **Fixed-window suddens** render as positioned blocks; **anytime** suddens appear in a **Flex** row above the grid.
+- **Tap an hour slot** → `calEventModal` → creates a fixed-window sudden task on that day.
+- **Tap an event** → edit or delete via the same modal.
+- Prev / next week and **Today** buttons adjust `weekViewOffset`.
+- Data source is the same `dayConfig[*].suddenTasks` store as Today's bands — not a separate calendar backend.
+
+### Notes (scratch, PMP, job)
+
+- `todayNotes` (Today scratchpad), `pmpNotes`, `jobNotes` — each field syncs independently with `*UpdatedAt` timestamps.
+- Debounced input calls `commitNoteField()` → `save()`.
 
 ### Still applies
 
@@ -131,13 +147,27 @@ Sync via existing Firebase `dayConfig` merge.
 | Weekend plan | Weekly Fri/Sat band templates (Plan modal) |
 | Block lengths (`blockDur`) | −/+ steppers on Today's band rows |
 | Task alarms | Start-of-block (default on); ⏱ end warn per task |
+| Pin start time | 📌 on band row → `periodPinnedStart` |
+| Week calendar | Sun–Sat grid; tap slot to add fixed-window sudden |
 | Today's bands | Reorder / move / drag between bands (workday: 3 + work; weekend: 4) |
+
+## Sync model (Firebase)
+
+- **Local:** `lifehub:data`, `lifehub:meta` (`updatedAt`).
+- **Cloud:** Firestore `users/{uid}` `{ data, updatedAt }`.
+- **Load / snapshot:** `mergeAppData` combines local + cloud; `writeLocalAfterSync` sets meta to `max(local, cloud)`.
+- **Push:** `pushCloud` merge-before-push — reads cloud, merges, then writes (avoids stale device overwrite).
+- **dayConfig:** per-date, per-field LWW on `DAY_LWW_FIELDS` (wake, bands, suddens, pins, etc.).
+- **Notes:** per-field LWW on `todayNotes`, `pmpNotes`, `jobNotes`.
+- **Todos:** list-level LWW — entire `todos` / `jobTodos` array wins by `todosUpdatedAt` / `jobTodosUpdatedAt`.
+- **Habits:** date-set union per habit id.
+- **Jobs:** id union (`mergeIdArrays`) — deletes on one device may reappear from the other.
 
 ## What the dashboard does *not* do (yet)
 
 - Cloud backup beyond Firebase sign-in
 - Google Calendar / Todoist integration
-- **Pinned start times** — set exact clock time for a band task (e.g. gym at 11am in open time)
+- **Recurring calendar events**
 - **Gym spillover** — if morning band is full, gym should try afternoon/evening before dropping lower-priority tasks (partial: displacement on sudden add only)
 
 See [BUILD-HISTORY.md](BUILD-HISTORY.md) for feature evolution.

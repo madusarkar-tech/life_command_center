@@ -95,8 +95,14 @@ After the initial repo import, development continued in Cursor:
 | `aab8824` | Skip for today — `periodSkips`; ✕ on band rows + timeline |
 | `2889e92` | Sudden ↔ bands sync; cross-day lookup; auto-displace on add |
 | `884cd10` | Sudden packing follows band order; fixed-window suddens keep clock time |
+| `8d9882f` | Pinned band start times (`periodPinnedStart`); overflow packs user extras |
+| `f4e3c79` | Per-field LWW for scratch, PMP, and job notes |
+| `473bc2b` | **Week** tab — calendar grid backed by sudden tasks |
+| `181363c` | Per-field `dayConfig` merge; merge-before-push on cloud write |
+| `f3a7f74` | Gym `blockDur` sync timestamp; todo list-level LWW (deletes stick) |
+| `540a3a5` | Merge tie-breaks favor cloud field stamps on reload; `writeLocalAfterSync`; `suppressUiSave` |
 
-Baseline tag: `baseline-2026-06-09` at app `884cd10`; docs at `4ba29fb`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
+Baseline tag: `baseline-2026-06-10` at app `540a3a5`. Prior: `baseline-2026-06-09` at `884cd10`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
 
 ## Files in this repo
 
@@ -112,7 +118,7 @@ Baseline tag: `baseline-2026-06-09` at app `884cd10`; docs at `4ba29fb`. See [BA
 ## Possible future enhancements (from chat, not built)
 
 - Open to-do count always visible in Quick Glance header stats
-- Notes field per day
+- Recurring calendar events
 - Water/hydration tracker for shift nights
 - Sync via Notion or Google Sheets
 - Sunday weekly review reminder
