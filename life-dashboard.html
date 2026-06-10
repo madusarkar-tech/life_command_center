@@ -798,28 +798,75 @@ function initFirebase(){
 }
 function userDoc(uid){return firebase.firestore().collection('users').doc(uid);}
 
-function touchDaySync(dayKey){
-  dayCfg(dayKey||activeDayKey())._syncAt=Date.now();
+const DAY_LWW_FIELDS=[
+  'wake','wakeLocked','dayType','workout','nonFixedPick',
+  'periodOrder','periodMoves','blockDur','periodSkips','periodPinnedStart','periodExtras','suddenTasks'
+];
+function touchDayField(dayKey,...fields){
+  const c=dayCfg(dayKey||activeDayKey());
+  const ts=Date.now();
+  c._syncAt=Math.max(c._syncAt||0,ts);
+  fields.forEach(f=>{if(f)c[f+'UpdatedAt']=ts;});
 }
-function mergeDayFields(older,newer){
-  const out=JSON.parse(JSON.stringify(newer));
-  out.suddenTasks=out.suddenTasks||[];
-  const ids=new Set(out.suddenTasks.map(t=>t.id));
-  (older.suddenTasks||[]).forEach(t=>{if(t.id&&!ids.has(t.id))out.suddenTasks.push(t);});
-  out._syncAt=Math.max(older._syncAt||0,newer._syncAt||0);
-  return out;
+function touchDaySync(dayKey){
+  touchDayField(dayKey,...DAY_LWW_FIELDS);
+}
+function dayFieldHasContent(field,val){
+  if(val===undefined)return false;
+  if(val===null)return field==='dayType'||field==='workout'||field==='nonFixedPick';
+  if(typeof val==='object'){
+    if(Array.isArray(val))return val.length>0;
+    return Object.keys(val).length>0;
+  }
+  return true;
+}
+function dayFieldUpdatedAt(side,field,tsKey,daySyncAt,otherHasFieldTs){
+  const ts=side&&side[tsKey];
+  if(typeof ts==='number'&&ts>0)return ts;
+  if(!dayFieldHasContent(field,side?.[field]))return 0;
+  if(otherHasFieldTs)return 0;
+  return daySyncAt||0;
+}
+function pickDayLwwField(loc,clo,field){
+  const tsKey=field+'UpdatedAt';
+  const lSync=loc._syncAt||0;
+  const cSync=clo._syncAt||0;
+  const lHas=typeof loc?.[tsKey]==='number'&&loc[tsKey]>0;
+  const cHas=typeof clo?.[tsKey]==='number'&&clo[tsKey]>0;
+  const lTs=dayFieldUpdatedAt(loc,field,tsKey,lSync,cHas);
+  const cTs=dayFieldUpdatedAt(clo,field,tsKey,cSync,lHas);
+  if(lTs>cTs)return{value:loc[field],ts:lTs};
+  if(cTs>lTs)return{value:clo[field],ts:cTs};
+  // Tie: non-empty over empty, then prefer local on equal doc time.
+  const lContent=dayFieldHasContent(field,loc?.[field]);
+  const cContent=dayFieldHasContent(field,clo?.[field]);
+  if(!lContent&&cContent)return{value:clo[field],ts:cTs||lTs};
+  if(lContent&&!cContent)return{value:loc[field],ts:lTs||cTs};
+  return{value:loc[field],ts:Math.max(lTs,cTs)};
+}
+function cloneDayVal(v){
+  if(v==null)return v;
+  try{return JSON.parse(JSON.stringify(v));}catch(e){return v;}
 }
 function mergeDayEntry(loc,clo,localTime,cloudTime){
   if(!loc)return clo?JSON.parse(JSON.stringify(clo)):null;
   if(!clo)return JSON.parse(JSON.stringify(loc));
+  const out={};
+  DAY_LWW_FIELDS.forEach(field=>{
+    const w=pickDayLwwField(loc,clo,field);
+    if(w.value!==undefined)out[field]=cloneDayVal(w.value);
+    if(w.ts>0)out[field+'UpdatedAt']=w.ts;
+  });
   const lt=loc._syncAt||0;
   const ct=clo._syncAt||0;
-  let newer,older;
-  if(lt>ct){newer=loc;older=clo;}
-  else if(ct>lt){newer=clo;older=loc;}
-  else if(cloudTime>=localTime){newer=clo;older=loc;}
-  else{newer=loc;older=clo;}
-  return mergeDayFields(older,newer);
+  const legacyWinner=lt>ct?loc:ct>lt?clo:(cloudTime>=localTime?clo:loc);
+  const legacyLoser=legacyWinner===loc?clo:loc;
+  ['tasks','weekendPlan'].forEach(k=>{
+    if(legacyWinner[k]!==undefined)out[k]=cloneDayVal(legacyWinner[k]);
+    else if(legacyLoser[k]!==undefined)out[k]=cloneDayVal(legacyLoser[k]);
+  });
+  out._syncAt=Math.max(lt,ct);
+  return out;
 }
 function mergeDayConfig(localCfg,cloudCfg,localTime,cloudTime){
   const out={};
@@ -1018,8 +1065,22 @@ const Store={
     if(!user||!firebaseReady)return;
     try{
       suppressCloudApply=Date.now()+1500;
+      let toPush=d;
+      try{
+        const snap=await userDoc(user.uid).get();
+        if(snap.exists&&snap.data()&&snap.data().data){
+          const cloud=snap.data().data;
+          const cloudTime=snap.data().updatedAt?.toMillis?.()||0;
+          const localTime=localUpdatedAt();
+          toPush=mergeAppData(d,cloud,localTime,cloudTime)||d;
+          if(DATA&&dataSnapshotEqual(DATA,toPush)===false){
+            DATA=toPush;
+            writeLocal(DATA);
+          }
+        }
+      }catch(e){console.warn('merge-before-push failed',e);}
       await userDoc(user.uid).set({
-        data:d,
+        data:toPush,
         updatedAt:firebase.firestore.FieldValue.serverTimestamp()
       },{merge:true});
       setSyncDot('on');
@@ -1439,13 +1500,14 @@ function hasPeriodSkips(dayKey){
 }
 function skipPeriodTask(taskKey,dayKey){
   if(isSuddenTaskKey(taskKey)){removeSuddenTask(suddenIdFromKey(taskKey),dayKey);return;}
-  touchDaySync(dayKey);
   const c=dayCfg(dayKey);
   if(!c.periodSkips)c.periodSkips={};
   c.periodSkips[taskKey]=true;
+  touchDayField(dayKey,'periodSkips');
 }
 function clearPeriodSkips(dayKey){
   dayCfg(dayKey).periodSkips=null;
+  touchDayField(dayKey,'periodSkips');
 }
 function getPeriodPinStart(taskKey,dayKey){
   const p=dayCfg(dayKey).periodPinnedStart;
@@ -1456,16 +1518,17 @@ function hasPeriodPins(dayKey){
   return!!(p&&Object.keys(p).length);
 }
 function setPeriodPinStart(taskKey,dayKey,hhmm){
-  touchDaySync(dayKey);
   const c=dayCfg(dayKey);
   if(!c.periodPinnedStart)c.periodPinnedStart={};
   if(!hhmm){
     delete c.periodPinnedStart[taskKey];
     if(!Object.keys(c.periodPinnedStart).length)c.periodPinnedStart=null;
   }else c.periodPinnedStart[taskKey]=hhmm;
+  touchDayField(dayKey,'periodPinnedStart');
 }
 function clearPeriodPins(dayKey){
   dayCfg(dayKey).periodPinnedStart=null;
+  touchDayField(dayKey,'periodPinnedStart');
 }
 function taskShowsPinUi(taskKey,dayKey){
   if(isSuddenTaskKey(taskKey)){
@@ -1562,19 +1625,24 @@ function removeSuddenTask(id,scheduleDayKey){
     const next=arr.filter(t=>t.id!==id);
     if(next.length<arr.length){
       c.suddenTasks=next;
-      touchDaySync(storageKey);
+      touchDayField(storageKey,'suddenTasks');
     }
   });
   const c=dayCfg(dk);
   const tk=suddenTaskKey(id);
-  if(c.periodMoves&&c.periodMoves[tk])delete c.periodMoves[tk];
-  if(c.periodSkips&&c.periodSkips[tk])delete c.periodSkips[tk];
-  if(c.periodPinnedStart&&c.periodPinnedStart[tk])delete c.periodPinnedStart[tk];
+  let bandTouched=false;
+  if(c.periodMoves&&c.periodMoves[tk]){delete c.periodMoves[tk];bandTouched=true;}
+  if(c.periodSkips&&c.periodSkips[tk]){delete c.periodSkips[tk];bandTouched=true;}
+  if(c.periodPinnedStart&&c.periodPinnedStart[tk]){delete c.periodPinnedStart[tk];bandTouched=true;}
   if(c.periodOrder){
     periodKeysForDayKey(dk).forEach(p=>{
-      if(c.periodOrder[p])c.periodOrder[p]=c.periodOrder[p].filter(k=>k!==tk);
+      if(c.periodOrder[p]&&c.periodOrder[p].includes(tk)){
+        c.periodOrder[p]=c.periodOrder[p].filter(k=>k!==tk);
+        bandTouched=true;
+      }
     });
   }
+  if(bandTouched)touchDayField(dk,'periodMoves','periodSkips','periodPinnedStart','periodOrder');
 }
 function taskKeyFromPackedBlock(b,dayKey){
   if(b.sudden)return 'sudden:'+b.id;
@@ -1624,7 +1692,7 @@ function tryMoveTaskToOtherBand(taskKey,dayKey,excludePeriod,c,ws,ov){
     const lists=effectivePeriodLists(dayKey);
     const used=sumBandMinutes(p,lists[p]||[],{mode:'today',dayKey,dayType:dt});
     const cap=bandCapacityMinutes(p,dt,c.wake);
-    if(cap<=0||used<=cap){touchDaySync(dayKey);return true;}
+    if(cap<=0||used<=cap){touchDayField(dayKey,'periodMoves');return true;}
     if(prevMoves)c.periodMoves={...prevMoves};
     else delete c.periodMoves[taskKey];
   }
@@ -1712,17 +1780,17 @@ function gymWorkoutMinutesForEdit(b){
   return Math.max(GYM_MIN,b.dur);
 }
 function applyBlockDurDelta(b,delta){
-  touchDaySync(activeDayKey());
   const dc=cfg();
+  if(!dc.blockDur)dc.blockDur={};
   if(b.id==='gym'){
     dc.blockDur.gym=Math.max(GYM_MIN,gymWorkoutMinutesForEdit(b)+delta);
     return;
   }
   dc.blockDur[b.id]=Math.max(5,b.dur+delta);
+  touchDayField(activeDayKey(),'blockDur');
 }
 function applyBandTaskDurDelta(taskKey,ctx,delta){
   const dayKey=ctx.dayKey||activeDayKey();
-  touchDaySync(dayKey);
   if(isSuddenTaskKey(taskKey)){
     const t=findSuddenTask(dayKey,suddenIdFromKey(taskKey));
     if(!t)return;
@@ -1732,6 +1800,9 @@ function applyBandTaskDurDelta(taskKey,ctx,delta){
       t.mins=newDur;
       t.windowEnd=minToTime(ws+newDur);
     }else t.mins=Math.max(5,(t.mins||30)+delta);
+    Object.keys(DATA.dayConfig||{}).forEach(sk=>{
+      if((dayCfg(sk).suddenTasks||[]).some(x=>x.id===t.id))touchDayField(sk,'suddenTasks');
+    });
     return;
   }
   const c=cfg();
@@ -1747,6 +1818,7 @@ function applyBandTaskDurDelta(taskKey,ctx,delta){
         const hit=arr.find(x=>x.id===block.id);
         if(hit)hit.mins=Math.max(5,hit.mins+delta);
       });
+      touchDayField(dayKey,'periodExtras');
     }else applyBlockDurDelta(block,delta);
     return;
   }
@@ -1972,6 +2044,7 @@ function clearPeriodOverrides(dayKey){
   c.periodOrder=null;
   c.periodMoves=null;
   c.periodExtras=null;
+  touchDayField(dayKey,'periodOrder','periodMoves','periodExtras');
 }
 function movePeriodTask(taskKey,toPeriod,ctx){
   const dayKey=ctx&&ctx.dayKey?ctx.dayKey:activeDayKey();
@@ -2005,7 +2078,9 @@ function movePeriodTask(taskKey,toPeriod,ctx){
     if(!c.periodMoves)c.periodMoves={};
     c.periodMoves[taskKey]=toPeriod;
   }else return;
-  touchDaySync(dayKey);
+  const fields=['periodMoves'];
+  if(taskKey.startsWith('extra:'))fields.push('periodExtras');
+  touchDayField(dayKey,...fields);
 }
 function reorderPeriodTask(period,taskKey,dir,ctx){
   const dayKey=ctx&&ctx.dayKey?ctx.dayKey:activeDayKey();
@@ -2030,7 +2105,7 @@ function reorderPeriodTaskToIndex(period,taskKey,toIdx,ctx){
   const c=dayCfg(dayKey);
   if(!c.periodOrder)c.periodOrder={};
   c.periodOrder[period]=list.slice();
-  touchDaySync(dayKey);
+  touchDayField(dayKey,'periodOrder');
 }
 function addPeriodExtra(period,name,mins,ctx){
   if(ctx&&ctx.mode==='template'){
@@ -2049,7 +2124,7 @@ function addPeriodExtra(period,name,mins,ctx){
   if(!list.includes(tk))list.push(tk);
   if(!c.periodOrder)c.periodOrder={};
   c.periodOrder[period]=list;
-  touchDaySync(activeDayKey());
+  touchDayField(activeDayKey(),'periodExtras','periodOrder');
 }
 let weekendTemplateDrafts=null;
 let weekendTemplateEditType=null;
@@ -2418,10 +2493,10 @@ const PLAN_PRESETS=[
 ];
 let lastScheduleConflicts=[];
 function setWakeTime(hhmm,lock){
-  touchDaySync(activeDayKey());
   const c=cfg();
   c.wake=hhmm||'10:00';
   if(lock!==false)c.wakeLocked=true;
+  touchDayField(activeDayKey(),'wake','wakeLocked');
   saveDay();
 }
 function autoDayType(){return calendarDayTypeForKey(activeDayKey());}
@@ -2441,7 +2516,6 @@ function weekendPlanTargets(){
 }
 function addSuddenTask(opts){
   const targetDayKey=opts.targetDayKey;
-  touchDaySync(targetDayKey);
   const c=dayCfg(targetDayKey);
   const now=new Date();
   const id='st_'+Date.now();
@@ -2464,15 +2538,14 @@ function addSuddenTask(opts){
   const ws=workoutStateForDay(targetDayKey);
   const ov=blockDurOv(targetDayKey);
   const moved=displaceSuddenOverlaps(task,targetDayKey,c,ws,ov);
+  touchDayField(targetDayKey,'suddenTasks','periodMoves');
   saveDay();
   renderSuddenList();
   renderWeekCalendar();
   return{moved};
 }
 function updateSuddenTask(storageKey,id,updates){
-  touchDaySync(storageKey);
   const target=updates.targetDayKey;
-  if(target&&target!==storageKey)touchDaySync(target);
   const c=dayCfg(storageKey);
   const task=(c.suddenTasks||[]).find(t=>t.id===id);
   if(!task)return null;
@@ -2483,6 +2556,8 @@ function updateSuddenTask(storageKey,id,updates){
   const tk=suddenTaskKey(id);
   if(!c.periodMoves)c.periodMoves={};
   if(!c.periodMoves[tk])c.periodMoves[tk]=defaultPeriodForSudden(task,dayKey);
+  touchDayField(storageKey,'suddenTasks','periodMoves');
+  if(target&&target!==storageKey)touchDayField(target,'periodMoves');
   saveDay();
   return task;
 }
@@ -3391,8 +3466,8 @@ function appendBandTaskPickers(row,taskKey,ctx){
       {val:'home',label:'Home',title:'Home workout · 20m+'},
       {val:'skip',label:'Skip',title:'No workout today'}
     ],workoutState(),v=>{
-      touchDaySync(activeDayKey());
       cfg().workout=v;
+      touchDayField(activeDayKey(),'workout');
       saveDay();renderSched();renderNowBanner();renderGlance();
     });
     row.classList.add('has-pick');
@@ -3407,8 +3482,8 @@ function appendBandTaskPickers(row,taskKey,ctx){
       {val:'qgis',label:'QGIS'},
       {val:'none',label:'Skip',title:'Skip non-fixed block'}
     ],nfSel,v=>{
-      touchDaySync(activeDayKey());
       cfg().nonFixedPick=v==='auto'?null:v;
+      touchDayField(activeDayKey(),'nonFixedPick');
       saveDay();renderSched();renderNowBanner();renderGlance();
     });
     row.classList.add('has-pick');
@@ -3721,6 +3796,7 @@ function renderSched(){
           c.periodExtras=(c.periodExtras||{});
           c.periodExtras[p]=(c.periodExtras[p]||[]).filter(x=>x.id!==b.id);
         });
+        touchDayField(dk,'periodExtras');
         saveDay();
       }else if(b.id&&!b.id.startsWith('flex_')){
         skipPeriodTask(skipKeyForTimelineBlock(b,dk),dk);
@@ -4546,14 +4622,14 @@ function wire(){
   todoInput.addEventListener('keydown',e=>{if(e.key==='Enter')addTodo.click();});
   clearDone.onclick=()=>{DATA.todos=DATA.todos.filter(t=>!t.done);save();renderTodos();renderNowBanner();};
   const resetDurEl=document.getElementById('resetDur');
-  if(resetDurEl)resetDurEl.onclick=()=>{touchDaySync(activeDayKey());cfg().blockDur={};saveDay();renderSched();renderGlance();flash('Today\'s lengths reset');};
+  if(resetDurEl)resetDurEl.onclick=()=>{cfg().blockDur={};touchDayField(activeDayKey(),'blockDur');saveDay();renderSched();renderGlance();flash('Today\'s lengths reset');};
   const resetPeriodBtn=document.getElementById('resetPeriod');
-  if(resetPeriodBtn)resetPeriodBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodOverrides(activeDayKey());saveDay();renderSched();renderGlance();flash('Today\'s band order reset');};
+  if(resetPeriodBtn)resetPeriodBtn.onclick=()=>{clearPeriodOverrides(activeDayKey());saveDay();renderSched();renderGlance();flash('Today\'s band order reset');};
   const resetSkipsBtn=document.getElementById('resetSkips');
-  if(resetSkipsBtn)resetSkipsBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodSkips(activeDayKey());saveDay();renderSched();renderGlance();flash('Skipped tasks restored');};
+  if(resetSkipsBtn)resetSkipsBtn.onclick=()=>{clearPeriodSkips(activeDayKey());saveDay();renderSched();renderGlance();flash('Skipped tasks restored');};
   const resetPinsBtn=document.getElementById('resetPins');
-  if(resetPinsBtn)resetPinsBtn.onclick=()=>{touchDaySync(activeDayKey());clearPeriodPins(activeDayKey());saveDay();renderSched();renderGlance();flash('Pinned times cleared');};
-  document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{touchDaySync(activeDayKey());cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;saveDay();renderClocks();renderSched();renderNowBanner();renderGlance();});
+  if(resetPinsBtn)resetPinsBtn.onclick=()=>{clearPeriodPins(activeDayKey());saveDay();renderSched();renderGlance();flash('Pinned times cleared');};
+  document.querySelectorAll('#segDay button').forEach(b=>b.onclick=()=>{cfg().dayType=b.dataset.d==='auto'?null:b.dataset.d;touchDayField(activeDayKey(),'dayType');saveDay();renderClocks();renderSched();renderNowBanner();renderGlance();});
   document.querySelectorAll('#segAlarm button').forEach(b=>b.onclick=async()=>{
     const turningOn=b.dataset.a==='on';
     DATA.alarmOn=turningOn;
@@ -4661,8 +4737,8 @@ function wire(){
   wokeBtn.onclick=()=>{
     const c=cfg();
     if(c.wakeLocked){
-      touchDaySync(activeDayKey());
       c.wakeLocked=false;
+      touchDayField(activeDayKey(),'wakeLocked');
       saveDay();renderSched();renderNowBanner();renderGlance();
       flash('Wake time unlocked — tap again when you wake');
       return;
