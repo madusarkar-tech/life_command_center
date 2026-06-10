@@ -767,6 +767,7 @@ let appWired=false;
 let visibilityReloadTimer=null;
 let cloudListenUnsub=null;
 let suppressCloudApply=0;
+let suppressUiSave=0;
 
 function readLocal(){
   try{
@@ -775,13 +776,23 @@ function readLocal(){
     return s?JSON.parse(s):mem;
   }catch(e){return mem;}
 }
-function writeLocal(d){
+function writeLocal(d,opts){
   mem=d;
   try{
     if(window.storage)return;
     localStorage.setItem(KEY,JSON.stringify(d));
-    localStorage.setItem(META_KEY,JSON.stringify({updatedAt:Date.now()}));
+    const metaAt=opts&&opts.metaAt!=null?opts.metaAt:Date.now();
+    localStorage.setItem(META_KEY,JSON.stringify({updatedAt:metaAt}));
   }catch(e){}
+}
+function writeLocalAfterSync(d,localTime,cloudTime){
+  writeLocal(d,{metaAt:Math.max(localTime||0,cloudTime||0)});
+}
+function setDetailsOpen(el,open){
+  if(!el||el.open===!!open)return;
+  suppressUiSave++;
+  el.open=!!open;
+  suppressUiSave--;
 }
 function localUpdatedAt(){
   try{const m=JSON.parse(localStorage.getItem(META_KEY)||'{}');return m.updatedAt||0;}catch(e){return 0;}
@@ -820,29 +831,31 @@ function dayFieldHasContent(field,val){
   }
   return true;
 }
-function dayFieldUpdatedAt(side,field,tsKey,daySyncAt,otherHasFieldTs){
+function dayFieldUpdatedAt(side,field,tsKey,docTime,otherHasFieldTs){
   const ts=side&&side[tsKey];
   if(typeof ts==='number'&&ts>0)return ts;
   if(!dayFieldHasContent(field,side?.[field]))return 0;
   if(otherHasFieldTs)return 0;
-  return daySyncAt||0;
+  return docTime||0;
 }
-function pickDayLwwField(loc,clo,field){
+function pickDayLwwField(loc,clo,field,localTime,cloudTime){
   const tsKey=field+'UpdatedAt';
-  const lSync=loc._syncAt||0;
-  const cSync=clo._syncAt||0;
   const lHas=typeof loc?.[tsKey]==='number'&&loc[tsKey]>0;
   const cHas=typeof clo?.[tsKey]==='number'&&clo[tsKey]>0;
-  const lTs=dayFieldUpdatedAt(loc,field,tsKey,lSync,cHas);
-  const cTs=dayFieldUpdatedAt(clo,field,tsKey,cSync,lHas);
+  const lTs=dayFieldUpdatedAt(loc,field,tsKey,localTime,cHas);
+  const cTs=dayFieldUpdatedAt(clo,field,tsKey,cloudTime,lHas);
   if(lTs>cTs)return{value:loc[field],ts:lTs};
   if(cTs>lTs)return{value:clo[field],ts:cTs};
-  // Tie: non-empty over empty, then prefer local on equal doc time.
   const lContent=dayFieldHasContent(field,loc?.[field]);
   const cContent=dayFieldHasContent(field,clo?.[field]);
-  if(!lContent&&cContent)return{value:clo[field],ts:cTs||lTs};
-  if(lContent&&!cContent)return{value:loc[field],ts:lTs||cTs};
-  return{value:loc[field],ts:Math.max(lTs,cTs)};
+  if(!lContent&&cContent)return{value:clo[field],ts:cTs||cloudTime||0};
+  if(lContent&&!cContent)return{value:loc[field],ts:lTs||localTime||0};
+  // Tie: newer document save time; cloud wins if equal; then explicit field stamp.
+  if(cloudTime>localTime)return{value:clo[field],ts:cTs||cloudTime};
+  if(localTime>cloudTime)return{value:loc[field],ts:lTs||localTime};
+  if(cHas&&!lHas)return{value:clo[field],ts:cTs||lTs};
+  if(lHas&&!cHas)return{value:loc[field],ts:lTs||cTs};
+  return{value:clo[field],ts:Math.max(cTs,lTs,cloudTime,localTime)};
 }
 function cloneDayVal(v){
   if(v==null)return v;
@@ -853,7 +866,7 @@ function mergeDayEntry(loc,clo,localTime,cloudTime){
   if(!clo)return JSON.parse(JSON.stringify(loc));
   const out={};
   DAY_LWW_FIELDS.forEach(field=>{
-    const w=pickDayLwwField(loc,clo,field);
+    const w=pickDayLwwField(loc,clo,field,localTime,cloudTime);
     if(w.value!==undefined)out[field]=cloneDayVal(w.value);
     if(w.ts>0)out[field+'UpdatedAt']=w.ts;
   });
@@ -935,13 +948,18 @@ function pickListWinner(local,cloud,arrKey,tsKey,localTime,cloudTime){
   const cArr=Array.isArray(cloud?.[arrKey])?cloud[arrKey]:[];
   const lHas=typeof local?.[tsKey]==='number'&&local[tsKey]>0;
   const cHas=typeof cloud?.[tsKey]==='number'&&cloud[tsKey]>0;
-  const lTs=lHas?local[tsKey]:(!cHas&&lArr.length?localTime:0);
-  const cTs=cHas?cloud[tsKey]:(!lHas&&cArr.length?cloudTime:0);
+  const lTs=lHas?local[tsKey]:0;
+  const cTs=cHas?cloud[tsKey]:0;
   if(lTs>cTs)return{list:lArr,ts:lTs};
   if(cTs>lTs)return{list:cArr,ts:cTs};
-  if(!lArr.length&&cArr.length)return{list:cArr,ts:cTs||lTs};
-  if(lArr.length&&!cArr.length)return{list:lArr,ts:lTs||cTs};
-  return{list:localTime>=cloudTime?lArr:cArr,ts:Math.max(lTs,cTs)};
+  if(!lArr.length&&cArr.length)return{list:cArr,ts:cTs||cloudTime||0};
+  if(lArr.length&&!cArr.length)return{list:lArr,ts:lTs||localTime||0};
+  if(cHas&&!lHas)return{list:cArr,ts:cTs};
+  if(lHas&&!cHas)return{list:lArr,ts:lTs};
+  // Neither list has field stamp: document time decides; cloud wins on tie.
+  if(cloudTime>localTime)return{list:cArr,ts:cloudTime||0};
+  if(localTime>cloudTime)return{list:lArr,ts:localTime||0};
+  return{list:cArr,ts:cloudTime||localTime||0};
 }
 function touchListField(arrKey){
   const f=LIST_LWW_FIELDS.find(x=>x.arr===arrKey);
@@ -1029,7 +1047,7 @@ const Store={
     const merged=mergeAppData(local,cloud,localTime,cloudTime||0);
     if(DATA&&dataSnapshotEqual(merged,DATA))return false;
     DATA=merged;
-    writeLocal(DATA);
+    writeLocalAfterSync(DATA,localTime,cloudTime||0);
     mergeDefaults();
     migrateData();
     renderAll();
@@ -1065,15 +1083,16 @@ const Store={
         const cloud=snap.data().data;
         const cloudTime=snap.data().updatedAt?.toMillis?.()||0;
         const localTime=localUpdatedAt();
-        if(!local){writeLocal(cloud);return cloud;}
+        if(!local){writeLocalAfterSync(cloud,0,cloudTime);return cloud;}
         const merged=mergeAppData(local,cloud,localTime,cloudTime);
-        writeLocal(merged);
+        writeLocalAfterSync(merged,localTime,cloudTime);
         return merged;
       }
     }catch(e){console.warn('Cloud load failed',e);}
     return local;
   },
   async save(d,opts){
+    if(suppressUiSave>0)return;
     writeLocal(d);
     const user=firebaseReady&&firebase.auth().currentUser;
     if(!user){flash('Saved');return;}
@@ -1103,7 +1122,7 @@ const Store={
           toPush=mergeAppData(d,cloud,localTime,cloudTime)||d;
           if(DATA&&dataSnapshotEqual(DATA,toPush)===false){
             DATA=toPush;
-            writeLocal(DATA);
+            writeLocalAfterSync(DATA,localTime,cloudTime);
           }
         }
       }catch(e){console.warn('merge-before-push failed',e);}
@@ -3760,7 +3779,7 @@ function renderPeriodPlan(){
     disc.dataset.wired='1';
     disc.addEventListener('toggle',()=>{DATA.periodPlanOpen=disc.open;save();});
   }
-  if(disc&&disc.open!==!!DATA.periodPlanOpen)disc.open=!!DATA.periodPlanOpen;
+  setDetailsOpen(disc,!!DATA.periodPlanOpen);
 }
 function renderSched(){
   const c=cfg();const dt=dayType();
@@ -4091,7 +4110,7 @@ function renderPMPQuiz(){
     disclosure.dataset.wired='1';
     disclosure.addEventListener('toggle',()=>{DATA.quizPanelOpen=disclosure.open;save();});
   }
-  if(disclosure)disclosure.open=!!DATA.quizPanelOpen;
+  setDetailsOpen(disclosure,!!DATA.quizPanelOpen);
   const labels=['A','B','C','D'];
   const domainLbl={people:'People',process:'Process',business:'Business'};
   wrap.innerHTML='';
@@ -4611,7 +4630,7 @@ function renderScratchpad(){
   const el=document.getElementById('todayScratch');
   const disc=document.getElementById('scratchDisclosure');
   if(el&&document.activeElement!==el&&el.value!==(DATA.todayNotes||''))el.value=DATA.todayNotes||'';
-  if(disc&&disc.open!==!!DATA.scratchpadOpen)disc.open=!!DATA.scratchpadOpen;
+  setDetailsOpen(disc,!!DATA.scratchpadOpen);
 }
 async function reloadData(opts){
   if(isWeekendPlanModalOpen())return;
@@ -4825,7 +4844,7 @@ function wire(){
     scratchDisclosure.dataset.wired='1';
     scratchDisclosure.addEventListener('toggle',()=>{DATA.scratchpadOpen=scratchDisclosure.open;save();});
   }
-  if(scratchDisclosure)scratchDisclosure.open=!!DATA.scratchpadOpen;
+  setDetailsOpen(scratchDisclosure,!!DATA.scratchpadOpen);
   let todayScratchTimer;
   const todayScratchEl=document.getElementById('todayScratch');
   if(todayScratchEl){
