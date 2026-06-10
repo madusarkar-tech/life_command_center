@@ -926,10 +926,38 @@ function jobMergeKey(j){
   if(j.id)return String(j.id);
   return 'job_'+String(j.company||'')+'\x01'+String(j.role||'')+'\x01'+String(j.status||'');
 }
+const LIST_LWW_FIELDS=[
+  {arr:'todos',ts:'todosUpdatedAt'},
+  {arr:'jobTodos',ts:'jobTodosUpdatedAt'}
+];
+function pickListWinner(local,cloud,arrKey,tsKey,localTime,cloudTime){
+  const lArr=Array.isArray(local?.[arrKey])?local[arrKey]:[];
+  const cArr=Array.isArray(cloud?.[arrKey])?cloud[arrKey]:[];
+  const lHas=typeof local?.[tsKey]==='number'&&local[tsKey]>0;
+  const cHas=typeof cloud?.[tsKey]==='number'&&cloud[tsKey]>0;
+  const lTs=lHas?local[tsKey]:(!cHas&&lArr.length?localTime:0);
+  const cTs=cHas?cloud[tsKey]:(!lHas&&cArr.length?cloudTime:0);
+  if(lTs>cTs)return{list:lArr,ts:lTs};
+  if(cTs>lTs)return{list:cArr,ts:cTs};
+  if(!lArr.length&&cArr.length)return{list:cArr,ts:cTs||lTs};
+  if(lArr.length&&!cArr.length)return{list:lArr,ts:lTs||cTs};
+  return{list:localTime>=cloudTime?lArr:cArr,ts:Math.max(lTs,cTs)};
+}
+function touchListField(arrKey){
+  const f=LIST_LWW_FIELDS.find(x=>x.arr===arrKey);
+  if(f)DATA[f.ts]=Date.now();
+}
+function mergeListFields(out,local,cloud,localTime,cloudTime){
+  LIST_LWW_FIELDS.forEach(({arr,ts})=>{
+    const w=pickListWinner(local,cloud,arr,ts,localTime,cloudTime);
+    out[arr]=JSON.parse(JSON.stringify(w.list));
+    if(w.ts>0)out[ts]=w.ts;
+    else if(out[ts]!=null)delete out[ts];
+  });
+}
 function mergeArrayFields(out,local,cloud,localTime,cloudTime){
   const localIsNewer=localTime>=cloudTime;
-  out.todos=mergeIdArrays(local.todos,cloud.todos,localIsNewer,t=>t&&t.id);
-  out.jobTodos=mergeIdArrays(local.jobTodos,cloud.jobTodos,localIsNewer,t=>t&&t.id);
+  mergeListFields(out,local,cloud,localTime,cloudTime);
   out.habits=mergeHabitsMap(local.habits,cloud.habits);
   out.jobs=mergeIdArrays(local.jobs,cloud.jobs,localIsNewer,jobMergeKey);
 }
@@ -1784,6 +1812,7 @@ function applyBlockDurDelta(b,delta){
   if(!dc.blockDur)dc.blockDur={};
   if(b.id==='gym'){
     dc.blockDur.gym=Math.max(GYM_MIN,gymWorkoutMinutesForEdit(b)+delta);
+    touchDayField(activeDayKey(),'blockDur');
     return;
   }
   dc.blockDur[b.id]=Math.max(5,b.dur+delta);
@@ -3915,7 +3944,7 @@ function renderGlance(){
   }
   renderHabitChips();
 }
-function renderTodoList(listId,countId,clearId,todos,onUpdate){
+function renderTodoList(listId,countId,clearId,todos,onUpdate,listKey){
   const list=document.getElementById(listId);if(!list)return;
   if(!todos)todos=[];
   const open=todos.filter(t=>!t.done);const done=todos.filter(t=>t.done);
@@ -3927,7 +3956,7 @@ function renderTodoList(listId,countId,clearId,todos,onUpdate){
   if(!todos.length){list.innerHTML='<div class="empty">Nothing here yet — add a to-do above.</div>';return;}
   open.sort((a,b)=>{const ad=a.due||'9999-12-31',bd=b.due||'9999-12-31';if(ad!==bd)return ad.localeCompare(bd);return (a.created||'').localeCompare(b.created||'');});
   const ordered=[...open,...done];
-  const refresh=()=>{save();renderTodoList(listId,countId,clearId,todos,onUpdate);if(onUpdate)onUpdate();};
+  const refresh=()=>{if(listKey)touchListField(listKey);save();renderTodoList(listId,countId,clearId,todos,onUpdate,listKey);if(onUpdate)onUpdate();};
   ordered.forEach(t=>{
     const idx=todos.indexOf(t);
     let badge='';
@@ -3956,11 +3985,11 @@ function renderTodoList(listId,countId,clearId,todos,onUpdate){
 }
 function renderTodos(){
   if(!DATA.todos)DATA.todos=[];
-  renderTodoList('todoList','todoCount','clearDone',DATA.todos,()=>renderNowBanner());
+  renderTodoList('todoList','todoCount','clearDone',DATA.todos,()=>renderNowBanner(),'todos');
 }
 function renderJobTodos(){
   if(!DATA.jobTodos)DATA.jobTodos=[];
-  renderTodoList('jobTodoList','jobTodoCount','clearJobDone',DATA.jobTodos,null);
+  renderTodoList('jobTodoList','jobTodoCount','clearJobDone',DATA.jobTodos,null,'jobTodos');
 }
 function quizSeed(key){let h=0;for(let i=0;i<key.length;i++)h=((h<<5)-h)+key.charCodeAt(i)|0;return Math.abs(h)||1;}
 function shuffleIndices(n,seed){
@@ -4618,9 +4647,9 @@ document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
 });
 
 function wire(){
-  addTodo.onclick=()=>{const v=todoInput.value.trim();if(!v){todoInput.focus();return;}DATA.todos.push({id:'td_'+Date.now(),text:v,done:false,created:todayKey(),due:todoDue.value||null});todoInput.value='';todoDue.value='';save();renderTodos();renderNowBanner();};
+  addTodo.onclick=()=>{const v=todoInput.value.trim();if(!v){todoInput.focus();return;}DATA.todos.push({id:'td_'+Date.now(),text:v,done:false,created:todayKey(),due:todoDue.value||null});touchListField('todos');todoInput.value='';todoDue.value='';save();renderTodos();renderNowBanner();};
   todoInput.addEventListener('keydown',e=>{if(e.key==='Enter')addTodo.click();});
-  clearDone.onclick=()=>{DATA.todos=DATA.todos.filter(t=>!t.done);save();renderTodos();renderNowBanner();};
+  clearDone.onclick=()=>{DATA.todos=DATA.todos.filter(t=>!t.done);touchListField('todos');save();renderTodos();renderNowBanner();};
   const resetDurEl=document.getElementById('resetDur');
   if(resetDurEl)resetDurEl.onclick=()=>{cfg().blockDur={};touchDayField(activeDayKey(),'blockDur');saveDay();renderSched();renderGlance();flash('Today\'s lengths reset');};
   const resetPeriodBtn=document.getElementById('resetPeriod');
@@ -4762,12 +4791,13 @@ function wire(){
     if(!v){if(jobTodoInput)jobTodoInput.focus();return;}
     if(!DATA.jobTodos)DATA.jobTodos=[];
     DATA.jobTodos.push({id:'jtd_'+Date.now(),text:v,done:false,created:todayKey(),due:jobTodoDue&&jobTodoDue.value||null});
+    touchListField('jobTodos');
     if(jobTodoInput)jobTodoInput.value='';
     if(jobTodoDue)jobTodoDue.value='';
     save();renderJobTodos();
   };
   if(jobTodoInput)jobTodoInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&addJobTodoBtn)addJobTodoBtn.click();});
-  if(clearJobDoneBtn)clearJobDoneBtn.onclick=()=>{DATA.jobTodos=(DATA.jobTodos||[]).filter(t=>!t.done);save();renderJobTodos();};
+  if(clearJobDoneBtn)clearJobDoneBtn.onclick=()=>{DATA.jobTodos=(DATA.jobTodos||[]).filter(t=>!t.done);touchListField('jobTodos');save();renderJobTodos();};
   document.querySelectorAll('.domain input').forEach(inp=>{
     inp.addEventListener('input',e=>{const k=e.target.closest('.domain').dataset.d;DATA.domains[k]=parseInt(e.target.value);e.target.closest('.domain').querySelector('.dv').textContent=e.target.value+'%';weighted.textContent=Math.round((DATA.domains.people*.42)+(DATA.domains.process*.50)+(DATA.domains.business*.08))+'%';});
     inp.addEventListener('change',save);
