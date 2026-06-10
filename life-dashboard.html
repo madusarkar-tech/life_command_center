@@ -376,6 +376,38 @@
   .plan-presets button{background:var(--bg2);border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted)}
   .plan-presets button:hover{border-color:var(--gold);color:var(--text)}
   .modal-foot{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;padding-top:12px;border-top:1px solid var(--line-soft)}
+  .week-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .week-nav .range{font-family:'Fraunces',serif;font-weight:600;font-size:17px;color:var(--text)}
+  .week-nav .week-hint{font-size:12px;color:var(--muted);font-weight:600;width:100%}
+  .week-cal-wrap{overflow:auto;border:1px solid var(--line-soft);border-radius:12px;background:var(--bg2);max-height:min(72vh,720px)}
+  .week-cal{display:grid;grid-template-columns:46px repeat(7,minmax(72px,1fr));min-width:min(100%,560px)}
+  .week-hdr-cell{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line-soft);padding:8px 4px;text-align:center;font-size:11px;font-weight:700;color:var(--muted2)}
+  .week-hdr-cell .week-day-name{display:block;text-transform:uppercase;letter-spacing:.06em}
+  .week-hdr-cell .week-day-num{font-family:'Fraunces',serif;font-size:16px;color:var(--text);margin-top:2px}
+  .week-hdr-cell.today-hdr{background:rgba(184,120,12,.10);color:var(--gold)}
+  .week-hdr-cell.today-hdr .week-day-num{color:var(--gold)}
+  .week-hdr-cell.past-hdr{opacity:.72}
+  .week-time-lbl{font-size:10px;font-weight:700;color:var(--muted2);text-align:right;padding:0 6px 0 0;height:44px;line-height:44px;border-bottom:1px solid var(--line-soft);font-variant-numeric:tabular-nums}
+  .week-day-col{position:relative;border-left:1px solid var(--line-soft);background:var(--surface);min-height:44px}
+  .week-day-col.past{opacity:.88}
+  .week-day-col.today{background:rgba(184,120,12,.04)}
+  .week-day-overlay{position:relative;pointer-events:none;z-index:2;margin:0 -1px}
+  .week-day-overlay .week-events{position:absolute;inset:0}
+  .week-anytime-lbl{font-size:10px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.06em;padding:6px 4px;text-align:right;border-bottom:1px solid var(--line-soft);background:var(--bg2)}
+  .week-anytime-cell{min-height:28px;padding:4px;border-left:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);display:flex;flex-wrap:wrap;gap:3px;align-content:flex-start;background:var(--bg2)}
+  .week-any-chip{font-size:10px;font-weight:700;padding:3px 6px;border-radius:6px;background:rgba(184,120,12,.16);color:var(--gold-soft);cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .week-any-chip:hover{background:rgba(184,120,12,.28)}
+  .week-hour{border-bottom:1px solid var(--line-soft);cursor:pointer;transition:background .12s}
+  .week-hour:hover{background:rgba(184,120,12,.08)}
+  .week-events{position:absolute;left:2px;right:2px;top:0;bottom:0;pointer-events:none}
+  .week-evt{position:absolute;left:0;right:0;pointer-events:auto;background:linear-gradient(160deg,rgba(184,74,50,.18),rgba(184,74,50,.10));border:1px solid rgba(184,74,50,.45);border-radius:6px;padding:3px 5px;font-size:10px;font-weight:700;line-height:1.25;color:var(--text);overflow:hidden;cursor:pointer;z-index:2;box-shadow:0 1px 4px rgba(60,45,25,.08)}
+  .week-evt:hover{border-color:var(--terra);z-index:3}
+  .week-evt .we-time{display:block;font-size:9px;font-weight:600;color:var(--muted);margin-top:1px}
+  .cal-form{display:flex;flex-direction:column;gap:12px}
+  .cal-form label{font-size:12px;font-weight:700;color:var(--muted2);display:flex;flex-direction:column;gap:6px}
+  .cal-form input{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-family:'Hanken Grotesk';font-size:14px;color:var(--text)}
+  .cal-form .cal-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:520px){.cal-form .cal-row{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -426,9 +458,27 @@
 
 <nav class="tabs">
   <button class="active" data-v="today">Today</button>
+  <button data-v="week">Week</button>
   <button data-v="pmp" id="tabPmp">PMP Prep</button>
   <button data-v="jobs">Job Search</button>
 </nav>
+
+<section class="view" id="v-week">
+  <div class="card">
+    <h2>📅 Week plan</h2>
+    <div class="h-sub">Tap a time slot to schedule a meeting or appointment. It becomes a sudden task on that day — same timeline and bands as Today.</div>
+    <div class="week-nav">
+      <button type="button" class="ghostbtn sm" id="weekPrev" aria-label="Previous week">← Prev</button>
+      <span class="range" id="weekRangeLabel">—</span>
+      <button type="button" class="ghostbtn sm" id="weekNext" aria-label="Next week">Next →</button>
+      <button type="button" class="ghostbtn sm" id="weekToday">This week</button>
+      <span class="week-hint">⚡ fixed-time events show on the grid · anytime tasks appear in the row above</span>
+    </div>
+    <div class="week-cal-wrap" id="weekGridWrap">
+      <div id="weekGrid" class="week-cal" role="grid" aria-label="Week calendar"></div>
+    </div>
+  </div>
+</section>
 
 <section class="view active" id="v-today">
   <div class="grid g-2">
@@ -654,6 +704,33 @@
 
 <div class="footnote">Saves on this device · Day resets at 4am · Built for the night shift.</div>
 <div class="save-flash" id="flash">Saved</div>
+
+<div class="modal-backdrop" id="calEventModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="calEventModalTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="calEventModalTitle">Schedule appointment</h3>
+        <p id="calEventModalSub">Saved as a sudden task on that day.</p>
+      </div>
+      <button type="button" class="ghostbtn sm" id="closeCalEvent">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="cal-form">
+        <label>Name<input type="text" id="calEvtName" placeholder="Dentist, team call…" autocomplete="off"></label>
+        <label>Date<input type="date" id="calEvtDate"></label>
+        <div class="cal-row">
+          <label>Start<input type="time" id="calEvtStart"></label>
+          <label>End<input type="time" id="calEvtEnd"></label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="ghostbtn" id="calEvtDelete" style="margin-right:auto;display:none">Remove</button>
+        <button type="button" class="ghostbtn" id="calEvtCancel">Cancel</button>
+        <button type="button" class="btn sm" id="calEvtSave">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="weekendModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-labelledby="weekendModalTitle">
@@ -2286,6 +2363,48 @@ function gatherSuddenForList(){
   upcoming.sort((a,b)=>a.displayDay.localeCompare(b.displayDay)||(a.recordedAt||'').localeCompare(b.recordedAt||''));
   return {today,todayTasks,upcoming};
 }
+const WEEK_HOUR_PX=44;
+const WEEK_CAL_START_H=5;
+const WEEK_CAL_END_H=24;
+let weekViewOffset=0;
+let calModalCtx=null;
+function startOfWeekKey(refKey,weekOffset){
+  const p=refKey.split('-').map(Number);
+  const d=new Date(p[0],p[1]-1,p[2]);
+  d.setDate(d.getDate()-d.getDay()+weekOffset*7);
+  return dateKeyOf(d);
+}
+function weekDayKeys(weekOffset){
+  const start=startOfWeekKey(activeDayKey(),weekOffset);
+  return Array.from({length:7},(_,i)=>addDaysToKey(start,i));
+}
+function weekRangeLabel(weekOffset){
+  const keys=weekDayKeys(weekOffset);
+  return formatDayKeyLabel(keys[0])+' – '+formatDayKeyLabel(keys[6]);
+}
+function formatWeekHourLabel(h){
+  if(h===0||h===24)return '12a';
+  if(h<12)return h+'a';
+  if(h===12)return '12p';
+  return (h-12)+'p';
+}
+function suddenTasksForWeek(weekOffset){
+  const days=new Set(weekDayKeys(weekOffset));
+  const out=[];
+  const seen=new Set();
+  Object.keys(DATA.dayConfig||{}).forEach(storageKey=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(storageKey))return;
+    (dayCfg(storageKey).suddenTasks||[]).forEach(t=>{
+      const target=(t.targetDayKey||storageKey).slice(0,10);
+      if(!days.has(target))return;
+      const uid=target+'::'+(t.id||t.name);
+      if(seen.has(uid))return;
+      seen.add(uid);
+      out.push({...t,displayDay:target,storageKey});
+    });
+  });
+  return out;
+}
 function guessIco(name){
   const n=(name||'').toLowerCase();
   const map=[['gym','🏋️'],['pmp','📘'],['study','📘'],['dog','🐕'],['garden','🌱'],['dinner','🍲'],['meal','🍱'],['read','📖'],['leather','🧵'],['hobby','🎨'],['walk','🦮'],['nap','🛌'],['breakfast','🍳']];
@@ -2347,7 +2466,25 @@ function addSuddenTask(opts){
   const moved=displaceSuddenOverlaps(task,targetDayKey,c,ws,ov);
   saveDay();
   renderSuddenList();
+  renderWeekCalendar();
   return{moved};
+}
+function updateSuddenTask(storageKey,id,updates){
+  touchDaySync(storageKey);
+  const target=updates.targetDayKey;
+  if(target&&target!==storageKey)touchDaySync(target);
+  const c=dayCfg(storageKey);
+  const task=(c.suddenTasks||[]).find(t=>t.id===id);
+  if(!task)return null;
+  Object.assign(task,updates);
+  if(task.mode==='window'&&task.windowStart&&task.windowEnd)
+    task.mins=Math.max(5,toMin(task.windowEnd)-toMin(task.windowStart));
+  const dayKey=target||task.targetDayKey||storageKey;
+  const tk=suddenTaskKey(id);
+  if(!c.periodMoves)c.periodMoves={};
+  if(!c.periodMoves[tk])c.periodMoves[tk]=defaultPeriodForSudden(task,dayKey);
+  saveDay();
+  return task;
 }
 
 function dateFromKey(k){
@@ -3005,6 +3142,195 @@ function renderSuddenList(){
     draw(upcoming,null);
   }
 }
+function renderWeekCalendar(){
+  const wrap=document.getElementById('weekGrid');
+  const lbl=document.getElementById('weekRangeLabel');
+  if(!wrap||!DATA)return;
+  if(lbl)lbl.textContent=weekRangeLabel(weekViewOffset);
+  const today=activeDayKey();
+  const dayKeys=weekDayKeys(weekViewOffset);
+  const hourCount=WEEK_CAL_END_H-WEEK_CAL_START_H;
+  const tasks=suddenTasksForWeek(weekViewOffset);
+  const byDay={};
+  dayKeys.forEach(k=>{byDay[k]={window:[],anytime:[]};});
+  tasks.forEach(t=>{
+    const bucket=byDay[t.displayDay];
+    if(!bucket)return;
+    if(t.mode==='window'&&t.windowStart&&t.windowEnd)bucket.window.push(t);
+    else bucket.anytime.push(t);
+  });
+  wrap.innerHTML='';
+  wrap.style.gridTemplateRows='auto auto repeat('+hourCount+','+WEEK_HOUR_PX+'px)';
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const corner=document.createElement('div');
+  corner.style.gridRow='1';corner.style.gridColumn='1';
+  wrap.appendChild(corner);
+  dayKeys.forEach((dk,i)=>{
+    const p=dk.split('-').map(Number);
+    const cell=document.createElement('div');
+    cell.className='week-hdr-cell'+(dk===today?' today-hdr':(dk<today?' past-hdr':''));
+    cell.style.gridRow='1';cell.style.gridColumn=String(i+2);
+    cell.innerHTML='<span class="week-day-name">'+dayNames[i]+'</span><span class="week-day-num">'+p[2]+'</span>';
+    wrap.appendChild(cell);
+  });
+  const anytimeLbl=document.createElement('div');
+  anytimeLbl.className='week-anytime-lbl';
+  anytimeLbl.textContent='Flex';
+  anytimeLbl.style.gridRow='2';anytimeLbl.style.gridColumn='1';
+  wrap.appendChild(anytimeLbl);
+  dayKeys.forEach((dk,i)=>{
+    const cell=document.createElement('div');
+    cell.className='week-anytime-cell';
+    cell.style.gridRow='2';cell.style.gridColumn=String(i+2);
+    (byDay[dk].anytime||[]).forEach(t=>{
+      const chip=document.createElement('span');
+      chip.className='week-any-chip';
+      chip.title=(t.mins||30)+'m anytime';
+      chip.textContent='⚡ '+t.name;
+      chip.onclick=e=>{e.stopPropagation();openCalEventModal({mode:'edit',task:t,storageKey:t.storageKey,dayKey:dk});};
+      cell.appendChild(chip);
+    });
+    wrap.appendChild(cell);
+  });
+  const calSpanMin=hourCount*60;
+  for(let hi=0;hi<hourCount;hi++){
+    const h=WEEK_CAL_START_H+hi;
+    const row=hi+3;
+    const lblEl=document.createElement('div');
+    lblEl.className='week-time-lbl';
+    lblEl.style.gridRow=String(row);lblEl.style.gridColumn='1';
+    lblEl.textContent=formatWeekHourLabel(h);
+    wrap.appendChild(lblEl);
+    dayKeys.forEach((dk,di)=>{
+      const slot=document.createElement('div');
+      slot.className='week-day-col week-hour'+(dk===today?' today':'')+(dk<today?' past':'');
+      slot.style.gridRow=String(row);slot.style.gridColumn=String(di+2);
+      slot.onclick=()=>{
+        const start=minToTime(h*60);
+        const end=minToTime(Math.min((h+1)*60,WEEK_CAL_END_H*60));
+        openCalEventModal({mode:'add',dayKey:dk,startTime:start,endTime:end});
+      };
+      wrap.appendChild(slot);
+    });
+  }
+  dayKeys.forEach((dk,di)=>{
+    const overlay=document.createElement('div');
+    overlay.className='week-day-overlay'+(dk===today?' today':'')+(dk<today?' past':'');
+    overlay.style.gridRow='3 / '+(3+hourCount);
+    overlay.style.gridColumn=String(di+2);
+    const evLayer=document.createElement('div');
+    evLayer.className='week-events';
+    (byDay[dk].window||[]).forEach(t=>{
+      const ws=toMin(t.windowStart),we=toMin(t.windowEnd);
+      if(we<=WEEK_CAL_START_H*60||ws>=WEEK_CAL_END_H*60)return;
+      const top=Math.max(0,ws-WEEK_CAL_START_H*60);
+      const bottom=Math.min(calSpanMin,we-WEEK_CAL_START_H*60);
+      const dur=Math.max(5,bottom-top);
+      const el=document.createElement('div');
+      el.className='week-evt';
+      el.style.top=(top/calSpanMin*100)+'%';
+      el.style.height=(dur/calSpanMin*100)+'%';
+      el.innerHTML='<span class="we-name">'+t.name.replace(/</g,'&lt;')+'</span><span class="we-time">'+fmt12(t.windowStart)+'–'+fmt12(t.windowEnd)+'</span>';
+      el.onclick=e=>{
+        e.stopPropagation();
+        openCalEventModal({mode:'edit',task:t,storageKey:t.storageKey,dayKey:dk});
+      };
+      evLayer.appendChild(el);
+    });
+    overlay.appendChild(evLayer);
+    wrap.appendChild(overlay);
+  });
+}
+function openCalEventModal(ctx){
+  calModalCtx=ctx;
+  const modal=document.getElementById('calEventModal');
+  const title=document.getElementById('calEventModalTitle');
+  const nameEl=document.getElementById('calEvtName');
+  const dateEl=document.getElementById('calEvtDate');
+  const startEl=document.getElementById('calEvtStart');
+  const endEl=document.getElementById('calEvtEnd');
+  const delBtn=document.getElementById('calEvtDelete');
+  if(!modal||!nameEl||!dateEl||!startEl||!endEl)return;
+  if(ctx.mode==='edit'&&ctx.task){
+    if(title)title.textContent='Edit appointment';
+    nameEl.value=ctx.task.name||'';
+    dateEl.value=ctx.dayKey||ctx.task.targetDayKey||activeDayKey();
+    if(ctx.task.mode==='window'&&ctx.task.windowStart){
+      startEl.value=ctx.task.windowStart;
+      endEl.value=ctx.task.windowEnd||minToTime(toMin(ctx.task.windowStart)+(ctx.task.mins||60));
+    }else{
+      startEl.value=ctx.startTime||'10:00';
+      endEl.value=ctx.endTime||'11:00';
+    }
+    if(delBtn)delBtn.style.display='';
+  }else{
+    if(title)title.textContent='Schedule appointment';
+    nameEl.value='';
+    dateEl.value=ctx.dayKey||activeDayKey();
+    startEl.value=ctx.startTime||'10:00';
+    endEl.value=ctx.endTime||'11:00';
+    if(delBtn)delBtn.style.display='none';
+  }
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden','false');
+  nameEl.focus();
+}
+function closeCalEventModal(){
+  const modal=document.getElementById('calEventModal');
+  if(modal){
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden','true');
+  }
+  calModalCtx=null;
+}
+function saveCalEventModal(){
+  if(!calModalCtx||!DATA)return;
+  const nameEl=document.getElementById('calEvtName');
+  const dateEl=document.getElementById('calEvtDate');
+  const startEl=document.getElementById('calEvtStart');
+  const endEl=document.getElementById('calEvtEnd');
+  if(!nameEl||!dateEl||!startEl||!endEl)return;
+  const name=nameEl.value.trim();
+  const date=dateEl.value;
+  const ws=startEl.value;
+  const we=endEl.value;
+  if(!name){nameEl.focus();flash('Enter a name');return;}
+  if(!date){flash('Pick a date');return;}
+  if(!ws||!we){flash('Set start & end time');return;}
+  if(toMin(we)<=toMin(ws)){flash('End must be after start');return;}
+  const mins=Math.max(5,toMin(we)-toMin(ws));
+  try{
+    if(calModalCtx.mode==='edit'&&calModalCtx.task){
+      updateSuddenTask(calModalCtx.storageKey,calModalCtx.task.id,{
+        name,mins,mode:'window',windowStart:ws,windowEnd:we,targetDayKey:date
+      });
+      flash('Updated · '+formatDayKeyLabel(date));
+    }else{
+      const result=addSuddenTask({name,mins,mode:'window',windowStart:ws,windowEnd:we,targetDayKey:date});
+      let msg='Planned for '+formatDayKeyLabel(date);
+      if(result&&result.moved&&result.moved.length)msg+=' · moved '+result.moved.join(', ');
+      flash(msg);
+    }
+    closeCalEventModal();
+    renderWeekCalendar();
+    renderSched();
+    renderGlance();
+  }catch(err){
+    console.error('Calendar save failed',err);
+    flash('Could not save — try again');
+  }
+}
+function deleteCalEventModal(){
+  if(!calModalCtx||calModalCtx.mode!=='edit'||!calModalCtx.task)return;
+  removeSuddenTask(calModalCtx.task.id,calModalCtx.dayKey);
+  saveDay();
+  closeCalEventModal();
+  renderWeekCalendar();
+  renderSched();
+  renderGlance();
+  renderSuddenList();
+  flash('Removed');
+}
 function renderWeekendBanner(){
   const el=document.getElementById('weekendBanner');const txt=document.getElementById('weekendBannerTxt');
   if(!el||!txt)return;
@@ -3423,6 +3749,7 @@ function renderSched(){
     info.innerHTML=`<div class="time">${fmt12(minToTime(endMin))}</div><div class="body"><span class="ico">🌙</span><span class="lab">Free evening<small>No shift — wind down, then sleep whenever you like</small></span></div><div class="right"></div>`;
     sched.appendChild(info);
   }
+  renderWeekCalendar();
 }
 function renderHabitChips(){
   const wrap=document.getElementById('habitChips');if(!wrap)return;
@@ -4211,6 +4538,7 @@ document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');document.getElementById('v-'+b.dataset.v).classList.add('active');
+  if(b.dataset.v==='week')renderWeekCalendar();
 });
 
 function wire(){
@@ -4296,6 +4624,24 @@ function wire(){
   if(tMin&&addSudden)tMin.addEventListener('keydown',e=>{if(e.key==='Enter')addSudden.click();});
   const openWp=document.getElementById('openWeekendPlan');
   if(openWp)openWp.onclick=()=>openWeekendPlanner();
+  const weekPrev=document.getElementById('weekPrev');
+  const weekNext=document.getElementById('weekNext');
+  const weekTodayBtn=document.getElementById('weekToday');
+  if(weekPrev)weekPrev.onclick=()=>{weekViewOffset--;renderWeekCalendar();};
+  if(weekNext)weekNext.onclick=()=>{weekViewOffset++;renderWeekCalendar();};
+  if(weekTodayBtn)weekTodayBtn.onclick=()=>{weekViewOffset=0;renderWeekCalendar();};
+  const closeCalEvt=document.getElementById('closeCalEvent');
+  const calEvtCancel=document.getElementById('calEvtCancel');
+  const calEvtSave=document.getElementById('calEvtSave');
+  const calEvtDelete=document.getElementById('calEvtDelete');
+  const calEvtName=document.getElementById('calEvtName');
+  if(closeCalEvt)closeCalEvt.onclick=closeCalEventModal;
+  if(calEvtCancel)calEvtCancel.onclick=closeCalEventModal;
+  if(calEvtSave)calEvtSave.onclick=saveCalEventModal;
+  if(calEvtDelete)calEvtDelete.onclick=deleteCalEventModal;
+  if(calEvtName)calEvtName.addEventListener('keydown',e=>{if(e.key==='Enter')saveCalEventModal();});
+  const calEventModal=document.getElementById('calEventModal');
+  if(calEventModal)calEventModal.addEventListener('click',e=>{if(e.target===calEventModal)closeCalEventModal();});
   const closeWp=document.getElementById('closeWeekendPlan');
   if(closeWp)closeWp.onclick=closeWeekendPlanner;
   const modalWp=document.getElementById('weekendModal');
