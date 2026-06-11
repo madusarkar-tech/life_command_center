@@ -891,38 +891,6 @@ function mergeDayConfig(localCfg,cloudCfg,localTime,cloudTime){
   });
   return out;
 }
-function mergeIdArrays(localArr,cloudArr,localIsNewer,getKey){
-  const loc=Array.isArray(localArr)?localArr:[];
-  const clo=Array.isArray(cloudArr)?cloudArr:[];
-  const newer=localIsNewer?loc:clo;
-  const older=localIsNewer?clo:loc;
-  const byKey=new Map();
-  older.forEach(item=>{
-    const k=getKey(item);
-    if(k==null||k==='')return;
-    byKey.set(k,JSON.parse(JSON.stringify(item)));
-  });
-  newer.forEach(item=>{
-    const k=getKey(item);
-    if(k==null||k==='')return;
-    byKey.set(k,JSON.parse(JSON.stringify(item)));
-  });
-  const result=[];
-  const seen=new Set();
-  newer.forEach(item=>{
-    const k=getKey(item);
-    if(k==null||k===''||!byKey.has(k)||seen.has(k))return;
-    result.push(byKey.get(k));
-    seen.add(k);
-  });
-  older.forEach(item=>{
-    const k=getKey(item);
-    if(k==null||k===''||!byKey.has(k)||seen.has(k))return;
-    result.push(byKey.get(k));
-    seen.add(k);
-  });
-  return result;
-}
 function mergeHabitsMap(local,cloud){
   const loc=local&&typeof local==='object'?local:{};
   const clo=cloud&&typeof cloud==='object'?cloud:{};
@@ -934,14 +902,10 @@ function mergeHabitsMap(local,cloud){
   });
   return out;
 }
-function jobMergeKey(j){
-  if(!j)return '';
-  if(j.id)return String(j.id);
-  return 'job_'+String(j.company||'')+'\x01'+String(j.role||'')+'\x01'+String(j.status||'');
-}
 const LIST_LWW_FIELDS=[
   {arr:'todos',ts:'todosUpdatedAt'},
-  {arr:'jobTodos',ts:'jobTodosUpdatedAt'}
+  {arr:'jobTodos',ts:'jobTodosUpdatedAt'},
+  {arr:'jobs',ts:'jobsUpdatedAt'}
 ];
 function pickListWinner(local,cloud,arrKey,tsKey,localTime,cloudTime){
   const lArr=Array.isArray(local?.[arrKey])?local[arrKey]:[];
@@ -974,10 +938,8 @@ function mergeListFields(out,local,cloud,localTime,cloudTime){
   });
 }
 function mergeArrayFields(out,local,cloud,localTime,cloudTime){
-  const localIsNewer=localTime>=cloudTime;
   mergeListFields(out,local,cloud,localTime,cloudTime);
   out.habits=mergeHabitsMap(local.habits,cloud.habits);
-  out.jobs=mergeIdArrays(local.jobs,cloud.jobs,localIsNewer,jobMergeKey);
 }
 const NOTE_LWW_FIELDS=[
   {text:'todayNotes',ts:'todayNotesUpdatedAt'},
@@ -1234,6 +1196,7 @@ function migrateData(){
   ensureWeekendPeriodTemplate();
   migrateWeekendPlansToBands();
   repairSuddenBandLinks();
+  (DATA.jobs||[]).forEach(j=>{if(!j.id)j.id='job_'+Date.now()+Math.random().toString(36).slice(2,7);});
 }
 function dayChecks(){
   const k=activeDayKey();
@@ -4195,8 +4158,8 @@ function renderJobs(){
       const idx=DATA.jobs.indexOf(j);const order=['lead','applied','interview','offer','closed'];const cur=order.indexOf(key);
       const card=document.createElement('div');card.className='jcard';
       card.innerHTML=`<span class="x">✕</span><div class="co">${j.company}</div><div class="ro">${j.role||''}</div><div class="row">${cur>0?'<span class="mv" data-dir="-1">←</span>':''}${cur<order.length-1?'<span class="mv" data-dir="1">→</span>':''}</div>`;
-      card.querySelector('.x').onclick=()=>{DATA.jobs.splice(idx,1);save();renderJobs();renderCountdowns();};
-      card.querySelectorAll('.mv').forEach(b=>b.onclick=()=>{const ni=cur+parseInt(b.dataset.dir);DATA.jobs[idx].status=order[ni];save();renderJobs();renderCountdowns();});
+      card.querySelector('.x').onclick=()=>{DATA.jobs.splice(idx,1);touchListField('jobs');save();renderJobs();renderCountdowns();};
+      card.querySelectorAll('.mv').forEach(b=>b.onclick=()=>{const ni=cur+parseInt(b.dataset.dir);DATA.jobs[idx].status=order[ni];touchListField('jobs');save();renderJobs();renderCountdowns();});
       col.appendChild(card);
     });
     pipe.appendChild(col);
@@ -4799,7 +4762,7 @@ function wire(){
     flash('Wake time saved for today');
   };
   if(sTopic&&addSessBtn)sTopic.addEventListener('keydown',e=>{if(e.key==='Enter')addSessBtn.click();});
-  addJob.onclick=()=>{const c=jCo.value.trim();if(!c){jCo.focus();return;}DATA.jobs.push({company:c,role:jRo.value.trim(),status:jSt.value});jCo.value='';jRo.value='';save();renderJobs();renderCountdowns();};
+  addJob.onclick=()=>{const c=jCo.value.trim();if(!c){jCo.focus();return;}DATA.jobs.push({id:'job_'+Date.now(),company:c,role:jRo.value.trim(),status:jSt.value});touchListField('jobs');jCo.value='';jRo.value='';save();renderJobs();renderCountdowns();};
   jRo.addEventListener('keydown',e=>{if(e.key==='Enter')addJob.click();});
   const addJobTodoBtn=document.getElementById('addJobTodo');
   const jobTodoInput=document.getElementById('jobTodoInput');
