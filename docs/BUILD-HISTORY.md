@@ -58,7 +58,7 @@ User requests implemented:
 - **Friday:** study-heavy, workout after breakfast
 - **Saturday:** batch meal prep, chores
 - Schedule anchored to **actual wake time** (“Just woke up” button)
-- Three day-types: Workday / Friday / Saturday
+- Three day-types: Workday / Friday / Saturday *(removed on `main` at `0fb0441` — calendar shift inference only)*
 
 ### 6. Permanent templates + meal prep
 
@@ -101,6 +101,8 @@ After the initial repo import, development continued in Cursor:
 | `181363c` | Per-field `dayConfig` merge; merge-before-push on cloud write |
 | `f3a7f74` | Gym `blockDur` sync timestamp; todo list-level LWW (deletes stick) |
 | `540a3a5` | Merge tie-breaks favor cloud field stamps on reload; `writeLocalAfterSync`; `suppressUiSave` |
+| `3d15a16` | Job pipeline list-level LWW (`jobsUpdatedAt`); application deletes stick after sync |
+| `0fb0441` | Unified 4-band schedule; calendar shift nights (Sun–Thu work / Fri–Sat off); removed day picker and Weekend Plan modal |
 
 Baseline tag: `baseline-2026-06-10` at app `540a3a5`. Prior: `baseline-2026-06-09` at `884cd10`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
 

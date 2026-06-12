@@ -34,19 +34,19 @@ No output = local only. See [docs/GITHUB-SETUP.md](docs/GITHUB-SETUP.md) to push
 
 | Tab | Purpose |
 |-----|---------|
-| **Today** | Period bands (sudden ⚡, skip ✕, pin 📌, reorder), Today's Flow timeline, alarms, to-dos, habit chips in Quick Glance |
+| **Today** | Four period bands (night locked Sun–Thu); sudden ⚡, skip ✕, pin 📌, reorder; Today's Flow timeline; alarms; to-dos; habit chips in Quick Glance |
 | **Week** | Sun–Sat calendar (5am–midnight); tap slots to add fixed-window appointments; Flex row for anytime tasks |
 | **PMP Prep** | Study log, domain sliders, notes, countdown to June 22, 2026 (hidden after exam day) |
 | **Job Search** | Application pipeline, notes, deadline Aug 1, 2026; primary flexible schedule focus after June 22, 2026 (>2h/day on workdays) |
 
 Design details: [docs/DESIGN.md](docs/DESIGN.md) · Build history: [docs/BUILD-HISTORY.md](docs/BUILD-HISTORY.md) · Onboarding: [docs/HANDOFF.md](docs/HANDOFF.md)
 
-**Stable baseline:** tag `baseline-2026-06-10` (app `540a3a5`) — contract in [docs/BASELINE.md](docs/BASELINE.md). Say *"Return to baseline"* in a new chat to anchor agents there.
+**Stable baseline:** tag `baseline-2026-06-10` (app `540a3a5`) — contract in [docs/BASELINE.md](docs/BASELINE.md). Current `main` is `0fb0441` (4-band schedule + job sync). Say *"Return to baseline"* in a new chat to anchor agents at the tag.
 
 ## Data persistence
 
 - **Signed out:** saves to browser `localStorage` on that device only.
-- **Signed in:** syncs to your Firebase account (Mac + phone + iPad share one dataset). Field-level merge for bands, notes, and todos; merge-before-push on save.
+- **Signed in:** syncs to your Firebase account (Mac + phone + iPad share one dataset). Field-level merge for bands and notes; list-level merge for todos, job todos, and job pipeline; merge-before-push on save.
 
 ## Project layout
 

@@ -2,13 +2,13 @@
 
 This document captures the real-world constraints that shaped the dashboard. It is the distilled “why” behind `life-dashboard.html`.
 
-**Scheduling source of truth:** period-band model (v1). Workdays: 3 bands + work/sleep. Weekends: 4 bands (incl. night 8pm–midnight) + weekly Plan templates.
+**Scheduling source of truth:** period-band model (v2). **Four bands every day**; shift nights lock the night band to work; off nights (Fri–Sat) use the night band like any other.
 
 ## Context
 
 - **Location:** Tallahassee, FL (America/New_York)
 - **Work:** Remote, Bangkok hours **7:00 AM – 3:00 PM** (local **8:00 PM – 4:00 AM**)
-- **Weekends:** Friday and Saturday (no shift those nights)
+- **Off-shift nights:** Friday and Saturday (no shift those nights)
 - **Goals:**
   - Pass **PMP** by **June 22, 2026** (primary focus until exam day)
   - Land a **new job by August 1, 2026** (primary off-work focus after exam)
@@ -19,11 +19,11 @@ This document captures the real-world constraints that shaped the dashboard. It 
 1. **Sleep is the constraint.** One protected sleep block (~3:00 AM → logged wake). Avoid split sleep; wrap work before logoff when possible.
 2. **Goals:** PMP exam **June 22, 2026** (through that date inclusive); job target **August 1, 2026** — job countdown always shown; PMP UI only through exam day.
 3. **Operations are capped.** Animals, garden, meals, and workouts use scheduled blocks with durations — not unlimited time sinks.
-4. **Meal prep is batched.** Saturday `mealprep` feeds weekday lunches; workdays show a banner if last Saturday’s prep was skipped.
+4. **Meal prep is batched.** Saturday batch prep feeds weekday lunches; shift days show a banner if last Saturday’s prep was skipped (manual `mealPrep` checkbox).
 
-## Workday template — period bands (v1)
+## Period bands (v2) — one model for all days
 
-Only **work (night)** is a hard anchor. Daytime is three **bands**; tasks are stacked in order inside each band. **Open time** flex rows fill unused minutes within a band.
+Daytime and night use the same **band stack**. Only the **night band behavior** differs by calendar day.
 
 ### Band windows
 
@@ -32,35 +32,47 @@ Only **work (night)** is a hard anchor. Daytime is three **bands**; tasks are st
 | **Morning** | Logged wake → 2:00 PM |
 | **Afternoon** | 2:00 PM → 5:00 PM |
 | **Evening** | 5:00 PM → 8:00 PM |
-| **Night (work)** | 8:00 PM → 3:00 AM — anchor, not reorderable |
-| **Sleep** | 3:00 AM → wake — protected |
+| **Night** | 8:00 PM → midnight — editable on off days; **locked on shift days** |
+| **Work (shift only)** | 8:00 PM → 3:00 AM — fixed on timeline, not packed in bands |
+| **Sleep (shift only)** | 3:00 AM → wake — protected |
+
+### Shift vs off (calendar only)
+
+| Calendar | Shift? | Night band | Timeline after 8pm |
+|----------|--------|------------|----------------------|
+| Sun–Thu | Yes | Locked — “Work shift” row in Today's bands | Work block + Sleep block |
+| Fri–Sat | No | Editable — reorder, move, extras, skips | Packed night-band tasks; optional “after midnight” info row |
+
+No day-type picker. `hasWorkShift(dayKey)` uses day-of-week from the active date key (4am rollover). Stored `dayConfig[date].dayType` overrides are no longer applied.
 
 ### Default task lists (pre–June 23, 2026)
 
-| Morning | Afternoon | Evening |
-|---------|-----------|---------|
-| Breakfast | PMP2 (`study2`) | Dog walk & feed (`dog1`) |
-| PMP1 (`study1`) | Job applications (`jobapps`) | Dinner (`dinner`) |
-| Workout (`gym`) | Non-fixed (Read / AI / QGIS) | Garden (`garden`) |
-| | Dinner prep (`dinnerprep`, 20m) | |
+| Morning | Afternoon | Evening | Night |
+|---------|-----------|---------|-------|
+| Breakfast | PMP2 (`study2`) | Dog walk & feed (`dog1`) | *(empty)* |
+| PMP1 (`study1`) | Job applications (`jobapps`) | Dinner (`dinner`) | |
+| Workout (`gym`) | Non-fixed (Read / AI / QGIS) | Garden (`garden`) | |
+| | Dinner prep (`dinnerprep`, 20m) | | |
 
 Afternoon order: **study2 → jobapps → nonFixed → dinnerprep**.
 
 ### Default task lists (post–June 23, 2026)
 
-| Morning | Afternoon | Evening |
-|---------|-----------|---------|
-| Breakfast | Job applications (`jobapps` + `jobapps2`, >2h total) | Dog, dinner, garden |
-| Workout (`gym`) | Non-fixed, dinner prep (20m) | |
-| *Open time* in unused morning slots | | |
+| Morning | Afternoon | Evening | Night |
+|---------|-----------|---------|-------|
+| Breakfast | Job applications (`jobapps` + `jobapps2`, >2h total) | Dog, dinner, garden | *(empty)* |
+| Workout (`gym`) | Non-fixed, dinner prep (20m) | | |
+| *Open time* in unused morning slots | | | |
 
 PMP blocks removed; morning open time is for custom activities (add via band UI).
+
+Defaults live in `DATA.periodTemplate` (`preExam` / `postExam`) with the same lists for shift and off days. Customize per day via **Today's bands** overrides only — there is no separate weekend template store.
 
 ### Today-only overrides (`dayConfig[date]`)
 
 - **periodOrder** — ↑↓ reorder within a band today only.
 - **periodMoves** — move a task to another band today only (e.g. gym → morning); sudden tasks use keys `sudden:st_*`.
-- **periodExtras** — custom named activities in a band (post-exam open time).
+- **periodExtras** — custom named activities in a band.
 - **periodSkips** — ✕ skip a task for today only; **↺ unskip all tasks** restores defaults.
 - **periodPinnedStart** — 📌 pin a task to a clock time within its band (e.g. gym at 11:00); `packPeriodBand` honors pins.
 - **blockDur** — today-only duration per task key; edited via **−/+ steppers** on band rows (not a separate timeline edit mode).
@@ -69,18 +81,20 @@ PMP blocks removed; morning open time is for custom activities (add via band UI)
 
 Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge (`mergeDayEntry`).
 
-### Band row controls (workdays)
+### Band row controls
 
-- **Gym row:** Gym / Home / Skip picker (replaces former top Workout row).
-- **Non-fixed row:** Auto / Read / AI / QGIS / Skip picker (replaces former top Extra row).
+- **Gym row:** Gym / Home / Skip picker.
+- **Non-fixed row:** Auto / Read / AI / QGIS / Skip picker.
 - **⏱ toggle:** optional 5-minute end warning for that task (`alarmEndTasks`).
 - **📌 pin:** set a start time within the band window (`periodPinnedStart`).
+- **Shift night row:** read-only Work label in the night band (no add/reorder).
 
 ### Today's Flow (computed timeline)
 
-- Built from band packing (`packPeriodBand`); read-only for durations.
-- Labels show **duration only** (e.g. `60m`) — no subtitle hints like “1h from wake”.
+- Built from `buildPeriodSeq()` → `packPeriodBand()` for morning–evening (+ night on off days).
+- Labels show **duration only** (e.g. `60m`).
 - Checkboxes for block completion; **Alarms** / **End warn** toggles in the header.
+- Shift days append fixed **Work** and **Sleep** blocks after packed daytime/evening bands.
 
 ### Sudden tasks & bands
 
@@ -125,31 +139,21 @@ Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge
   - Band rows show **· not on timeline** for unpacked tasks.
   - Overfull add/move is still allowed — shorten durations or move tasks to fix.
 
-## Friday & Saturday (weekend days)
-
-- No work shift — sleep when ready
-- **Four bands:** morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), **night (8pm–midnight)**
-- **Plan** modal (Friday/Saturday tabs): edit weekly band templates — reorder, move, **remove (✕)**, add per band; each row shows **minutes**; band header shows **used/capacity** (morning uses 10am wake or today’s wake if that day type is active)
-- **Today's bands** on Fri/Sat: same today-only overrides as workdays (`periodOrder`, `periodMoves`, `periodExtras`)
-- Legacy flat `weekendPlan` per date migrates into templates on first load
-- Saturday **mealprep** for the week — not on workday afternoon list
-
 ## Flexible controls
 
 | Control | Behavior |
 |---------|----------|
 | Wake time / “Just woke up” | Morning band starts at wake |
-| Day type (Auto / Workday / Friday / Saturday) | Auto uses active day key (4am rollover) |
+| Shift vs off | **Calendar only** — Fri/Sat off; Sun–Thu shift (`hasWorkShift`) |
 | Workout: Gym / Home / Skip | On gym band row; affects gym duration |
-| Non-fixed: Auto / Read / AI / QGIS / Skip | On non-fixed band row (workdays) |
+| Non-fixed: Auto / Read / AI / QGIS / Skip | On non-fixed band row |
 | Sudden tasks | Anytime or fixed window; ⚡ in Today's bands; skip via ✕ |
 | Skip for today | ✕ on band row or timeline → `periodSkips` |
-| Weekend plan | Weekly Fri/Sat band templates (Plan modal) |
 | Block lengths (`blockDur`) | −/+ steppers on Today's band rows |
 | Task alarms | Start-of-block (default on); ⏱ end warn per task |
 | Pin start time | 📌 on band row → `periodPinnedStart` |
 | Week calendar | Sun–Sat grid; tap slot to add fixed-window sudden |
-| Today's bands | Reorder / move / drag between bands (workday: 3 + work; weekend: 4) |
+| Today's bands | Reorder / move / drag across all four bands (night locked on shift days) |
 
 ## Sync model (Firebase)
 
@@ -159,9 +163,8 @@ Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge
 - **Push:** `pushCloud` merge-before-push — reads cloud, merges, then writes (avoids stale device overwrite).
 - **dayConfig:** per-date, per-field LWW on `DAY_LWW_FIELDS` (wake, bands, suddens, pins, etc.).
 - **Notes:** per-field LWW on `todayNotes`, `pmpNotes`, `jobNotes`.
-- **Todos:** list-level LWW — entire `todos` / `jobTodos` array wins by `todosUpdatedAt` / `jobTodosUpdatedAt`.
+- **Todos / job todos / jobs:** list-level LWW — entire array wins by `todosUpdatedAt` / `jobTodosUpdatedAt` / `jobsUpdatedAt`.
 - **Habits:** date-set union per habit id.
-- **Jobs:** id union (`mergeIdArrays`) — deletes on one device may reappear from the other.
 
 ## What the dashboard does *not* do (yet)
 
@@ -169,5 +172,6 @@ Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge
 - Google Calendar / Todoist integration
 - **Recurring calendar events**
 - **Gym spillover** — if morning band is full, gym should try afternoon/evening before dropping lower-priority tasks (partial: displacement on sudden add only)
+- Separate weekly Fri/Sat band templates (removed — use Today's bands per day instead)
 
 See [BUILD-HISTORY.md](BUILD-HISTORY.md) for feature evolution.

@@ -3,9 +3,11 @@
 **Established:** 2026-06-10 (current) · **Archive:** 2026-06-09 (`884cd10`)  
 **Return phrase:** `Return to baseline` or `Restore baseline-2026-06-10`
 
-Use this when you want future work (or a new chat) to treat the app as **known-good** and avoid accidental changes to sync, field-level merge, sudden/band scheduling, Week calendar, or weekend Plan behavior unless you explicitly ask otherwise.
+Use this when you want future work (or a new chat) to treat the app as **known-good** and avoid accidental changes to sync, field-level merge, sudden/band scheduling, or Week calendar unless you explicitly ask otherwise.
 
-## Git reference (current)
+**Current `main`:** `0fb0441` — unified 4-band schedule, calendar shift nights, job pipeline list LWW. See [Changes since `baseline-2026-06-10`](#changes-since-baseline-2026-06-10-540a3a5-app) below.
+
+## Git reference (baseline tag)
 
 | Item | Value |
 |------|--------|
@@ -33,7 +35,16 @@ List what the tag contains:
 git show baseline-2026-06-10 --stat
 ```
 
-**Live site:** GitHub Pages follows `main` (app at tag `540a3a5`).
+**Live site:** GitHub Pages follows `main` (currently `0fb0441`).
+
+---
+
+## Changes since `baseline-2026-06-10` (`540a3a5` app)
+
+| Commit | Summary |
+|--------|---------|
+| `3d15a16` | **Job pipeline delete sync** — `jobsUpdatedAt` list-level LWW (like todos); removed `mergeIdArrays` for jobs; stable `job_*` ids |
+| `0fb0441` | **Unified 4-band schedule** — morning/afternoon/evening/night for all days; `hasWorkShift()` from calendar (Sun–Thu shift, Fri–Sat off); night locked on shift days; removed day picker, Weekend Plan modal, `weekendPeriodTemplate` |
 
 ---
 
@@ -83,16 +94,17 @@ git show baseline-2026-06-10 --stat
 - **Week** — calendar grid (Sun–Sat, 5am–midnight); tap hour → add fixed-window sudden; Flex row for anytime suddens; prev/next/today navigation
 - **Quick Glance** — block checks, habit chips, study shortcuts
 - **PMP Prep** / **Job Search** — notes with per-field sync
-- **Weekend Plan modal** — weekly Fri/Sat templates; drafts until Save; drag reorder
 - **Sync** — Google Auth + Firestore; localStorage when signed out
 
 **Tabs:** Today · Week · PMP Prep · Job Search
+
+> **At tag `540a3a5` only:** Weekend Plan modal + `weekendPeriodTemplate` existed. Removed on `main` at `0fb0441`.
 
 ### Mental model (do not conflate)
 
 | Concept | Storage | Notes |
 |---------|---------|--------|
-| **Plan** | `weekendPeriodTemplate` + modal drafts | Weekly Fri/Sat; Save only |
+| **Default bands** | `periodTemplate` (`preExam` / `postExam`) | Same defaults all days; empty `night: []`; no separate weekend template on current `main` |
 | **Today's bands** | `dayConfig[date]` | `periodOrder`, `periodMoves`, `periodExtras`, `periodSkips`, `periodPinnedStart`, `blockDur`; suddens as `sudden:st_*` |
 | **Sudden tasks** | `dayConfig[*].suddenTasks` | Any date bucket; `targetDayKey` selects schedule day; Week grid + bands + timeline share data |
 | **Week calendar** | Read/write `suddenTasks` | Fixed-window → grid blocks; anytime → Flex chips |
@@ -101,12 +113,12 @@ git show baseline-2026-06-10 --stat
 | **Alarms** | `DATA.alarmOn`, `alarmEndOn`, `alarmEndTasks` | Start-of-block default on; 5m end warn per ⏱ |
 | **To-Do** | `DATA.todos`, `DATA.jobTodos` | List-level LWW — whole list wins by `todosUpdatedAt` / `jobTodosUpdatedAt` |
 | **Habits** | `DATA.habits` + Today chips | Date-set union merge |
-| **Jobs** | `DATA.jobs` | `mergeIdArrays` union (delete-on-one-device risk remains) |
+| **Jobs** | `DATA.jobs` | List-level LWW at `3d15a16+` (`jobsUpdatedAt`); union merge at tag `540a3a5` only |
 
-### Day rollover & Auto day type
+### Day rollover & shift inference
 
 - Calendar “today” rolls at **4:00 AM** local (`activeDayKey()`, `DAY_ROLLOVER_HOUR = 4`).
-- **Auto** uses `calendarDayTypeForKey(activeDayKey())`, not wall-clock `getDay()`.
+- **Shift vs off** — `hasWorkShift(dayKey)`: Sun–Thu shift, Fri–Sat off (current `main`). Tag `540a3a5` used manual day-type picker + separate weekend templates.
 
 ---
 
@@ -126,7 +138,6 @@ Implementation: `life-dashboard.html` — `Store`, `mergeAppData`, `mergeDayConf
 - `Store.load` → read cloud + local → `mergeAppData` → `writeLocalAfterSync`
 - `Store.save` → local + debounced/urgent `pushCloud`
 - `onSnapshot` → `applyRemoteData` with `suppressCloudApply` guard
-- Weekend Plan modal guard: `isWeekendPlanModalOpen()` blocks `applyRemoteData` while open
 - `suppressUiSave` — programmatic `<details>` open (bands, scratch, quiz) does not trigger `save()` on reload
 
 ### Top-level merge (`mergeAppData`)
@@ -137,9 +148,8 @@ Document-level winner-take-all for most scalar fields. Exceptions merged separat
 |------|----------|
 | `dayConfig` | Per-date `mergeDayEntry` (field-level LWW) |
 | `todayNotes`, `pmpNotes`, `jobNotes` | Per-field LWW (`mergeNoteFields`) |
-| `todos`, `jobTodos` | List-level LWW (`pickListWinner`) |
+| `todos`, `jobTodos`, `jobs` | List-level LWW (`pickListWinner`) — `jobs` added at `3d15a16` |
 | `habits` | Per-habit date union |
-| `jobs` | `mergeIdArrays` union by id |
 
 ### Per-day merge (`mergeDayEntry`)
 
@@ -163,9 +173,11 @@ Legacy whole-day `_syncAt` still used for `tasks` / `weekendPlan` only.
 
 ## Scheduling engine (freeze reference)
 
-- **Workday:** 3 bands + Work (8pm–3am) + Sleep (3am→wake).
-- **Weekend:** 4 bands through night (8pm–midnight).
-- **Key functions:** `buildSeq`, `packPeriodBand`, `effectivePeriodLists`, `iterateSuddenTargetingDay`, `displaceSuddenOverlaps`, `applySuddenTasks`, `getPeriodPinStart`, `setPeriodPinStart`, `renderWeekCalendar`, `openCalEventModal`, `skipPeriodTask`, `repairSuddenBandLinks`, `bandCapacityStatus`, `checkTaskAlarms`, `calendarDayTypeForKey`, `activeDayKey`.
+**At tag `540a3a5`:** workday = 3 bands + Work + Sleep; weekend = 4 bands + Plan templates.
+
+**Current `main` (`0fb0441`):** 4 bands always; `buildPeriodSeq` + `hasWorkShift`; night locked on shift days.
+
+- **Key functions:** `buildSeq`, `buildPeriodSeq`, `hasWorkShift`, `packPeriodBand`, `effectivePeriodLists`, `displaceSuddenOverlaps`, `applySuddenTasks`, `getPeriodPinStart`, `setPeriodPinStart`, `renderWeekCalendar`, `openCalEventModal`, `skipPeriodTask`, `repairSuddenBandLinks`, `bandCapacityStatus`, `checkTaskAlarms`, `calendarDayTypeForKey`, `activeDayKey`.
 
 Full band windows: [DESIGN.md](./DESIGN.md).
 
@@ -186,7 +198,7 @@ Full band windows: [DESIGN.md](./DESIGN.md).
 
 ## For Cursor / new chats
 
-> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, field-level timestamps, sudden/band packing, Week calendar, or weekend Plan modal behavior unless I ask. Match tag `baseline-2026-06-10`.
+> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, field-level timestamps, sudden/band packing, or Week calendar unless I ask. Match tag `baseline-2026-06-10` for the frozen contract; current `main` adds 4-band unification and jobs list LWW.
 
 ```text
 When I say "return to baseline" or "restore baseline-2026-06-10", read docs/BASELINE.md and treat it as the contract. Prefer minimal diffs.
@@ -201,7 +213,6 @@ See [HANDOFF.md](./HANDOFF.md).
 - Recurring calendar events
 - Google Calendar / Todoist
 - Multi-user `DATA.profile`
-- Full document-level LWW for `jobs` (still union merge)
 - Weak merge for `scheduleChecks` (block checkboxes)
 - Gym spillover across bands when morning is full (partial: displacement on sudden add only)
 - Reliable background alarms (tab/permission dependent)
