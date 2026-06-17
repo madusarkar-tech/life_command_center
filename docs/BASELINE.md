@@ -118,7 +118,7 @@ git show baseline-2026-06-10 --stat
 | **To-Do** | `DATA.todos`, `DATA.jobTodos` | List-level LWW — whole list wins by `todosUpdatedAt` / `jobTodosUpdatedAt`; Today todos split by `list: 'work' \| 'other'` |
 | **Habits (legacy)** | `DATA.habits` | Date-set union merge — still used for PMP study habit sync from schedule blocks |
 | **Weekly habits** | `DATA.habitDaily[date]` | Per-date merge: max sleep/water, OR workout (`mergeHabitDailyMap`) |
-| **Workout log** | `DATA.gymLog[date]` | Per-date merge: OR plan flags (yoga/cardio/lift); union exercises/sets by weight\|reps (`mergeGymLogMap`) |
+| **Workout log** | `DATA.gymLog[date]` | Per-date LWW by `updatedAt` — whole day entry wins (`mergeGymLogMap`) |
 | **Jobs** | `DATA.jobs` | List-level LWW at `3d15a16+` (`jobsUpdatedAt`); union merge at tag `540a3a5` only |
 
 ### Day rollover & shift inference
@@ -157,7 +157,7 @@ Document-level winner-take-all for most scalar fields. Exceptions merged separat
 | `todos`, `jobTodos`, `jobs` | List-level LWW (`pickListWinner`) — `jobs` added at `3d15a16` |
 | `habits` | Per-habit date union |
 | `habitDaily` | Per-date entry merge (`mergeHabitDailyMap`) — max sleep/water, OR workout |
-| `gymLog` | Per-date entry merge (`mergeGymLogMap`) — OR plan, union lift sets |
+| `gymLog` | Per-date LWW by `updatedAt` (`mergeGymLogMap`) — whole day wins; tie → document time |
 
 ### Per-day merge (`mergeDayEntry`)
 

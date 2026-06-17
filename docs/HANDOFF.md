@@ -53,7 +53,7 @@ All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8
 - **Removed Quick Glance** — replaced with Weekly habits sidebar card
 - **`DATA.habitDaily`** — `{ sleepHrs, workout, water }` per date; `mergeHabitDailyMap`
 - **Workout log** — Sun–Sat yoga/cardio/lift grid; lift logging in detail panel; monthly lift stats (max, avg, sessions)
-- **`DATA.gymLog`** — `{ plan, exercises, updatedAt }` per date; `mergeGymLogMap`
+- **`DATA.gymLog`** — `{ plan, exercises, updatedAt }` per date; `mergeGymLogMap` (LWW by `updatedAt`)
 - **Split to-dos** — Work vs Other on Today (`list` field; legacy items default `other`)
 - Fixed startup crash from leftover Quick Glance `qMin` reference in `wire()`
 

@@ -978,52 +978,61 @@ function mergeHabitDailyMap(local,cloud){
   });
   return out;
 }
-function mergeGymExercises(lEx,cEx){
-  const map={};
-  const addList=(list)=>{
-    (list||[]).forEach(ex=>{
-      const name=(ex.name||'').trim();
-      if(!name)return;
-      const key=name.toLowerCase();
-      if(!map[key])map[key]={name,sets:[],sigs:new Set()};
-      (ex.sets||[]).forEach(s=>{
-        const weight=parseFloat(s.weight);
-        const reps=parseInt(s.reps,10);
-        if(isNaN(weight)||isNaN(reps))return;
-        const sig=weight+'|'+reps;
-        if(!map[key].sigs.has(sig)){
-          map[key].sigs.add(sig);
-          map[key].sets.push({weight,reps});
-        }
-      });
+function cloneGymDay(entry){
+  if(!entry||typeof entry!=='object')return null;
+  const p=entry.plan||{};
+  const plan={yoga:!!p.yoga,cardio:!!p.cardio,lift:!!p.lift};
+  const exercises=(entry.exercises||[]).map(ex=>{
+    const name=(ex.name||'').trim();
+    if(!name)return null;
+    const sets=(ex.sets||[]).map(s=>{
+      const weight=parseFloat(s.weight);
+      const reps=parseInt(s.reps,10);
+      return{weight:isNaN(weight)?0:weight,reps:isNaN(reps)?8:reps};
     });
-  };
-  addList(lEx);
-  addList(cEx);
-  return Object.values(map).map(({name,sets})=>({name,sets}));
+    return{name,sets};
+  }).filter(Boolean);
+  return{plan,exercises,updatedAt:entry.updatedAt||0};
 }
-function mergeGymPlan(lo,cl){
-  const l=lo&&lo.plan?lo.plan:{};
-  const c=cl&&cl.plan?cl.plan:{};
-  return{yoga:!!(l.yoga||c.yoga),cardio:!!(l.cardio||c.cardio),lift:!!(l.lift||c.lift)};
+function gymDayHasContent(day){
+  if(!day||typeof day!=='object')return false;
+  const p=day.plan||{};
+  if(p.yoga||p.cardio||p.lift)return true;
+  return (day.exercises||[]).some(ex=>(ex.sets||[]).length);
 }
-function mergeGymDayEntry(l,c){
-  const lo=l&&typeof l==='object'?l:{};
-  const cl=c&&typeof c==='object'?c:{};
-  const exercises=mergeGymExercises(lo.exercises,cl.exercises);
-  const plan=mergeGymPlan(lo,cl);
-  const hasPlan=plan.yoga||plan.cardio||plan.lift;
-  if(!exercises.length&&!hasPlan)return null;
-  return{plan,exercises,updatedAt:Math.max(lo.updatedAt||0,cl.updatedAt||0)};
+function mergeGymDayEntry(l,c,localTime,cloudTime){
+  const lo=l&&typeof l==='object'?l:null;
+  const cl=c&&typeof c==='object'?c:null;
+  if(!lo&&!cl)return null;
+  if(!lo){const o=cloneGymDay(cl);return o&&gymDayHasContent(o)?o:null;}
+  if(!cl){const o=cloneGymDay(lo);return o&&gymDayHasContent(o)?o:null;}
+  const lTs=lo.updatedAt||0;
+  const cTs=cl.updatedAt||0;
+  let winner;
+  if(lTs>cTs)winner=lo;
+  else if(cTs>lTs)winner=cl;
+  else{
+    const lHas=gymDayHasContent(lo);
+    const cHas=gymDayHasContent(cl);
+    if(lHas&&!cHas)winner=lo;
+    else if(cHas&&!lHas)winner=cl;
+    else if(cloudTime>localTime)winner=cl;
+    else if(localTime>cloudTime)winner=lo;
+    else winner=cl;
+  }
+  const out=cloneGymDay(winner);
+  if(!out||!gymDayHasContent(out))return null;
+  out.updatedAt=Math.max(lTs,cTs);
+  return out;
 }
-function mergeGymLogMap(local,cloud){
+function mergeGymLogMap(local,cloud,localTime,cloudTime){
   const loc=local&&typeof local==='object'?local:{};
   const clo=cloud&&typeof cloud==='object'?cloud:{};
   const keys=new Set([...Object.keys(loc),...Object.keys(clo)]);
   const out={};
   keys.forEach(k=>{
     if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
-    const merged=mergeGymDayEntry(loc[k],clo[k]);
+    const merged=mergeGymDayEntry(loc[k],clo[k],localTime||0,cloudTime||0);
     if(merged)out[k]=merged;
   });
   return out;
@@ -1067,7 +1076,7 @@ function mergeArrayFields(out,local,cloud,localTime,cloudTime){
   mergeListFields(out,local,cloud,localTime,cloudTime);
   out.habits=mergeHabitsMap(local.habits,cloud.habits);
   out.habitDaily=mergeHabitDailyMap(local.habitDaily,cloud.habitDaily);
-  out.gymLog=mergeGymLogMap(local.gymLog,cloud.gymLog);
+  out.gymLog=mergeGymLogMap(local.gymLog,cloud.gymLog,localTime,cloudTime);
 }
 const NOTE_LWW_FIELDS=[
   {text:'todayNotes',ts:'todayNotesUpdatedAt'},
@@ -2286,6 +2295,22 @@ function touchGymDay(dayKey){
   const day=gymDayLog(dayKey,true);
   day.updatedAt=Date.now();
 }
+let gymSetSaveTimer;
+function commitGymSet(s,wIn,rIn,dayKey,live){
+  const w=parseFloat(wIn.value);
+  const r=parseInt(rIn.value,10);
+  s.weight=isNaN(w)||wIn.value===''?0:w;
+  s.reps=isNaN(r)||rIn.value===''?8:r;
+  touchGymDay(dayKey);
+  if(live){
+    clearTimeout(gymSetSaveTimer);
+    gymSetSaveTimer=setTimeout(()=>save(),400);
+    return;
+  }
+  clearTimeout(gymSetSaveTimer);
+  save();
+}
+function preventEnterSubmit(e){if(e.key==='Enter')e.preventDefault();}
 function habitEntryForDay(dayKey,create){
   if(!DATA.habitDaily)DATA.habitDaily={};
   if(!DATA.habitDaily[dayKey]&&create)DATA.habitDaily[dayKey]={};
@@ -2647,8 +2672,10 @@ function renderGymLiftPanel(dayKey,panelEl){
         const rIn=document.createElement('input');
         rIn.type='number';rIn.min='1';rIn.placeholder='reps';
         rIn.value=s.reps!=null?s.reps:'';
-        const saveSet=()=>{s.weight=parseFloat(wIn.value);s.reps=parseInt(rIn.value,10);touchGymDay(dayKey);save();renderGymLog();};
-        wIn.onchange=saveSet;rIn.onchange=saveSet;
+        const saveSet=()=>commitGymSet(s,wIn,rIn,dayKey,false);
+        const liveSet=()=>commitGymSet(s,wIn,rIn,dayKey,true);
+        wIn.oninput=liveSet;wIn.onchange=saveSet;wIn.onkeydown=preventEnterSubmit;
+        rIn.oninput=liveSet;rIn.onchange=saveSet;rIn.onkeydown=preventEnterSubmit;
         row.appendChild(wIn);
         row.appendChild(document.createTextNode('lbs ×'));
         row.appendChild(rIn);

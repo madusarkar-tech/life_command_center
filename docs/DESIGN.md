@@ -144,7 +144,7 @@ Separate from the schedule's gym band — a week planner and lift logger:
 - **Lift panel** — when lift is planned for selected day: add exercises (presets + free text), log weight/reps per set.
 - **Monthly summary** — per exercise: max weight, average weight, session count.
 - **Storage** — `DATA.gymLog[date] = { plan: { yoga, cardio, lift }, exercises: [...], updatedAt }`.
-- **Sync** — `mergeGymLogMap`: OR plan flags; union exercises/sets by `weight|reps` signature.
+- **Sync** — `mergeGymLogMap`: per-date LWW by `updatedAt` (whole day entry wins).
 
 ### To-Do (Today)
 
@@ -201,7 +201,7 @@ Separate from the schedule's gym band — a week planner and lift logger:
 - **Todos / job todos / jobs:** list-level LWW — entire array wins by `todosUpdatedAt` / `jobTodosUpdatedAt` / `jobsUpdatedAt`.
 - **Habits (legacy):** date-set union per habit id (PMP study from blocks).
 - **habitDaily:** per-date merge — max sleep/water, OR workout (`mergeHabitDailyMap`).
-- **gymLog:** per-date merge — OR plan flags; union lift exercises/sets (`mergeGymLogMap`).
+- **gymLog:** per-date LWW by `updatedAt` — whole day wins (`mergeGymLogMap`).
 
 ## What the dashboard does *not* do (yet)
 
