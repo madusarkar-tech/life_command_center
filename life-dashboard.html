@@ -63,6 +63,17 @@
   nav.tabs button:hover{color:var(--text)}
   nav.tabs button.active{color:var(--gold)}
   nav.tabs button.active::after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:2px;background:var(--gold);border-radius:2px}
+  nav.tabs{align-items:flex-end}
+  .tab-nav-custom{display:contents}
+  .tab-manage-btn{margin-left:auto;background:var(--bg2);border:1px solid var(--line-soft);color:var(--muted);font-family:'Hanken Grotesk';font-size:18px;font-weight:700;line-height:1;padding:6px 12px 10px;border-radius:8px 8px 0 0;cursor:pointer;transition:.15s}
+  .tab-manage-btn:hover{color:var(--text);border-color:var(--gold)}
+  .tab-mgr-list{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+  .tab-mgr-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--line-soft);border-radius:10px}
+  .tab-mgr-row label{flex:1;display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;cursor:pointer}
+  .tab-mgr-row label.disabled{color:var(--muted2);cursor:default}
+  .tab-mgr-row .tab-mgr-hint{font-size:12px;color:var(--muted2);font-weight:500}
+  .tab-mgr-custom .tab-mgr-row input[type=text]{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:'Hanken Grotesk';font-size:14px;color:var(--text)}
+  .custom-tab-notes{width:100%;min-height:280px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px;color:var(--text);font-family:'Hanken Grotesk';font-size:14px;line-height:1.55;resize:vertical}
   .view{display:none;animation:fade .35s ease}
   .view.active{display:block}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -510,7 +521,7 @@
     <div class="sub">Deep-study window: protect your sharp hours.</div>
     <div class="bar"><i id="pmpBar" style="width:0%"></i></div>
   </div>
-  <div class="cd jobs">
+  <div class="cd jobs" id="jobCountdown">
     <div class="top"><span>New Job Deadline</span><span class="pill" id="jobDate">Aug 1</span></div>
     <div class="num"><span id="jobDays">--</span> <small>days left</small></div>
     <div class="sub" id="jobSub">Applications in pipeline: 0</div>
@@ -528,9 +539,11 @@
 
 <nav class="tabs">
   <button class="active" data-v="today">Today</button>
-  <button data-v="week">Week</button>
+  <button data-v="week" id="tabWeek">Week</button>
   <button data-v="pmp" id="tabPmp">PMP Prep</button>
-  <button data-v="jobs">Job Search</button>
+  <button data-v="jobs" id="tabJobs">Job Search</button>
+  <span id="tabNavCustom" class="tab-nav-custom"></span>
+  <button type="button" class="tab-manage-btn" id="btnTabManager" title="Manage tabs" aria-label="Manage tabs">⋯</button>
 </nav>
 
 <section class="view" id="v-week">
@@ -789,8 +802,32 @@
   </div>
 </section>
 
+<div id="customTabViews"></div>
+
 <div class="footnote">Saves on this device · Day resets at 4am · Built for the night shift.</div>
 <div class="save-flash" id="flash">Saved</div>
+
+<div class="modal-backdrop" id="tabManagerModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="tabManagerTitle">
+    <div class="modal-head">
+      <div>
+        <h3 id="tabManagerTitle">Manage tabs</h3>
+        <p>Show, hide, or add focus-area tabs. Today always stays visible.</p>
+      </div>
+      <button type="button" class="ghostbtn sm" id="closeTabManager">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="h-sub" style="margin-bottom:10px">Built-in tabs</div>
+      <div class="tab-mgr-list" id="tabMgrBuiltin"></div>
+      <div class="h-sub" style="margin-bottom:10px">Custom tabs</div>
+      <div class="tab-mgr-list tab-mgr-custom" id="tabMgrCustom"></div>
+      <div class="addrow" style="margin-top:4px">
+        <input type="text" id="tabMgrNewName" placeholder="New tab name…" autocomplete="off">
+        <button type="button" class="btn sm" id="tabMgrAdd">Add tab</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="calEventModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-labelledby="calEventModalTitle">
@@ -1139,6 +1176,18 @@ function mergeNoteFields(out,local,cloud,localTime,cloudTime){
     else if(out[ts]!=null)delete out[ts];
   });
 }
+function mergeTabUi(out,local,cloud,localTime,cloudTime){
+  const lTs=typeof local?.tabUiUpdatedAt==='number'?local.tabUiUpdatedAt:0;
+  const cTs=typeof cloud?.tabUiUpdatedAt==='number'?cloud.tabUiUpdatedAt:0;
+  const pick=lTs>=cTs?local:cloud;
+  const other=lTs>=cTs?cloud:local;
+  if(pick?.tabUi)out.tabUi=JSON.parse(JSON.stringify(pick.tabUi));
+  else if(other?.tabUi)out.tabUi=JSON.parse(JSON.stringify(other.tabUi));
+  else out.tabUi={hiddenTabs:[],customTabs:[]};
+  const ts=Math.max(lTs,cTs);
+  if(ts>0)out.tabUiUpdatedAt=ts;
+  else if(out.tabUiUpdatedAt!=null)delete out.tabUiUpdatedAt;
+}
 function commitNoteField(textKey,value){
   if((DATA[textKey]||'')===value)return;
   DATA[textKey]=value;
@@ -1156,6 +1205,7 @@ function mergeAppData(local,cloud,localTime,cloudTime){
   if(!out.scheduleChecks&&other.scheduleChecks)out.scheduleChecks=JSON.parse(JSON.stringify(other.scheduleChecks));
   mergeArrayFields(out,local,cloud,localTime,cloudTime);
   mergeNoteFields(out,local,cloud,localTime,cloudTime);
+  mergeTabUi(out,local,cloud,localTime,cloudTime);
   return out;
 }
 function dataSnapshotEqual(a,b){
@@ -1276,7 +1326,12 @@ const Store={
   }
 };
 let DATA=null;
-function defaults(){return{scheduleChecks:{},habits:{},habitDaily:{},gymLog:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,gymLiftOpen:true,periodPlanOpen:false,periodTemplate:null,alarmOn:true,alarmEndOn:true,alarmEndTasks:null};}
+function defaults(){return{scheduleChecks:{},habits:{},habitDaily:{},gymLog:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,gymLiftOpen:true,periodPlanOpen:false,periodTemplate:null,alarmOn:true,alarmEndOn:true,alarmEndTasks:null,tabUi:{hiddenTabs:[],customTabs:[]}};}
+const MANAGED_BUILTIN_TABS=[
+  {id:'week',label:'Week'},
+  {id:'pmp',label:'PMP Prep'},
+  {id:'jobs',label:'Job Search'}
+];
 const PMP=new Date('2026-06-22T00:00:00');
 const PMP_EXAM_KEY='2026-06-22';
 const JOB=new Date('2026-08-01T00:00:00');
@@ -1365,6 +1420,220 @@ function migrateData(){
     if(!d.plan)d.plan={yoga:false,cardio:false,lift:false};
     if(!Array.isArray(d.exercises))d.exercises=[];
   });
+  ensureTabUi();
+}
+function ensureTabUi(){
+  if(!DATA)return;
+  if(!DATA.tabUi||typeof DATA.tabUi!=='object')DATA.tabUi={hiddenTabs:[],customTabs:[]};
+  if(!Array.isArray(DATA.tabUi.hiddenTabs))DATA.tabUi.hiddenTabs=[];
+  if(!Array.isArray(DATA.tabUi.customTabs))DATA.tabUi.customTabs=[];
+  DATA.tabUi.hiddenTabs=DATA.tabUi.hiddenTabs.filter(id=>MANAGED_BUILTIN_TABS.some(t=>t.id===id));
+  DATA.tabUi.customTabs=DATA.tabUi.customTabs.filter(t=>t&&typeof t.id==='string'&&t.id.startsWith('ct_')).map(t=>({
+    id:t.id,
+    label:String(t.label||'Tab').trim()||'Tab',
+    notes:typeof t.notes==='string'?t.notes:''
+  }));
+}
+function touchTabUi(){DATA.tabUiUpdatedAt=Date.now();}
+function isTabHidden(id){ensureTabUi();return DATA.tabUi.hiddenTabs.includes(id);}
+function isTabVisible(id){
+  ensureTabUi();
+  if(id==='today')return true;
+  if(id.startsWith('ct_'))return DATA.tabUi.customTabs.some(t=>t.id===id);
+  if(id==='pmp')return isPmpActive()&&!isTabHidden('pmp');
+  if(id==='week'||id==='jobs')return !isTabHidden(id);
+  return false;
+}
+function setTabHidden(id,hidden){
+  if(!MANAGED_BUILTIN_TABS.some(t=>t.id===id))return;
+  const h=DATA.tabUi.hiddenTabs;
+  const i=h.indexOf(id);
+  if(hidden&&i<0)h.push(id);
+  else if(!hidden&&i>=0)h.splice(i,1);
+  touchTabUi();
+}
+function switchToTodayTab(){activateTab('today');}
+function activateTab(tabId){
+  const btn=document.querySelector(`nav.tabs button[data-v="${tabId}"]`);
+  if(!btn||!isTabVisible(tabId))return;
+  document.querySelectorAll('nav.tabs button[data-v]').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  const view=document.getElementById('v-'+tabId);
+  if(view)view.classList.add('active');
+  if(tabId==='week')renderWeekCalendar();
+}
+function applyTabUi(){
+  ensureTabUi();
+  MANAGED_BUILTIN_TABS.forEach(({id})=>{
+    const tab=document.querySelector(`nav.tabs button[data-v="${id}"]`);
+    const view=document.getElementById('v-'+id);
+    const on=isTabVisible(id);
+    if(tab)tab.style.display=on?'':'none';
+    if(view)view.style.display=on?'':'none';
+  });
+  const pmpCd=document.getElementById('pmpCountdown');
+  const jobCd=document.getElementById('jobCountdown');
+  if(pmpCd)pmpCd.style.display=isTabVisible('pmp')?'':'none';
+  if(jobCd)jobCd.style.display=isTabVisible('jobs')?'':'none';
+  const activeView=document.querySelector('.view.active');
+  if(activeView){
+    const tabId=activeView.id.replace(/^v-/,'');
+    if(!isTabVisible(tabId))switchToTodayTab();
+  }
+  document.querySelectorAll('#tabNavCustom button[data-v]').forEach(btn=>{
+    btn.style.display=isTabVisible(btn.dataset.v)?'':'none';
+  });
+}
+let customTabsFingerprint='';
+const customTabNoteTimers={};
+function wireCustomTabNotes(ta,tabId){
+  if(!ta||ta.dataset.wired)return;
+  ta.dataset.wired='1';
+  ta.addEventListener('input',()=>{
+    const tab=DATA.tabUi.customTabs.find(t=>t.id===tabId);
+    if(!tab)return;
+    clearTimeout(customTabNoteTimers[tabId]);
+    customTabNoteTimers[tabId]=setTimeout(()=>{
+      if((tab.notes||'')===ta.value)return;
+      tab.notes=ta.value;
+      touchTabUi();
+      save();
+    },400);
+  });
+}
+function renderCustomTabs(){
+  ensureTabUi();
+  const tabs=DATA.tabUi.customTabs;
+  const navEl=document.getElementById('tabNavCustom');
+  const viewsEl=document.getElementById('customTabViews');
+  if(!navEl||!viewsEl)return;
+  const fp=JSON.stringify(tabs.map(t=>({id:t.id,label:t.label})));
+  navEl.innerHTML='';
+  tabs.forEach(t=>{
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.dataset.v=t.id;
+    btn.textContent=t.label;
+    navEl.appendChild(btn);
+  });
+  if(fp!==customTabsFingerprint){
+    customTabsFingerprint=fp;
+    viewsEl.innerHTML='';
+    tabs.forEach(t=>{
+      const sec=document.createElement('section');
+      sec.className='view';
+      sec.id='v-'+t.id;
+      sec.innerHTML=`<div class="card"><h2>📌 ${escapeHtml(t.label)}</h2><div class="h-sub">Notes for this focus area. Saves automatically.</div><textarea class="custom-tab-notes" id="notes_${t.id}" placeholder="Goals, links, scratch notes…"></textarea></div>`;
+      const ta=sec.querySelector('textarea');
+      if(ta){
+        ta.value=t.notes||'';
+        wireCustomTabNotes(ta,t.id);
+      }
+      viewsEl.appendChild(sec);
+    });
+    const activeBtn=document.querySelector('nav.tabs button.active[data-v]');
+    if(activeBtn&&activeBtn.dataset.v.startsWith('ct_')&&isTabVisible(activeBtn.dataset.v))activateTab(activeBtn.dataset.v);
+  }else{
+    tabs.forEach(t=>{
+      const ta=document.getElementById('notes_'+t.id);
+      if(ta&&document.activeElement!==ta&&ta.value!==(t.notes||''))ta.value=t.notes||'';
+    });
+  }
+}
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function renderTabManagerPanel(){
+  const builtinEl=document.getElementById('tabMgrBuiltin');
+  const customEl=document.getElementById('tabMgrCustom');
+  if(!builtinEl||!customEl)return;
+  builtinEl.innerHTML='';
+  MANAGED_BUILTIN_TABS.forEach(({id,label})=>{
+    const row=document.createElement('div');
+    row.className='tab-mgr-row';
+    const autoOff=id==='pmp'&&!isPmpActive();
+    const checked=!isTabHidden(id)&&!autoOff;
+    row.innerHTML=`<label class="${autoOff?'disabled':''}"><input type="checkbox" data-tab="${id}" ${checked?'checked':''} ${autoOff?'disabled':''}><span>${label}</span></label>`;
+    if(autoOff)row.innerHTML+='<span class="tab-mgr-hint">Hidden after exam</span>';
+    const inp=row.querySelector('input');
+    if(inp&&!autoOff)inp.onchange=()=>{
+      setTabHidden(id,!inp.checked);
+      save();
+      applyTabUi();
+      renderCustomTabs();
+      renderTabManagerPanel();
+      flash('Tabs updated');
+    };
+    builtinEl.appendChild(row);
+  });
+  customEl.innerHTML='';
+  if(!DATA.tabUi.customTabs.length){
+    customEl.innerHTML='<div class="sudden-empty">No custom tabs yet. Add one below.</div>';
+    return;
+  }
+  DATA.tabUi.customTabs.forEach(t=>{
+    const row=document.createElement('div');
+    row.className='tab-mgr-row';
+    const nameIn=document.createElement('input');
+    nameIn.type='text';
+    nameIn.value=t.label;
+    nameIn.onchange=()=>{
+      const v=nameIn.value.trim();
+      if(!v){nameIn.value=t.label;return;}
+      t.label=v;
+      touchTabUi();
+      save();
+      customTabsFingerprint='';
+      renderCustomTabs();
+      renderTabManagerPanel();
+      flash('Tab renamed');
+    };
+    const delBtn=document.createElement('button');
+    delBtn.type='button';
+    delBtn.className='ghostbtn sm';
+    delBtn.textContent='Remove';
+    delBtn.onclick=()=>{
+      const wasActive=document.querySelector('.view.active')?.id==='v-'+t.id;
+      DATA.tabUi.customTabs=DATA.tabUi.customTabs.filter(x=>x.id!==t.id);
+      touchTabUi();
+      save();
+      customTabsFingerprint='';
+      renderCustomTabs();
+      applyTabUi();
+      renderTabManagerPanel();
+      if(wasActive)switchToTodayTab();
+      flash('Tab removed');
+    };
+    row.appendChild(nameIn);
+    row.appendChild(delBtn);
+    customEl.appendChild(row);
+  });
+}
+function openTabManagerModal(){
+  renderTabManagerPanel();
+  const modal=document.getElementById('tabManagerModal');
+  if(modal){modal.classList.add('open');modal.setAttribute('aria-hidden','false');}
+}
+function closeTabManagerModal(){
+  const modal=document.getElementById('tabManagerModal');
+  if(modal){modal.classList.remove('open');modal.setAttribute('aria-hidden','true');}
+}
+function addCustomTabFromInput(){
+  const inp=document.getElementById('tabMgrNewName');
+  if(!inp)return;
+  const lab=inp.value.trim();
+  if(!lab){inp.focus();return;}
+  if(DATA.tabUi.customTabs.length>=12){flash('Max 12 custom tabs');return;}
+  DATA.tabUi.customTabs.push({id:'ct_'+Date.now(),label:lab,notes:''});
+  touchTabUi();
+  save();
+  inp.value='';
+  customTabsFingerprint='';
+  renderCustomTabs();
+  applyTabUi();
+  renderTabManagerPanel();
+  flash('Tab added');
 }
 function dayChecks(){
   const k=activeDayKey();
@@ -3454,19 +3723,6 @@ function ensurePmpQuestionsScript(){
   });
   return pmpScriptPromise;
 }
-function applyPmpUiPhase(){
-  const on=isPmpActive();
-  const pmpCd=document.getElementById('pmpCountdown');
-  const pmpTab=document.getElementById('tabPmp');
-  const pmpView=document.getElementById('v-pmp');
-  if(pmpCd)pmpCd.style.display=on?'':'none';
-  if(pmpTab)pmpTab.style.display=on?'':'none';
-  if(pmpView)pmpView.style.display=on?'':'none';
-  if(!on&&pmpView&&pmpView.classList.contains('active')){
-    const todayBtn=document.querySelector('nav.tabs button[data-v="today"]');
-    if(todayBtn)todayBtn.click();
-  }
-}
 function curBlock(seq){const n=nowMin();return seq.find(b=>n>=b.start&&n<b.end);}
 function dateKeyOf(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function mostRecentSaturday(){const d=new Date();for(let i=0;i<7;i++){if(d.getDay()===6)return dateKeyOf(d);d.setDate(d.getDate()-1);}return dateKeyOf(new Date());}
@@ -4743,8 +4999,11 @@ function mergeDefaults(){
   if(!DATA.pmpQuiz)DATA.pmpQuiz={};
 }
 function renderAll(){
-  applyPmpUiPhase();
-  renderClocks();renderCountdowns();renderNowBanner();renderSched();renderHabitWeekly();renderGymLog();renderTodos();renderScratchpad();renderPMP();renderJobs();
+  applyTabUi();
+  renderClocks();renderCountdowns();renderNowBanner();renderSched();renderHabitWeekly();renderGymLog();renderTodos();renderScratchpad();
+  if(isTabVisible('pmp'))renderPMP();
+  if(isTabVisible('jobs'))renderJobs();
+  renderCustomTabs();
 }
 function renderScratchpad(){
   const el=document.getElementById('todayScratch');
@@ -4777,13 +5036,19 @@ function setupVisibilitySync(){
   });
 }
 
-document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
-  if(b.dataset.v==='pmp'&&!isPmpActive())return;
-  document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');document.getElementById('v-'+b.dataset.v).classList.add('active');
-  if(b.dataset.v==='week')renderWeekCalendar();
-});
+function setupTabNav(){
+  const tabsNav=document.querySelector('nav.tabs');
+  if(!tabsNav||tabsNav.dataset.wired)return;
+  tabsNav.dataset.wired='1';
+  tabsNav.addEventListener('click',e=>{
+    if(e.target.closest('#btnTabManager'))return;
+    const b=e.target.closest('button[data-v]');
+    if(!b)return;
+    const v=b.dataset.v;
+    if(!isTabVisible(v))return;
+    activateTab(v);
+  });
+}
 
 function wire(){
   const addTodoWork=document.getElementById('addTodoWork');
@@ -5008,11 +5273,22 @@ function wire(){
   }
   const checkQuizBtn=document.getElementById('checkQuiz');
   if(checkQuizBtn)checkQuizBtn.onclick=checkQuizAnswers;
+  setupTabNav();
+  const btnTabManager=document.getElementById('btnTabManager');
+  const closeTabManager=document.getElementById('closeTabManager');
+  const tabMgrAdd=document.getElementById('tabMgrAdd');
+  const tabMgrNewName=document.getElementById('tabMgrNewName');
+  const tabManagerModal=document.getElementById('tabManagerModal');
+  if(btnTabManager)btnTabManager.onclick=openTabManagerModal;
+  if(closeTabManager)closeTabManager.onclick=closeTabManagerModal;
+  if(tabMgrAdd)tabMgrAdd.onclick=addCustomTabFromInput;
+  if(tabMgrNewName)tabMgrNewName.addEventListener('keydown',e=>{if(e.key==='Enter'&&tabMgrAdd)tabMgrAdd.click();});
+  if(tabManagerModal)tabManagerModal.addEventListener('click',e=>{if(e.target===tabManagerModal)closeTabManagerModal();});
 }
 
 async function init(){
   initFirebase();
-  applyPmpUiPhase();
+  applyTabUi();
   if(isPmpActive()){
     try{await ensurePmpQuestionsScript();}catch(e){console.warn('PMP questions',e);}
   }
