@@ -408,6 +408,63 @@
   .cal-form input{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-family:'Hanken Grotesk';font-size:14px;color:var(--text)}
   .cal-form .cal-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media(max-width:520px){.cal-form .cal-row{grid-template-columns:1fr}}
+  .habit-week-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .habit-week-summary .hw-stat{background:var(--bg2);border:1px solid var(--line-soft);border-radius:10px;padding:10px 8px;text-align:center}
+  .habit-week-summary .hw-stat .v{font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--gold);line-height:1}
+  .habit-week-summary .hw-stat .k{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-top:4px}
+  .habit-week-grid{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px}
+  .habit-week-grid th,.habit-week-grid td{padding:6px 4px;text-align:center;border-bottom:1px solid var(--line-soft)}
+  .habit-week-grid th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2);font-weight:700}
+  .habit-week-grid th.hwk-day{cursor:pointer;border-radius:6px}
+  .habit-week-grid th.hwk-day:hover{background:var(--bg2)}
+  .habit-week-grid th.hwk-day.sel{background:rgba(184,120,12,.14);color:var(--gold)}
+  .habit-week-grid .habit-lbl{text-align:left;font-weight:600;color:var(--text);white-space:nowrap}
+  .habit-week-grid .habit-lbl small{display:block;font-weight:500;color:var(--muted);font-size:10px}
+  .habit-week-grid .dot{display:inline-block;width:22px;height:22px;line-height:22px;border-radius:6px;font-size:11px;font-weight:800}
+  .habit-week-grid .dot.ok{background:rgba(74,122,61,.14);color:var(--sage)}
+  .habit-week-grid .dot.no{background:var(--bg2);color:var(--muted2)}
+  .habit-week-grid .dot.today{outline:2px solid rgba(184,120,12,.45)}
+  .habit-today-panel{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)}
+  .habit-today-panel .ht-label{font-size:12px;font-weight:700;color:var(--muted2);margin-bottom:10px}
+  .habit-field{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .habit-field .hf-name{font-weight:600;font-size:14px}
+  .habit-field .hf-name small{display:block;font-weight:500;font-size:11px;color:var(--muted)}
+  .habit-field input[type=number].hf-sleep{width:72px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-family:'Hanken Grotesk';font-size:14px}
+  .habit-toggle{border:1px solid var(--line);background:var(--bg2);border-radius:8px;padding:7px 14px;font-weight:700;font-size:13px;cursor:pointer;color:var(--muted)}
+  .habit-toggle.on{background:rgba(74,122,61,.14);border-color:rgba(74,122,61,.4);color:var(--sage)}
+  .gym-addrow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center}
+  .gym-addrow input,.gym-addrow select{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:'Hanken Grotesk';font-size:14px;color:var(--text)}
+  .gym-addrow input{flex:1;min-width:100px}
+  .gym-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+  .gym-preset{font-size:11px;padding:5px 10px}
+  .gym-ex{border:1px solid var(--line-soft);border-radius:11px;padding:12px;margin-bottom:10px;background:var(--bg2)}
+  .gym-ex-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+  .gym-ex-head .gym-ex-name{font-weight:700;font-size:15px}
+  .gym-setrow{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;font-size:13px}
+  .gym-setrow input{width:64px;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:13px}
+  .gym-setrow .gym-setlbl{color:var(--muted);font-weight:600;min-width:42px}
+  .gym-month-summary{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft)}
+  .gym-month-summary summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--muted2);list-style:none;display:flex;align-items:center;gap:8px}
+  .gym-month-summary summary::-webkit-details-marker{display:none}
+  .gym-month-nav{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .gym-month-nav .gm-label{font-weight:600;font-size:14px;flex:1}
+  .gym-stat-line{font-size:13px;padding:7px 0;border-bottom:1px solid var(--line-soft);line-height:1.45}
+  .gym-stat-line:last-child{border-bottom:none}
+  .gym-week-card{margin-top:18px}
+  .gym-week-nav{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .gym-week-nav .gw-range{font-weight:600;font-size:14px;flex:1;text-align:center;min-width:160px}
+  .gym-week-stats{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px}
+  .gym-week-scroll{overflow-x:auto;margin-bottom:4px;-webkit-overflow-scrolling:touch}
+  .gym-week-grid .day-num{display:block;font-size:9px;font-weight:600;color:var(--muted);margin-top:2px}
+  .gym-week-grid th.hwk-day.today .day-num{color:var(--gold)}
+  .gym-week-grid .plan-cell{cursor:pointer;user-select:none}
+  .gym-week-grid .dot.plan{cursor:pointer}
+  .gym-lift-panel{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)}
+  .gym-lift-panel .glp-head{font-size:12px;font-weight:700;color:var(--muted2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em}
+  .todo-section{margin-bottom:18px}
+  .todo-section:last-child{margin-bottom:0}
+  .todo-section h3{font-family:'Fraunces',serif;font-size:16px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .todo-section .h-sub{margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -555,39 +612,36 @@
       <div class="sched" id="sched"></div>
     </div>
     <div class="sidebar-col">
-      <div class="card">
-        <h2>✦ Quick Glance</h2>
-        <div class="h-sub" id="qgSub">Check blocks on the left · habits & study below.</div>
-        <div class="stat-row">
-          <div class="stat"><div class="v" id="qBlocks">0/0</div><div class="k">Blocks done</div></div>
-          <div class="stat"><div class="v" id="qHabits">0/0</div><div class="k">Habits</div></div>
-          <div class="stat" id="qStudyStat"><div class="v" id="qStudy">0m</div><div class="k">Study logged</div></div>
-        </div>
-        <div class="qg-section">
-          <div class="qg-label">Daily habits <span class="qg-hint">tap to mark done</span></div>
-          <div class="habit-chips" id="habitChips"></div>
-        </div>
-        <div class="qg-section" id="qgStudySection">
-          <div class="qg-label">Log study minutes</div>
-          <div class="study-quick">
-            <button type="button" class="ghostbtn sm q-study" data-mins="15">+15m</button>
-            <button type="button" class="ghostbtn sm q-study" data-mins="30">+30m</button>
-            <button type="button" class="ghostbtn sm q-study" data-mins="60">+60m</button>
-            <input type="number" id="qStudyMins" class="mins" placeholder="min" min="1">
-            <button type="button" class="btn sm" id="qStudyLog">Log</button>
-          </div>
-        </div>
+      <div class="card" id="habitWeeklyCard">
+        <h2>📊 Weekly habits</h2>
+        <div class="h-sub" id="habitWeekRange">Sun–Sat · tap a day to edit</div>
+        <div class="habit-week-summary" id="habitWeekSummary"></div>
+        <div id="habitWeekGrid"></div>
+        <div class="habit-today-panel" id="habitTodayPanel"></div>
       </div>
       <div class="card">
-        <h2>📝 To-Do <span id="todoCount" style="font-family:'Hanken Grotesk';font-size:13px;font-weight:600;color:var(--muted);margin-left:2px"></span></h2>
+        <h2>📝 To-Do</h2>
         <div class="h-sub">Rolls over until done. Set a due date to prioritize.</div>
-        <div class="addrow" style="margin-bottom:14px">
-          <input class="tname" type="text" id="todoInput" placeholder="Add a to-do…">
-          <input type="date" id="todoDue" class="tdate" title="Optional due date">
-          <button class="btn sm" id="addTodo">Add</button>
-          <button class="ghostbtn" id="clearDone" style="display:none">Clear done</button>
+        <div class="todo-section">
+          <h3>💼 Work <span id="todoWorkCount" style="font-family:'Hanken Grotesk';font-size:12px;font-weight:600;color:var(--muted)"></span></h3>
+          <div class="addrow" style="margin-bottom:10px">
+            <input class="tname" type="text" id="todoWorkInput" placeholder="Add work item…">
+            <input type="date" id="todoWorkDue" class="tdate" title="Optional due date">
+            <button class="btn sm" id="addTodoWork">Add</button>
+            <button class="ghostbtn" id="clearWorkDone" style="display:none">Clear done</button>
+          </div>
+          <div id="todoWorkList"></div>
         </div>
-        <div id="todoList"></div>
+        <div class="todo-section">
+          <h3>📋 Other <span id="todoOtherCount" style="font-family:'Hanken Grotesk';font-size:12px;font-weight:600;color:var(--muted)"></span></h3>
+          <div class="addrow" style="margin-bottom:10px">
+            <input class="tname" type="text" id="todoOtherInput" placeholder="Add other item…">
+            <input type="date" id="todoOtherDue" class="tdate" title="Optional due date">
+            <button class="btn sm" id="addTodoOther">Add</button>
+            <button class="ghostbtn" id="clearOtherDone" style="display:none">Clear done</button>
+          </div>
+          <div id="todoOtherList"></div>
+        </div>
       </div>
       <div class="card">
         <details class="scratch-disclosure" id="scratchDisclosure">
@@ -602,6 +656,30 @@
         </details>
       </div>
     </div>
+  </div>
+  <div class="card gym-week-card" id="gymLogCard">
+    <h2>🏋️ Workout log</h2>
+    <div class="h-sub">Plan your week · log lifts on training days (separate from your schedule band)</div>
+    <div class="gym-week-nav">
+      <button type="button" class="ghostbtn sm" id="gymWeekPrev" aria-label="Previous week">← Prev</button>
+      <span class="gw-range" id="gymWeekRange">—</span>
+      <button type="button" class="ghostbtn sm" id="gymWeekNext" aria-label="Next week">Next →</button>
+      <button type="button" class="ghostbtn sm" id="gymWeekToday">This week</button>
+    </div>
+    <div class="gym-week-stats" id="gymWeekStats"></div>
+    <div class="gym-week-scroll"><div id="gymWeekGrid"></div></div>
+    <div id="gymLiftPanel"></div>
+    <details class="gym-month-summary" id="gymMonthDetails">
+      <summary>Monthly lift summary</summary>
+      <div style="padding-top:10px">
+        <div class="gym-month-nav">
+          <button type="button" class="ghostbtn sm" id="gymMonthPrev" aria-label="Previous month">←</button>
+          <span class="gm-label" id="gymMonthLabel">—</span>
+          <button type="button" class="ghostbtn sm" id="gymMonthNext" aria-label="Next month">→</button>
+        </div>
+        <div id="gymMonthStats"></div>
+      </div>
+    </details>
   </div>
 </section>
 
@@ -870,6 +948,82 @@ function mergeHabitsMap(local,cloud){
   });
   return out;
 }
+function mergeHabitDailyEntry(l,c){
+  const lo=l&&typeof l==='object'?l:{};
+  const cl=c&&typeof c==='object'?c:{};
+  const out={};
+  const lSleep=parseFloat(lo.sleepHrs);
+  const cSleep=parseFloat(cl.sleepHrs);
+  const maxSleep=Math.max(isNaN(lSleep)?0:lSleep,isNaN(cSleep)?0:cSleep);
+  if(maxSleep>0)out.sleepHrs=maxSleep;
+  else if(lo.sleepHrs!=null&&lo.sleepHrs!=='')out.sleepHrs=lo.sleepHrs;
+  else if(cl.sleepHrs!=null&&cl.sleepHrs!=='')out.sleepHrs=cl.sleepHrs;
+  out.water=Math.max(parseInt(lo.water,10)||0,parseInt(cl.water,10)||0);
+  if(out.water===0&&(lo.water!=null||cl.water!=null))out.water=0;
+  out.workout=!!(lo.workout||cl.workout);
+  return out;
+}
+function mergeHabitDailyMap(local,cloud){
+  const loc=local&&typeof local==='object'?local:{};
+  const clo=cloud&&typeof cloud==='object'?cloud:{};
+  const keys=new Set([...Object.keys(loc),...Object.keys(clo)]);
+  const out={};
+  keys.forEach(k=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
+    out[k]=mergeHabitDailyEntry(loc[k],clo[k]);
+  });
+  return out;
+}
+function mergeGymExercises(lEx,cEx){
+  const map={};
+  const addList=(list)=>{
+    (list||[]).forEach(ex=>{
+      const name=(ex.name||'').trim();
+      if(!name)return;
+      const key=name.toLowerCase();
+      if(!map[key])map[key]={name,sets:[],sigs:new Set()};
+      (ex.sets||[]).forEach(s=>{
+        const weight=parseFloat(s.weight);
+        const reps=parseInt(s.reps,10);
+        if(isNaN(weight)||isNaN(reps))return;
+        const sig=weight+'|'+reps;
+        if(!map[key].sigs.has(sig)){
+          map[key].sigs.add(sig);
+          map[key].sets.push({weight,reps});
+        }
+      });
+    });
+  };
+  addList(lEx);
+  addList(cEx);
+  return Object.values(map).map(({name,sets})=>({name,sets}));
+}
+function mergeGymPlan(lo,cl){
+  const l=lo&&lo.plan?lo.plan:{};
+  const c=cl&&cl.plan?cl.plan:{};
+  return{yoga:!!(l.yoga||c.yoga),cardio:!!(l.cardio||c.cardio),lift:!!(l.lift||c.lift)};
+}
+function mergeGymDayEntry(l,c){
+  const lo=l&&typeof l==='object'?l:{};
+  const cl=c&&typeof c==='object'?c:{};
+  const exercises=mergeGymExercises(lo.exercises,cl.exercises);
+  const plan=mergeGymPlan(lo,cl);
+  const hasPlan=plan.yoga||plan.cardio||plan.lift;
+  if(!exercises.length&&!hasPlan)return null;
+  return{plan,exercises,updatedAt:Math.max(lo.updatedAt||0,cl.updatedAt||0)};
+}
+function mergeGymLogMap(local,cloud){
+  const loc=local&&typeof local==='object'?local:{};
+  const clo=cloud&&typeof cloud==='object'?cloud:{};
+  const keys=new Set([...Object.keys(loc),...Object.keys(clo)]);
+  const out={};
+  keys.forEach(k=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
+    const merged=mergeGymDayEntry(loc[k],clo[k]);
+    if(merged)out[k]=merged;
+  });
+  return out;
+}
 const LIST_LWW_FIELDS=[
   {arr:'todos',ts:'todosUpdatedAt'},
   {arr:'jobTodos',ts:'jobTodosUpdatedAt'},
@@ -908,6 +1062,8 @@ function mergeListFields(out,local,cloud,localTime,cloudTime){
 function mergeArrayFields(out,local,cloud,localTime,cloudTime){
   mergeListFields(out,local,cloud,localTime,cloudTime);
   out.habits=mergeHabitsMap(local.habits,cloud.habits);
+  out.habitDaily=mergeHabitDailyMap(local.habitDaily,cloud.habitDaily);
+  out.gymLog=mergeGymLogMap(local.gymLog,cloud.gymLog);
 }
 const NOTE_LWW_FIELDS=[
   {text:'todayNotes',ts:'todayNotesUpdatedAt'},
@@ -1081,7 +1237,7 @@ const Store={
   }
 };
 let DATA=null;
-function defaults(){return{scheduleChecks:{},habits:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodPlanOpen:false,periodTemplate:null,alarmOn:true,alarmEndOn:true,alarmEndTasks:null};}
+function defaults(){return{scheduleChecks:{},habits:{},habitDaily:{},gymLog:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodPlanOpen:false,periodTemplate:null,alarmOn:true,alarmEndOn:true,alarmEndTasks:null};}
 const PMP=new Date('2026-06-22T00:00:00');
 const PMP_EXAM_KEY='2026-06-22';
 const JOB=new Date('2026-08-01T00:00:00');
@@ -1161,6 +1317,15 @@ function migrateData(){
   }
   repairSuddenBandLinks();
   (DATA.jobs||[]).forEach(j=>{if(!j.id)j.id='job_'+Date.now()+Math.random().toString(36).slice(2,7);});
+  (DATA.todos||[]).forEach(t=>{if(!t.list)t.list='other';});
+  if(!DATA.habitDaily||typeof DATA.habitDaily!=='object')DATA.habitDaily={};
+  if(!DATA.gymLog||typeof DATA.gymLog!=='object')DATA.gymLog={};
+  Object.keys(DATA.gymLog).forEach(k=>{
+    const d=DATA.gymLog[k];
+    if(!d||typeof d!=='object')return;
+    if(!d.plan)d.plan={yoga:false,cardio:false,lift:false};
+    if(!Array.isArray(d.exercises))d.exercises=[];
+  });
 }
 function dayChecks(){
   const k=activeDayKey();
@@ -1211,9 +1376,12 @@ function toggleBlockDone(blockId){
   save();
   renderSched();
   renderNowBanner();
-  renderGlance();
-  renderHabits();
+  renderHabitWeekly();
   syncStudyHabit(buildSeq().seq);
+  if(blockId==='gym'&&ch[blockId]){
+    const entry=habitEntryForDay(activeDayKey(),true);
+    entry.workout=true;
+  }
 }
 
 const WORK_START=1200; // 20:00, shift nights
@@ -2062,6 +2230,400 @@ const WEEK_CAL_START_H=5;
 const WEEK_CAL_END_H=24;
 let weekViewOffset=0;
 let calModalCtx=null;
+let habitEditDayKey=null;
+let gymWeekOffset=0;
+let gymEditDayKey=null;
+let gymMonthOffset=0;
+const HABIT_TRACKS=[
+  {id:'sleep',ico:'😴',nm:'Sleep',rule:'≥ 6 hrs'},
+  {id:'workout',ico:'🏋️',nm:'Workout',rule:'Any workout'},
+  {id:'water',ico:'💧',nm:'Water',rule:'≥ 5 glasses'}
+];
+const SLEEP_HABIT_MIN=6;
+const WATER_HABIT_MIN=5;
+const GYM_PRESETS=['Squat','Bench press','Deadlift','OHP','Row','Pull-up'];
+const GYM_PLAN_ROWS=[
+  {id:'yoga',ico:'🧘',nm:'Yoga'},
+  {id:'cardio',ico:'🏃',nm:'Cardio'},
+  {id:'lift',ico:'🏋️',nm:'Lift'}
+];
+const WEEK_DAY_LABELS=['S','M','T','W','T','F','S'];
+function defaultGymPlan(){return{yoga:false,cardio:false,lift:false};}
+function gymDayLog(dayKey,create){
+  if(!DATA.gymLog)DATA.gymLog={};
+  if(!DATA.gymLog[dayKey]&&create){
+    DATA.gymLog[dayKey]={plan:defaultGymPlan(),exercises:[],updatedAt:Date.now()};
+  }
+  const day=DATA.gymLog[dayKey];
+  if(day){
+    if(!day.plan)day.plan=defaultGymPlan();
+    if(!Array.isArray(day.exercises))day.exercises=[];
+  }
+  return day||null;
+}
+function gymPlanForDay(dayKey){
+  const day=gymDayLog(dayKey,false);
+  return day&&day.plan?day.plan:defaultGymPlan();
+}
+function toggleGymPlan(dayKey,rowId){
+  const day=gymDayLog(dayKey,true);
+  day.plan[rowId]=!day.plan[rowId];
+  touchGymDay(dayKey);
+}
+function gymWeekCount(rowId,dayKeys){
+  return dayKeys.filter(d=>gymPlanForDay(d)[rowId]).length;
+}
+function dayNumFromKey(dayKey){
+  return parseInt(dayKey.split('-')[2],10)||'';
+}
+function touchGymDay(dayKey){
+  const day=gymDayLog(dayKey,true);
+  day.updatedAt=Date.now();
+}
+function habitEntryForDay(dayKey,create){
+  if(!DATA.habitDaily)DATA.habitDaily={};
+  if(!DATA.habitDaily[dayKey]&&create)DATA.habitDaily[dayKey]={};
+  return DATA.habitDaily[dayKey]||{};
+}
+function habitTrackMet(trackId,entry){
+  const e=entry||{};
+  if(trackId==='sleep')return parseFloat(e.sleepHrs)>=SLEEP_HABIT_MIN;
+  if(trackId==='workout')return!!e.workout;
+  if(trackId==='water')return(parseInt(e.water,10)||0)>=WATER_HABIT_MIN;
+  return false;
+}
+function habitWeekPct(trackId,dayKeys){
+  if(!dayKeys||!dayKeys.length)return 0;
+  const met=dayKeys.filter(d=>habitTrackMet(trackId,habitEntryForDay(d))).length;
+  return Math.round(met/dayKeys.length*100);
+}
+function maybeSyncWorkoutHabit(dayKey){
+  if(dayKey!==activeDayKey())return;
+  const ws=workoutStateForDay(dayKey);
+  const ch=dayChecks();
+  if(ws!=='skip'&&ch.gym){
+    const entry=habitEntryForDay(dayKey,true);
+    if(!entry.workout){entry.workout=true;}
+  }
+}
+function monthKeysForOffset(offset){
+  const p=activeDayKey().split('-').map(Number);
+  const d=new Date(p[0],p[1]-1+offset,1);
+  const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  const keys=[];
+  for(let i=1;i<=last;i++){
+    keys.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(i).padStart(2,'0'));
+  }
+  return{ym,label:new Intl.DateTimeFormat('en-US',{month:'long',year:'numeric'}).format(d),keys};
+}
+function monthlyLiftStats(ym,dayKeys){
+  const byName={};
+  dayKeys.forEach(dayKey=>{
+    if(dayKey.slice(0,7)!==ym)return;
+    const day=DATA.gymLog&&DATA.gymLog[dayKey];
+    if(!day||!day.exercises)return;
+    day.exercises.forEach(ex=>{
+      const name=(ex.name||'').trim();
+      if(!name)return;
+      const key=name.toLowerCase();
+      if(!byName[key])byName[key]={name,sessionDays:new Set(),weights:[]};
+      byName[key].sessionDays.add(dayKey);
+      (ex.sets||[]).forEach(s=>{
+        const w=parseFloat(s.weight);
+        if(!isNaN(w)&&w>0)byName[key].weights.push(w);
+      });
+    });
+  });
+  return Object.values(byName).map(row=>{
+    const weights=row.weights;
+    const max=weights.length?Math.max(...weights):0;
+    const avg=weights.length?Math.round(weights.reduce((a,b)=>a+b,0)/weights.length):0;
+    return{name:row.name,max,avg,sessions:row.sessionDays.size};
+  }).filter(r=>r.sessions>0).sort((a,b)=>a.name.localeCompare(b.name));
+}
+function renderHabitWeekly(){
+  maybeSyncWorkoutHabit(activeDayKey());
+  const rangeEl=document.getElementById('habitWeekRange');
+  const summaryEl=document.getElementById('habitWeekSummary');
+  const gridEl=document.getElementById('habitWeekGrid');
+  const panelEl=document.getElementById('habitTodayPanel');
+  if(!gridEl||!panelEl)return;
+  const dayKeys=weekDayKeys(0);
+  const editKey=habitEditDayKey&&dayKeys.includes(habitEditDayKey)?habitEditDayKey:activeDayKey();
+  if(rangeEl)rangeEl.textContent=weekRangeLabel(0)+' · tap a day to edit';
+  if(summaryEl){
+    summaryEl.innerHTML='';
+    let overall=0;
+    HABIT_TRACKS.forEach(tr=>{
+      const pct=habitWeekPct(tr.id,dayKeys);
+      overall+=pct;
+      const el=document.createElement('div');
+      el.className='hw-stat';
+      el.innerHTML=`<div class="v">${pct}%</div><div class="k">${tr.ico} ${tr.nm}</div>`;
+      summaryEl.appendChild(el);
+    });
+    const ov=document.createElement('div');
+    ov.className='hw-stat';
+    ov.innerHTML=`<div class="v">${Math.round(overall/HABIT_TRACKS.length)}%</div><div class="k">Overall</div>`;
+    summaryEl.appendChild(ov);
+    summaryEl.style.gridTemplateColumns='repeat(4,1fr)';
+  }
+  const table=document.createElement('table');
+  table.className='habit-week-grid';
+  const thead=document.createElement('thead');
+  const hr=document.createElement('tr');
+  const corner=document.createElement('th');
+  corner.textContent='';
+  hr.appendChild(corner);
+  dayKeys.forEach((dk,i)=>{
+    const th=document.createElement('th');
+    th.className='hwk-day'+(dk===editKey?' sel':'');
+    th.textContent=WEEK_DAY_LABELS[i];
+    th.title=formatDayKeyLabel(dk);
+    th.onclick=()=>{habitEditDayKey=dk;renderHabitWeekly();};
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr);
+  table.appendChild(thead);
+  const tbody=document.createElement('tbody');
+  HABIT_TRACKS.forEach(tr=>{
+    const row=document.createElement('tr');
+    const lbl=document.createElement('td');
+    lbl.className='habit-lbl';
+    lbl.innerHTML=`${tr.ico} ${tr.nm}<small>${tr.rule}</small>`;
+    row.appendChild(lbl);
+    dayKeys.forEach(dk=>{
+      const td=document.createElement('td');
+      const met=habitTrackMet(tr.id,habitEntryForDay(dk));
+      const dot=document.createElement('span');
+      dot.className='dot '+(met?'ok':'no')+(dk===activeDayKey()?' today':'');
+      dot.textContent=met?'✓':'·';
+      td.appendChild(dot);
+      row.appendChild(td);
+    });
+    tbody.appendChild(row);
+  });
+  table.appendChild(tbody);
+  gridEl.innerHTML='';
+  gridEl.appendChild(table);
+  const entry=habitEntryForDay(editKey,true);
+  const editLbl=editKey===activeDayKey()?'Today':formatDayKeyLabel(editKey);
+  panelEl.innerHTML=`<div class="ht-label">Edit · ${editLbl}</div>`;
+  const sleepRow=document.createElement('div');
+  sleepRow.className='habit-field';
+  sleepRow.innerHTML=`<div class="hf-name">😴 Sleep<small>Hours slept (≥ ${SLEEP_HABIT_MIN})</small></div>`;
+  const sleepIn=document.createElement('input');
+  sleepIn.type='number';sleepIn.className='hf-sleep';sleepIn.min='0';sleepIn.max='24';sleepIn.step='0.5';
+  sleepIn.placeholder='hrs';sleepIn.value=entry.sleepHrs!=null?entry.sleepHrs:'';
+  sleepIn.onchange=()=>{const v=parseFloat(sleepIn.value);entry.sleepHrs=isNaN(v)?null:v;save();renderHabitWeekly();};
+  sleepRow.appendChild(sleepIn);
+  panelEl.appendChild(sleepRow);
+  const woRow=document.createElement('div');
+  woRow.className='habit-field';
+  woRow.innerHTML=`<div class="hf-name">🏋️ Workout<small>Mark when you worked out</small></div>`;
+  const woBtn=document.createElement('button');
+  woBtn.type='button';woBtn.className='habit-toggle'+(entry.workout?' on':'');
+  woBtn.textContent=entry.workout?'✓ Done':'Mark done';
+  woBtn.onclick=()=>{entry.workout=!entry.workout;save();renderHabitWeekly();};
+  woRow.appendChild(woBtn);
+  panelEl.appendChild(woRow);
+  const waterRow=document.createElement('div');
+  waterRow.className='habit-field';
+  waterRow.innerHTML=`<div class="hf-name">💧 Water<small>Glasses today (goal ${WATER_HABIT_MIN})</small></div>`;
+  const step=document.createElement('div');
+  step.className='stepper';
+  const wVal=document.createElement('span');
+  wVal.className='val';wVal.textContent=String(entry.water|0);
+  const wMinus=document.createElement('button');
+  wMinus.type='button';wMinus.textContent='−';
+  wMinus.onclick=()=>{entry.water=Math.max(0,(entry.water|0)-1);save();renderHabitWeekly();};
+  const wPlus=document.createElement('button');
+  wPlus.type='button';wPlus.textContent='+';
+  wPlus.onclick=()=>{entry.water=(entry.water|0)+1;save();renderHabitWeekly();};
+  step.appendChild(wMinus);step.appendChild(wVal);step.appendChild(wPlus);
+  waterRow.appendChild(step);
+  panelEl.appendChild(waterRow);
+}
+function renderGymLiftPanel(dayKey,panelEl){
+  if(!panelEl)return;
+  panelEl.innerHTML='';
+  const plan=gymPlanForDay(dayKey);
+  if(!plan.lift){
+    panelEl.style.display='none';
+    return;
+  }
+  panelEl.style.display='';
+  const day=gymDayLog(dayKey,true);
+  const head=document.createElement('div');
+  head.className='glp-head';
+  head.textContent='Lift log · '+formatDayKeyLabel(dayKey);
+  panelEl.appendChild(head);
+  const presetsEl=document.createElement('div');
+  presetsEl.className='gym-presets';
+  presetsEl.id='gymPresets';
+  GYM_PRESETS.forEach(name=>{
+    const b=document.createElement('button');
+    b.type='button';b.className='ghostbtn sm gym-preset';b.textContent=name;
+    b.onclick=()=>{const inp=document.getElementById('gymExName');if(inp)inp.value=name;};
+    presetsEl.appendChild(b);
+  });
+  panelEl.appendChild(presetsEl);
+  const addRow=document.createElement('div');
+  addRow.className='gym-addrow';
+  const nameIn=document.createElement('input');
+  nameIn.type='text';nameIn.id='gymExName';nameIn.placeholder='Exercise name…';nameIn.autocomplete='off';
+  const addBtn=document.createElement('button');
+  addBtn.type='button';addBtn.className='btn sm';addBtn.id='gymAddEx';addBtn.textContent='Add';
+  addBtn.onclick=()=>{
+    const name=nameIn.value.trim();
+    if(!name){nameIn.focus();return;}
+    const dk=gymEditDayKey&&/^\d{4}-\d{2}-\d{2}$/.test(gymEditDayKey)?gymEditDayKey:activeDayKey();
+    const d=gymDayLog(dk,true);
+    d.plan.lift=true;
+    const key=name.toLowerCase();
+    let ex=d.exercises.find(e=>(e.name||'').toLowerCase()===key);
+    if(!ex){ex={name,sets:[{weight:0,reps:8}]};d.exercises.push(ex);}
+    else if(!ex.sets.length)ex.sets.push({weight:0,reps:8});
+    else ex.sets.push({weight:ex.sets[ex.sets.length-1].weight,reps:ex.sets[ex.sets.length-1].reps});
+    nameIn.value='';
+    touchGymDay(dk);save();renderGymLog();
+  };
+  nameIn.addEventListener('keydown',e=>{if(e.key==='Enter')addBtn.click();});
+  addRow.appendChild(nameIn);addRow.appendChild(addBtn);
+  panelEl.appendChild(addRow);
+  const logWrap=document.createElement('div');
+  logWrap.id='gymTodayLog';
+  if(!day.exercises.length){
+    logWrap.innerHTML='<div class="empty">No lifts logged — add an exercise above.</div>';
+  }else{
+    day.exercises.forEach((ex,exIdx)=>{
+      const card=document.createElement('div');
+      card.className='gym-ex';
+      const exHead=document.createElement('div');
+      exHead.className='gym-ex-head';
+      exHead.innerHTML=`<span class="gym-ex-name">${(ex.name||'').replace(/</g,'&lt;')}</span>`;
+      const delEx=document.createElement('button');
+      delEx.type='button';delEx.className='ghostbtn sm';delEx.textContent='Remove';
+      delEx.onclick=()=>{day.exercises.splice(exIdx,1);touchGymDay(dayKey);save();renderGymLog();};
+      exHead.appendChild(delEx);
+      card.appendChild(exHead);
+      (ex.sets||[]).forEach((s,setIdx)=>{
+        const row=document.createElement('div');
+        row.className='gym-setrow';
+        row.innerHTML=`<span class="gym-setlbl">Set ${setIdx+1}</span>`;
+        const wIn=document.createElement('input');
+        wIn.type='number';wIn.min='0';wIn.step='2.5';wIn.placeholder='lbs';
+        wIn.value=s.weight!=null?s.weight:'';
+        const rIn=document.createElement('input');
+        rIn.type='number';rIn.min='1';rIn.placeholder='reps';
+        rIn.value=s.reps!=null?s.reps:'';
+        const saveSet=()=>{s.weight=parseFloat(wIn.value);s.reps=parseInt(rIn.value,10);touchGymDay(dayKey);save();renderGymLog();};
+        wIn.onchange=saveSet;rIn.onchange=saveSet;
+        row.appendChild(wIn);
+        row.appendChild(document.createTextNode('lbs ×'));
+        row.appendChild(rIn);
+        row.appendChild(document.createTextNode('reps'));
+        const delSet=document.createElement('button');
+        delSet.type='button';delSet.className='ghostbtn sm';delSet.textContent='✕';
+        delSet.onclick=()=>{ex.sets.splice(setIdx,1);touchGymDay(dayKey);save();renderGymLog();};
+        row.appendChild(delSet);
+        card.appendChild(row);
+      });
+      const addSet=document.createElement('button');
+      addSet.type='button';addSet.className='ghostbtn sm';
+      addSet.textContent='+ Set';
+      addSet.style.marginTop='6px';
+      addSet.onclick=()=>{
+        if(!ex.sets)ex.sets=[];
+        const last=ex.sets[ex.sets.length-1];
+        ex.sets.push({weight:last?last.weight:0,reps:last?last.reps:8});
+        touchGymDay(dayKey);save();renderGymLog();
+      };
+      card.appendChild(addSet);
+      logWrap.appendChild(card);
+    });
+  }
+  panelEl.appendChild(logWrap);
+}
+function renderGymLog(){
+  const rangeEl=document.getElementById('gymWeekRange');
+  const statsEl=document.getElementById('gymWeekStats');
+  const gridWrap=document.getElementById('gymWeekGrid');
+  const panelEl=document.getElementById('gymLiftPanel');
+  const monthLabel=document.getElementById('gymMonthLabel');
+  const monthStats=document.getElementById('gymMonthStats');
+  if(!gridWrap)return;
+  const dayKeys=weekDayKeys(gymWeekOffset);
+  const editKey=gymEditDayKey&&dayKeys.includes(gymEditDayKey)?gymEditDayKey:activeDayKey();
+  if(!dayKeys.includes(editKey))gymEditDayKey=activeDayKey();
+  const selKey=gymEditDayKey&&dayKeys.includes(gymEditDayKey)?gymEditDayKey:activeDayKey();
+  if(rangeEl)rangeEl.textContent=weekRangeLabel(gymWeekOffset);
+  if(statsEl){
+    const parts=GYM_PLAN_ROWS.map(r=>r.nm+' '+gymWeekCount(r.id,dayKeys)+'/7');
+    statsEl.textContent=parts.join(' · ');
+  }
+  const table=document.createElement('table');
+  table.className='habit-week-grid gym-week-grid';
+  const thead=document.createElement('thead');
+  const hr=document.createElement('tr');
+  const corner=document.createElement('th');
+  corner.textContent='';
+  hr.appendChild(corner);
+  dayKeys.forEach((dk,i)=>{
+    const th=document.createElement('th');
+    th.className='hwk-day'+(dk===selKey?' sel':'')+(dk===activeDayKey()?' today':'');
+    th.innerHTML=WEEK_DAY_LABELS[i]+'<span class="day-num">'+dayNumFromKey(dk)+'</span>';
+    th.title=formatDayKeyLabel(dk);
+    th.onclick=()=>{gymEditDayKey=dk;renderGymLog();};
+    hr.appendChild(th);
+  });
+  thead.appendChild(hr);
+  table.appendChild(thead);
+  const tbody=document.createElement('tbody');
+  GYM_PLAN_ROWS.forEach(row=>{
+    const tr=document.createElement('tr');
+    const lbl=document.createElement('td');
+    lbl.className='habit-lbl';
+    lbl.textContent=row.ico+' '+row.nm;
+    tr.appendChild(lbl);
+    dayKeys.forEach(dk=>{
+      const td=document.createElement('td');
+      td.className='plan-cell';
+      const on=!!gymPlanForDay(dk)[row.id];
+      const dot=document.createElement('span');
+      dot.className='dot plan '+(on?'ok':'no')+(dk===activeDayKey()?' today':'');
+      dot.textContent=on?'✓':'·';
+      dot.title=(on?'Planned · ':'')+formatDayKeyLabel(dk)+' — '+row.nm;
+      dot.onclick=()=>{toggleGymPlan(dk,row.id);save();renderGymLog();};
+      td.appendChild(dot);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  gridWrap.innerHTML='';
+  gridWrap.appendChild(table);
+  if(panelEl){
+    panelEl.className='gym-lift-panel';
+    renderGymLiftPanel(selKey,panelEl);
+  }
+  const{ym,label,keys}=monthKeysForOffset(gymMonthOffset);
+  if(monthLabel)monthLabel.textContent=label;
+  if(monthStats){
+    const stats=monthlyLiftStats(ym,keys);
+    if(!stats.length)monthStats.innerHTML='<div class="empty" style="padding:8px">No lifts logged this month.</div>';
+    else{
+      monthStats.innerHTML='';
+      stats.forEach(s=>{
+        const line=document.createElement('div');
+        line.className='gym-stat-line';
+        line.textContent=`${s.name} — max ${s.max} lbs · avg ${s.avg} lbs · ${s.sessions} session${s.sessions===1?'':'s'}`;
+        monthStats.appendChild(line);
+      });
+    }
+  }
+}
 function startOfWeekKey(refKey,weekOffset){
   const p=refKey.split('-').map(Number);
   const d=new Date(p[0],p[1]-1,p[2]);
@@ -2699,15 +3261,9 @@ function applyPmpUiPhase(){
   const pmpCd=document.getElementById('pmpCountdown');
   const pmpTab=document.getElementById('tabPmp');
   const pmpView=document.getElementById('v-pmp');
-  const qStudyStat=document.getElementById('qStudyStat');
-  const qStudySec=document.getElementById('qgStudySection');
-  const qgSub=document.getElementById('qgSub');
   if(pmpCd)pmpCd.style.display=on?'':'none';
   if(pmpTab)pmpTab.style.display=on?'':'none';
   if(pmpView)pmpView.style.display=on?'':'none';
-  if(qStudyStat)qStudyStat.style.display=on?'':'none';
-  if(qStudySec)qStudySec.style.display=on?'':'none';
-  if(qgSub)qgSub.textContent=on?'Check blocks on the left · habits & study below.':'Check blocks on the left · habits below.';
   if(!on&&pmpView&&pmpView.classList.contains('active')){
     const todayBtn=document.querySelector('nav.tabs button[data-v="today"]');
     if(todayBtn)todayBtn.click();
@@ -2748,7 +3304,7 @@ function renderSuddenList(){
       el.querySelector('.si-del').onclick=()=>{
         const dk=t.storageKey||t.displayDay;
         removeSuddenTask(t.id,dk);
-        saveDay();renderSched();renderGlance();renderSuddenList();
+        saveDay();renderSched();renderHabitWeekly();renderSuddenList();
       };
       wrap.appendChild(el);
     });
@@ -2940,7 +3496,7 @@ function saveCalEventModal(){
     closeCalEventModal();
     renderWeekCalendar();
     renderSched();
-    renderGlance();
+    renderHabitWeekly();
   }catch(err){
     console.error('Calendar save failed',err);
     flash('Could not save — try again');
@@ -2953,7 +3509,7 @@ function deleteCalEventModal(){
   closeCalEventModal();
   renderWeekCalendar();
   renderSched();
-  renderGlance();
+  renderHabitWeekly();
   renderSuddenList();
   flash('Removed');
 }
@@ -3005,7 +3561,7 @@ function appendBandTaskPickers(row,taskKey,ctx){
     ],workoutState(),v=>{
       cfg().workout=v;
       touchDayField(activeDayKey(),'workout');
-      saveDay();renderSched();renderNowBanner();renderGlance();
+      saveDay();renderSched();renderNowBanner();renderHabitWeekly();
     });
     row.classList.add('has-pick');
     row.insertBefore(pick,row.querySelector('.pt-dur'));
@@ -3021,7 +3577,7 @@ function appendBandTaskPickers(row,taskKey,ctx){
     ],nfSel,v=>{
       cfg().nonFixedPick=v==='auto'?null:v;
       touchDayField(activeDayKey(),'nonFixedPick');
-      saveDay();renderSched();renderNowBanner();renderGlance();
+      saveDay();renderSched();renderNowBanner();renderHabitWeekly();
     });
     row.classList.add('has-pick');
     row.insertBefore(pick,row.querySelector('.pt-dur'));
@@ -3089,7 +3645,7 @@ function renderPeriodBands(wrap,ctx){
           btn.onclick=(e)=>{
             e.stopPropagation();
             applyBandTaskDurDelta(taskKey,ctx,parseInt(btn.dataset.step,10)*5);
-            saveDay();renderSched();renderGlance();
+            saveDay();renderSched();renderHabitWeekly();
           };
         });
       }
@@ -3265,7 +3821,7 @@ function renderSched(){
         skipPeriodTask(skipKeyForTimelineBlock(b,dk),dk);
         saveDay();
       }
-      renderSched();renderGlance();};
+      renderSched();renderHabitWeekly();};
     sched.appendChild(el);
   });
   if(isWorkday()){
@@ -3284,44 +3840,10 @@ function renderSched(){
   }
   renderWeekCalendar();
 }
-function renderHabitChips(){
-  const wrap=document.getElementById('habitChips');if(!wrap)return;
-  wrap.innerHTML='';
-  habitsForDay().forEach(h=>{
-    const sub=h.id==='jobsearch'?jobHabitSub():h.sub;
-    const done=isHabitDone(h.id);
-    const chip=document.createElement('button');
-    chip.type='button';
-    chip.className='habit-chip'+(done?' done':'');
-    chip.textContent=(done?'✓ ':'')+h.ico+' '+h.nm.split(' ')[0];
-    chip.title=h.nm+' — '+sub;
-    chip.onclick=()=>{setHabitDone(h.id,!done);save();renderHabitChips();renderHabits();renderGlance();};
-    wrap.appendChild(chip);
-  });
-}
-function renderHabits(){
-  const wrap=document.getElementById('habits');if(!wrap)return;
-  wrap.innerHTML='';
-  habitsForDay().forEach(h=>{
-    const done=isHabitDone(h.id);const st=streakOf(h.id);
-    const sub=h.id==='jobsearch'?jobHabitSub():h.sub;
-    const el=document.createElement('div');el.className='habit'+(done?' done':'');
-    el.innerHTML=`<div class="ck"></div><div class="nm">${h.ico} ${h.nm}<small>${sub}</small></div><div class="streak${st?'':' zero'}">🔥 ${st} day${st===1?'':'s'}</div>`;
-    el.onclick=()=>{setHabitDone(h.id,!done);save();renderHabits();renderHabitChips();renderGlance();};
-    wrap.appendChild(el);
-  });
-}
-function streakOf(id){
-  const set=new Set(DATA.habits[id]||[]);let count=0;const d=new Date();
-  if(d.getHours()<DAY_ROLLOVER_HOUR)d.setDate(d.getDate()-1);
-  if(!set.has(activeDayKey()))d.setDate(d.getDate()-1);
-  while(true){const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');if(set.has(k)){count++;d.setDate(d.getDate()-1);}else break;}
-  return count;
-}
 function mostUrgentTodo(){
   const open=(DATA.todos||[]).filter(t=>!t.done);
   if(!open.length)return null;
-  const dated=open.filter(t=>t.due).sort((a,b)=>a.due.localeCompare(b.due));
+  const dated=open.filter(t=>t.due).sort((a,b)=>a.due.localeCompare(b.due)||(a.created||'').localeCompare(b.created||''));
   if(dated.length)return dated[0];
   const undated=open.filter(t=>!t.due).sort((a,b)=>(a.created||'').localeCompare(b.created||''));
   return undated[0]||null;
@@ -3359,34 +3881,22 @@ function renderNowBanner(){
   urgentEl.style.color=color;
   urgentEl.innerHTML='<strong>Most urgent to-do:</strong> '+urgent.text.replace(/</g,'&lt;')+' <span style="opacity:.9;font-weight:600">— '+label+'</span>';
 }
-function renderGlance(){
-  const {seq}=buildSeq();const checks=dayChecks();
-  const real=seq.filter(b=>!b.flex);
-  qBlocks.textContent=real.filter(b=>checks[b.id]).length+'/'+real.length;
-  const habits=habitsForDay();
-  qHabits.textContent=habits.filter(h=>isHabitDone(h.id)).length+'/'+habits.length;
-  if(isPmpActive()){
-    const studyM=studyMinutesForDay(activeDayKey(),seq,checks);
-    if(qStudy)qStudy.textContent=studyM+'m'+(studyM>=PMP_DAILY_MIN?' ✓':' / '+PMP_DAILY_MIN+'m');
-    syncStudyHabit(seq);
-  }
-  renderHabitChips();
-}
-function renderTodoList(listId,countId,clearId,todos,onUpdate,listKey){
+function renderTodoList(listId,countId,clearId,todos,onUpdate,listKey,masterTodos){
   const list=document.getElementById(listId);if(!list)return;
   if(!todos)todos=[];
+  const store=masterTodos||todos;
   const open=todos.filter(t=>!t.done);const done=todos.filter(t=>t.done);
   const countEl=document.getElementById(countId);
   const clearEl=document.getElementById(clearId);
   if(countEl)countEl.textContent=open.length?'· '+open.length+' open':'· all clear';
   if(clearEl)clearEl.style.display=done.length?'inline-block':'none';
   list.innerHTML='';
-  if(!todos.length){list.innerHTML='<div class="empty">Nothing here yet — add a to-do above.</div>';return;}
+  if(!todos.length){list.innerHTML='<div class="empty">Nothing here yet — add above.</div>';return;}
   open.sort((a,b)=>{const ad=a.due||'9999-12-31',bd=b.due||'9999-12-31';if(ad!==bd)return ad.localeCompare(bd);return (a.created||'').localeCompare(b.created||'');});
   const ordered=[...open,...done];
-  const refresh=()=>{if(listKey)touchListField(listKey);save();renderTodoList(listId,countId,clearId,todos,onUpdate,listKey);if(onUpdate)onUpdate();};
+  const refresh=()=>{if(listKey)touchListField(listKey);save();if(masterTodos)renderTodos();else renderTodoList(listId,countId,clearId,todos,onUpdate,listKey);if(onUpdate)onUpdate();};
   ordered.forEach(t=>{
-    const idx=todos.indexOf(t);
+    const idx=store.indexOf(t);
     let badge='';
     if(t.due){
       const days=daysBetween(new Date(todayKey()+'T00:00:00'),new Date(t.due+'T00:00:00'));
@@ -3404,16 +3914,19 @@ function renderTodoList(listId,countId,clearId,todos,onUpdate,listKey){
     }
     const el=document.createElement('div');el.className='todo'+(t.done?' done':'');
     el.innerHTML=`<div class="tck"></div><span class="txt">${t.text.replace(/</g,'&lt;')}</span>${badge}<span class="tdel">✕</span>`;
-    const toggle=()=>{todos[idx].done=!todos[idx].done;todos[idx].doneDate=todos[idx].done?todayKey():null;refresh();};
+    const toggle=()=>{store[idx].done=!store[idx].done;store[idx].doneDate=store[idx].done?todayKey():null;refresh();};
     el.querySelector('.tck').onclick=toggle;
     el.querySelector('.txt').onclick=toggle;
-    el.querySelector('.tdel').onclick=()=>{todos.splice(idx,1);refresh();};
+    el.querySelector('.tdel').onclick=()=>{store.splice(idx,1);refresh();};
     list.appendChild(el);
   });
 }
 function renderTodos(){
   if(!DATA.todos)DATA.todos=[];
-  renderTodoList('todoList','todoCount','clearDone',DATA.todos,()=>renderNowBanner(),'todos');
+  const work=DATA.todos.filter(t=>t.list==='work');
+  const other=DATA.todos.filter(t=>t.list!=='work');
+  renderTodoList('todoWorkList','todoWorkCount','clearWorkDone',work,()=>renderNowBanner(),'todos',DATA.todos);
+  renderTodoList('todoOtherList','todoOtherCount','clearOtherDone',other,()=>renderNowBanner(),'todos',DATA.todos);
 }
 function renderJobTodos(){
   if(!DATA.jobTodos)DATA.jobTodos=[];
@@ -3581,7 +4094,7 @@ function renderPMP(){
   [...DATA.sessions].reverse().forEach((s,i)=>{
     const realIdx=DATA.sessions.length-1-i;const el=document.createElement('div');el.className='logitem';
     el.innerHTML=`<div><strong>${s.mins}m</strong> · ${s.topic||'study'}<div class="meta">${s.date}</div></div><div class="del">✕</div>`;
-    el.querySelector('.del').onclick=()=>{DATA.sessions.splice(realIdx,1);save();renderPMP();renderGlance();};
+    el.querySelector('.del').onclick=()=>{DATA.sessions.splice(realIdx,1);save();renderPMP();renderHabitWeekly();};
     sessList.appendChild(el);
   });
   if(!DATA.sessions.length)sessList.innerHTML='<div class="empty">No sessions logged yet.</div>';
@@ -4033,7 +4546,7 @@ function mergeDefaults(){
 }
 function renderAll(){
   applyPmpUiPhase();
-  renderClocks();renderCountdowns();renderNowBanner();renderSched();renderHabits();renderGlance();renderTodos();renderScratchpad();renderPMP();renderJobs();
+  renderClocks();renderCountdowns();renderNowBanner();renderSched();renderHabitWeekly();renderGymLog();renderTodos();renderScratchpad();renderPMP();renderJobs();
 }
 function renderScratchpad(){
   const el=document.getElementById('todayScratch');
@@ -4074,17 +4587,54 @@ document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>{
 });
 
 function wire(){
-  addTodo.onclick=()=>{const v=todoInput.value.trim();if(!v){todoInput.focus();return;}DATA.todos.push({id:'td_'+Date.now(),text:v,done:false,created:todayKey(),due:todoDue.value||null});touchListField('todos');todoInput.value='';todoDue.value='';save();renderTodos();renderNowBanner();};
-  todoInput.addEventListener('keydown',e=>{if(e.key==='Enter')addTodo.click();});
-  clearDone.onclick=()=>{DATA.todos=DATA.todos.filter(t=>!t.done);touchListField('todos');save();renderTodos();renderNowBanner();};
+  const addTodoWork=document.getElementById('addTodoWork');
+  const todoWorkInput=document.getElementById('todoWorkInput');
+  const todoWorkDue=document.getElementById('todoWorkDue');
+  const clearWorkDone=document.getElementById('clearWorkDone');
+  if(addTodoWork)addTodoWork.onclick=()=>{
+    const v=todoWorkInput.value.trim();
+    if(!v){todoWorkInput.focus();return;}
+    DATA.todos.push({id:'td_'+Date.now(),text:v,done:false,created:todayKey(),due:todoWorkDue&&todoWorkDue.value||null,list:'work'});
+    touchListField('todos');todoWorkInput.value='';if(todoWorkDue)todoWorkDue.value='';save();renderTodos();renderNowBanner();
+  };
+  if(todoWorkInput)todoWorkInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&addTodoWork)addTodoWork.click();});
+  if(clearWorkDone)clearWorkDone.onclick=()=>{
+    DATA.todos=DATA.todos.filter(t=>t.list!=='work'||!t.done);
+    touchListField('todos');save();renderTodos();renderNowBanner();
+  };
+  const addTodoOther=document.getElementById('addTodoOther');
+  const todoOtherInput=document.getElementById('todoOtherInput');
+  const todoOtherDue=document.getElementById('todoOtherDue');
+  const clearOtherDone=document.getElementById('clearOtherDone');
+  if(addTodoOther)addTodoOther.onclick=()=>{
+    const v=todoOtherInput.value.trim();
+    if(!v){todoOtherInput.focus();return;}
+    DATA.todos.push({id:'td_'+Date.now(),text:v,done:false,created:todayKey(),due:todoOtherDue&&todoOtherDue.value||null,list:'other'});
+    touchListField('todos');todoOtherInput.value='';if(todoOtherDue)todoOtherDue.value='';save();renderTodos();renderNowBanner();
+  };
+  if(todoOtherInput)todoOtherInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&addTodoOther)addTodoOther.click();});
+  if(clearOtherDone)clearOtherDone.onclick=()=>{
+    DATA.todos=DATA.todos.filter(t=>t.list==='work'||!t.done);
+    touchListField('todos');save();renderTodos();renderNowBanner();
+  };
+  const gymWeekPrev=document.getElementById('gymWeekPrev');
+  const gymWeekNext=document.getElementById('gymWeekNext');
+  const gymWeekTodayBtn=document.getElementById('gymWeekToday');
+  if(gymWeekPrev)gymWeekPrev.onclick=()=>{gymWeekOffset--;renderGymLog();};
+  if(gymWeekNext)gymWeekNext.onclick=()=>{gymWeekOffset++;renderGymLog();};
+  if(gymWeekTodayBtn)gymWeekTodayBtn.onclick=()=>{gymWeekOffset=0;gymEditDayKey=activeDayKey();renderGymLog();};
+  const gymMonthPrev=document.getElementById('gymMonthPrev');
+  const gymMonthNext=document.getElementById('gymMonthNext');
+  if(gymMonthPrev)gymMonthPrev.onclick=()=>{gymMonthOffset--;renderGymLog();};
+  if(gymMonthNext)gymMonthNext.onclick=()=>{gymMonthOffset++;renderGymLog();};
   const resetDurEl=document.getElementById('resetDur');
-  if(resetDurEl)resetDurEl.onclick=()=>{cfg().blockDur={};touchDayField(activeDayKey(),'blockDur');saveDay();renderSched();renderGlance();flash('Today\'s lengths reset');};
+  if(resetDurEl)resetDurEl.onclick=()=>{cfg().blockDur={};touchDayField(activeDayKey(),'blockDur');saveDay();renderSched();renderHabitWeekly();flash('Today\'s lengths reset');};
   const resetPeriodBtn=document.getElementById('resetPeriod');
-  if(resetPeriodBtn)resetPeriodBtn.onclick=()=>{clearPeriodOverrides(activeDayKey());saveDay();renderSched();renderGlance();flash('Today\'s band order reset');};
+  if(resetPeriodBtn)resetPeriodBtn.onclick=()=>{clearPeriodOverrides(activeDayKey());saveDay();renderSched();renderHabitWeekly();flash('Today\'s band order reset');};
   const resetSkipsBtn=document.getElementById('resetSkips');
-  if(resetSkipsBtn)resetSkipsBtn.onclick=()=>{clearPeriodSkips(activeDayKey());saveDay();renderSched();renderGlance();flash('Skipped tasks restored');};
+  if(resetSkipsBtn)resetSkipsBtn.onclick=()=>{clearPeriodSkips(activeDayKey());saveDay();renderSched();renderHabitWeekly();flash('Skipped tasks restored');};
   const resetPinsBtn=document.getElementById('resetPins');
-  if(resetPinsBtn)resetPinsBtn.onclick=()=>{clearPeriodPins(activeDayKey());saveDay();renderSched();renderGlance();flash('Pinned times cleared');};
+  if(resetPinsBtn)resetPinsBtn.onclick=()=>{clearPeriodPins(activeDayKey());saveDay();renderSched();renderHabitWeekly();flash('Pinned times cleared');};
   document.querySelectorAll('#segAlarm button').forEach(b=>b.onclick=async()=>{
     const turningOn=b.dataset.a==='on';
     DATA.alarmOn=turningOn;
@@ -4142,7 +4692,7 @@ function wire(){
       tName.value='';tMin.value='';
       if(tWinStart)tWinStart.value='';
       if(tWinEnd)tWinEnd.value='';
-      renderSched();renderGlance();
+      renderSched();renderHabitWeekly();
       const planned=targetDayKey!==activeDayKey();
       let msg=planned?'Planned for '+formatDayKeyLabel(targetDayKey):'Sudden task added — see Today\'s bands';
       if(result&&result.moved&&result.moved.length)msg+=' · moved '+result.moved.join(', ');
@@ -4172,19 +4722,14 @@ function wire(){
   const calEventModal=document.getElementById('calEventModal');
   if(calEventModal)calEventModal.addEventListener('click',e=>{if(e.target===calEventModal)closeCalEventModal();});
   const addSessBtn=document.getElementById('addSess');
-  if(addSessBtn)addSessBtn.onclick=()=>{const m=parseInt(sMins.value);if(!m||m<1){sMins.focus();return;}logStudyMinutes(m,sTopic.value);sMins.value='';sTopic.value='';save();renderPMP();renderGlance();renderHabits();};
-  document.querySelectorAll('.q-study').forEach(b=>b.onclick=()=>{if(logStudyMinutes(b.dataset.mins,'study')){save();renderPMP();renderGlance();renderHabits();flash('+'+b.dataset.mins+'m study');}});
-  const qLog=document.getElementById('qStudyLog');
-  const qMin=document.getElementById('qStudyMins');
-  if(qLog)qLog.onclick=()=>{const m=parseInt(qMin&&qMin.value,10);if(!m||m<1){if(qMin)qMin.focus();return;}if(logStudyMinutes(m,'study')){if(qMin)qMin.value='';save();renderPMP();renderGlance();renderHabits();flash('Logged '+m+'m');}};
-  if(qMin)qMin.addEventListener('keydown',e=>{if(e.key==='Enter'&&qLog)qLog.click();});
-  wakeTime.onchange=()=>{setWakeTime(wakeTime.value||'10:00',true);renderSched();renderNowBanner();renderGlance();};
+  if(addSessBtn)addSessBtn.onclick=()=>{const m=parseInt(sMins.value);if(!m||m<1){sMins.focus();return;}logStudyMinutes(m,sTopic.value);sMins.value='';sTopic.value='';save();renderPMP();};
+  wakeTime.onchange=()=>{setWakeTime(wakeTime.value||'10:00',true);renderSched();renderNowBanner();renderHabitWeekly();};
   wokeBtn.onclick=()=>{
     const c=cfg();
     if(c.wakeLocked){
       c.wakeLocked=false;
       touchDayField(activeDayKey(),'wakeLocked');
-      saveDay();renderSched();renderNowBanner();renderGlance();
+      saveDay();renderSched();renderNowBanner();renderHabitWeekly();
       flash('Wake time unlocked — tap again when you wake');
       return;
     }
@@ -4192,7 +4737,7 @@ function wire(){
     const t=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
     wakeTime.value=t;
     setWakeTime(t,true);
-    renderSched();renderNowBanner();renderGlance();
+    renderSched();renderNowBanner();renderHabitWeekly();
     flash('Wake time saved for today');
   };
   if(sTopic&&addSessBtn)sTopic.addEventListener('keydown',e=>{if(e.key==='Enter')addSessBtn.click();});
@@ -4295,7 +4840,7 @@ async function init(){
         Store.applyRemoteData(snap.data().data,snap.data().updatedAt?.toMillis?.()||0);
       }).catch(()=>{});
     }
-    renderClocks();renderNowBanner();renderSched();renderGlance();renderCountdowns();
+    renderClocks();renderNowBanner();renderSched();renderHabitWeekly();renderGymLog();renderCountdowns();
   },30000);
 }
 init();

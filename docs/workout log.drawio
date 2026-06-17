@@ -1,0 +1,103 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="ScRWL1qIhVJCiC2-ug4z">
+    <mxGraphModel dx="931" dy="591" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-1" parent="1" style="whiteSpace=wrap;html=1;aspect=fixed;" value="" vertex="1">
+          <mxGeometry height="580" width="580" x="185" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Mon" vertex="1">
+          <mxGeometry height="30" width="70" x="200" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Yoga&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="200" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Tue" vertex="1">
+          <mxGeometry height="30" width="70" x="280" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Wed" vertex="1">
+          <mxGeometry height="30" width="70" x="360" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Thu" vertex="1">
+          <mxGeometry height="30" width="70" x="440" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-10" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Fri" vertex="1">
+          <mxGeometry height="30" width="70" x="520" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Sat" vertex="1">
+          <mxGeometry height="30" width="70" x="600" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-13" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Sun" vertex="1">
+          <mxGeometry height="30" width="70" x="680" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Pilates&amp;nbsp;&lt;div&gt;Check box&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="200" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-15" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Lift&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="200" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-16" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Yoga&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="280" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-17" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Pilates&amp;nbsp;&lt;div&gt;Check box&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="280" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-18" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Lift&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="280" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-19" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Yoga&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="360" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-20" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Pilates&amp;nbsp;&lt;div&gt;Check box&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="360" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-21" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Lift&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="360" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-22" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Yoga&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="440" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-23" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Pilates&amp;nbsp;&lt;div&gt;Check box&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="440" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-24" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Lift&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="440" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-25" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Yoga&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="520" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-26" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Pilates&amp;nbsp;&lt;div&gt;Check box&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="520" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-27" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Lift&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="520" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-28" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Yoga&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="600" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-29" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Pilates&amp;nbsp;&lt;div&gt;Check box&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="600" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-30" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Lift&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="600" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-31" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Yoga&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="680" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-32" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Pilates&amp;nbsp;&lt;div&gt;Check box&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="680" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-33" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Lift&amp;nbsp;&lt;div&gt;Checkbox&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="70" x="680" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-34" parent="1" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.annotation_2;align=left;labelPosition=right;pointerEvents=1;rotation=-90;" value="" vertex="1">
+          <mxGeometry height="490" width="50" x="445" y="35" as="geometry" />
+        </mxCell>
+        <mxCell id="UKB-IcLtVxrmMmy7ldYG-35" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="Lift 1&lt;div&gt;Descripion&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Sets&lt;/span&gt;&lt;/div&gt;&lt;div&gt;Set 1 weight&lt;/div&gt;&lt;div&gt;set 2&amp;nbsp;&lt;/div&gt;&lt;div&gt;weight&lt;/div&gt;&lt;div&gt;set 3 weight&lt;/div&gt;&lt;div&gt;.&lt;/div&gt;&lt;div&gt;.&lt;/div&gt;&lt;div&gt;.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="200" width="65" x="435" y="300" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
