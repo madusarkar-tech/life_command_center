@@ -119,6 +119,39 @@ Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge
 - `todayNotes` (Today scratchpad), `pmpNotes`, `jobNotes` — each field syncs independently with `*UpdatedAt` timestamps.
 - Debounced input calls `commitNoteField()` → `save()`.
 
+### Weekly habits (Today sidebar)
+
+Tracks three daily habits with a Sun–Sat week grid and weekly completion percentages:
+
+| Habit | Goal | Storage |
+|-------|------|---------|
+| Sleep | ≥ 6 hours | `DATA.habitDaily[date].sleepHrs` |
+| Workout | Mark done | `DATA.habitDaily[date].workout` |
+| Water | ≥ 5 glasses | `DATA.habitDaily[date].water` |
+
+- **Grid** — shows partial progress (`3/5`, sleep hours) or `✓` when goal met; **tap a cell** to log (water +1, workout toggle, sleep selects day).
+- **Log panel** — bordered box below grid with sleep input, workout button, water −/+ stepper.
+- **Workout auto-sync** — checking today's gym schedule block can set workout true; manual un-mark uses `workoutOff` to block re-sync on that device.
+- **Sync** — `mergeHabitDailyMap`: max sleep/water per date, OR workout across devices.
+
+Legacy `DATA.habits` (date-set union) still powers PMP study habit from schedule block completion.
+
+### Workout log (Today, full-width below main grid)
+
+Separate from the schedule's gym band — a week planner and lift logger:
+
+- **Plan grid** — Sun–Sat rows for **Yoga**, **Cardio**, **Lift** (tap checkbox per day).
+- **Lift panel** — when lift is planned for selected day: add exercises (presets + free text), log weight/reps per set.
+- **Monthly summary** — per exercise: max weight, average weight, session count.
+- **Storage** — `DATA.gymLog[date] = { plan: { yoga, cardio, lift }, exercises: [...], updatedAt }`.
+- **Sync** — `mergeGymLogMap`: OR plan flags; union exercises/sets by `weight|reps` signature.
+
+### To-Do (Today)
+
+- Split into **Work** and **Other** sections (`DATA.todos[].list`).
+- List-level LWW sync via `todosUpdatedAt` (whole list wins).
+- Most urgent due item surfaces in the **Right now** banner (`mostUrgentTodo()`).
+
 ### Still applies
 
 - **Wake** / “Just woke up” — starts morning band.
@@ -154,6 +187,8 @@ Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge
 | Pin start time | 📌 on band row → `periodPinnedStart` |
 | Week calendar | Sun–Sat grid; tap slot to add fixed-window sudden |
 | Today's bands | Reorder / move / drag across all four bands (night locked on shift days) |
+| Weekly habits | Tap grid or use Log panel; sleep / workout / water tracked per day |
+| Workout log | Week planner (yoga/cardio/lift) + lift sets; monthly stats |
 
 ## Sync model (Firebase)
 
@@ -164,7 +199,9 @@ Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge
 - **dayConfig:** per-date, per-field LWW on `DAY_LWW_FIELDS` (wake, bands, suddens, pins, etc.).
 - **Notes:** per-field LWW on `todayNotes`, `pmpNotes`, `jobNotes`.
 - **Todos / job todos / jobs:** list-level LWW — entire array wins by `todosUpdatedAt` / `jobTodosUpdatedAt` / `jobsUpdatedAt`.
-- **Habits:** date-set union per habit id.
+- **Habits (legacy):** date-set union per habit id (PMP study from blocks).
+- **habitDaily:** per-date merge — max sleep/water, OR workout (`mergeHabitDailyMap`).
+- **gymLog:** per-date merge — OR plan flags; union lift exercises/sets (`mergeGymLogMap`).
 
 ## What the dashboard does *not* do (yet)
 

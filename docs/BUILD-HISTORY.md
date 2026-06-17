@@ -75,7 +75,7 @@ User requests implemented:
 
 ### 8. Interrupted feature (completed in repo)
 
-Last Claude turn ran out of credits before shipping **“most urgent due item in Quick Glance.”** That was finished when this repository was initialized: `mostUrgentTodo()` + `#urgentNote` in `renderGlance()`.
+Last Claude turn ran out of credits before shipping **“most urgent due item in Quick Glance.”** That was finished when this repository was initialized: `mostUrgentTodo()` + `#urgentNote` in the now banner (Quick Glance was later removed at `94a8aba`; urgent todo moved to **Right now** banner).
 
 ### 9. Persistence fix (repo init)
 
@@ -103,6 +103,8 @@ After the initial repo import, development continued in Cursor:
 | `540a3a5` | Merge tie-breaks favor cloud field stamps on reload; `writeLocalAfterSync`; `suppressUiSave` |
 | `3d15a16` | Job pipeline list-level LWW (`jobsUpdatedAt`); application deletes stick after sync |
 | `0fb0441` | Unified 4-band schedule; calendar shift nights (Sun–Thu work / Fri–Sat off); removed day picker and Weekend Plan modal |
+| `94a8aba` | **Quick Glance removed** — Weekly habits card, Workout log (yoga/cardio/lift + lift panel), split Work/Other to-dos; `habitDaily` + `gymLog` sync merge |
+| `0dfc253` | Weekly habits UX — tap-to-log grid, partial progress labels, bordered Log panel, live sleep input, `workoutOff` for manual workout |
 
 Baseline tag: `baseline-2026-06-10` at app `540a3a5`. Prior: `baseline-2026-06-09` at `884cd10`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
 
@@ -115,15 +117,17 @@ Baseline tag: `baseline-2026-06-10` at app `540a3a5`. Prior: `baseline-2026-06-0
 | `docs/BASELINE.md` | Baseline contract for sync and scheduling |
 | `docs/HANDOFF.md` | Short onboarding for new chats |
 | `docs/BUILD-HISTORY.md` | This file |
+| `docs/workout log.drawio` | Workout log UI mockup (yoga/cardio/lift grid) |
 | `README.md` | How to run and what’s included |
 
 ## Possible future enhancements (from chat, not built)
 
-- Open to-do count always visible in Quick Glance header stats
 - Recurring calendar events
-- Water/hydration tracker for shift nights
+- Gym spillover across bands when morning is full
 - Sync via Notion or Google Sheets
 - Sunday weekly review reminder
+
+*(Water/hydration tracker and weekly habit % were added at `94a8aba` / `0dfc253`.)*
 
 ## Credits
 
