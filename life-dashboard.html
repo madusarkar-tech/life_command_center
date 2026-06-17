@@ -847,6 +847,15 @@ function setDetailsOpen(el,open){
 function localUpdatedAt(){
   try{const m=JSON.parse(localStorage.getItem(META_KEY)||'{}');return m.updatedAt||0;}catch(e){return 0;}
 }
+function mergeLocal(){
+  return DATA||readLocal();
+}
+function gymLiftPanelActive(){
+  const panel=document.getElementById('gymLiftPanel');
+  if(!panel||panel.style.display==='none')return false;
+  const el=document.activeElement;
+  return !!(el&&panel.contains(el)&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA'));
+}
 function isFirebaseConfigured(){
   const c=window.FIREBASE_CONFIG;
   return c&&c.apiKey&&c.apiKey!=='YOUR_API_KEY'&&c.projectId&&c.projectId!=='YOUR_PROJECT_ID';
@@ -1140,7 +1149,8 @@ function dataSnapshotEqual(a,b){
 const Store={
   applyRemoteData(cloud,cloudTime){
     if(!cloud)return false;
-    const local=readLocal()||DATA;
+    if(gymLiftPanelActive())return false;
+    const local=mergeLocal();
     const localTime=localUpdatedAt();
     const merged=mergeAppData(local,cloud,localTime,cloudTime||0);
     if(DATA&&dataSnapshotEqual(merged,DATA))return false;
@@ -1201,8 +1211,8 @@ const Store={
       await Store.pushCloud(d,true);
       if(!opts.silent)flash('Synced');
     }else{
-      Store.schedulePush(d,600);
-      flash('Saving…');
+      Store.schedulePush(d,600,opts&&opts.silent);
+      if(!opts||!opts.silent)flash('Saving…');
     }
   },
   async pushCloud(d,silent){
@@ -2302,15 +2312,23 @@ function commitGymSet(s,wIn,rIn,dayKey,live){
   s.weight=isNaN(w)||wIn.value===''?0:w;
   s.reps=isNaN(r)||rIn.value===''?8:r;
   touchGymDay(dayKey);
+  writeLocal(DATA);
   if(live){
     clearTimeout(gymSetSaveTimer);
-    gymSetSaveTimer=setTimeout(()=>save(),400);
+    gymSetSaveTimer=setTimeout(()=>save({silent:true}),400);
     return;
   }
   clearTimeout(gymSetSaveTimer);
   save();
 }
 function preventEnterSubmit(e){if(e.key==='Enter')e.preventDefault();}
+function afterGymStructureChange(dayKey){
+  touchGymDay(dayKey);
+  writeLocal(DATA);
+  suppressCloudApply=Date.now()+2500;
+  save({silent:true});
+  renderGymLog();
+}
 function habitEntryForDay(dayKey,create){
   if(!DATA.habitDaily)DATA.habitDaily={};
   if(!DATA.habitDaily[dayKey]&&create)DATA.habitDaily[dayKey]={};
@@ -2641,7 +2659,7 @@ function renderGymLiftPanel(dayKey,panelEl){
     else if(!ex.sets.length)ex.sets.push({weight:0,reps:8});
     else ex.sets.push({weight:ex.sets[ex.sets.length-1].weight,reps:ex.sets[ex.sets.length-1].reps});
     nameIn.value='';
-    touchGymDay(dk);save();renderGymLog();
+    afterGymStructureChange(dk);
   };
   nameIn.addEventListener('keydown',e=>{if(e.key==='Enter')addBtn.click();});
   addRow.appendChild(nameIn);addRow.appendChild(addBtn);
@@ -2659,7 +2677,7 @@ function renderGymLiftPanel(dayKey,panelEl){
       exHead.innerHTML=`<span class="gym-ex-name">${(ex.name||'').replace(/</g,'&lt;')}</span>`;
       const delEx=document.createElement('button');
       delEx.type='button';delEx.className='ghostbtn sm';delEx.textContent='Remove';
-      delEx.onclick=()=>{day.exercises.splice(exIdx,1);touchGymDay(dayKey);save();renderGymLog();};
+      delEx.onclick=()=>{day.exercises.splice(exIdx,1);afterGymStructureChange(dayKey);};
       exHead.appendChild(delEx);
       card.appendChild(exHead);
       (ex.sets||[]).forEach((s,setIdx)=>{
@@ -2682,7 +2700,7 @@ function renderGymLiftPanel(dayKey,panelEl){
         row.appendChild(document.createTextNode('reps'));
         const delSet=document.createElement('button');
         delSet.type='button';delSet.className='ghostbtn sm';delSet.textContent='✕';
-        delSet.onclick=()=>{ex.sets.splice(setIdx,1);touchGymDay(dayKey);save();renderGymLog();};
+        delSet.onclick=()=>{ex.sets.splice(setIdx,1);afterGymStructureChange(dayKey);};
         row.appendChild(delSet);
         card.appendChild(row);
       });
@@ -2694,7 +2712,7 @@ function renderGymLiftPanel(dayKey,panelEl){
         if(!ex.sets)ex.sets=[];
         const last=ex.sets[ex.sets.length-1];
         ex.sets.push({weight:last?last.weight:0,reps:last?last.reps:8});
-        touchGymDay(dayKey);save();renderGymLog();
+        afterGymStructureChange(dayKey);
       };
       card.appendChild(addSet);
       logWrap.appendChild(card);
@@ -4711,6 +4729,7 @@ function renderScratchpad(){
   setDetailsOpen(disc,!!DATA.scratchpadOpen);
 }
 async function reloadData(opts){
+  if(gymLiftPanelActive())return;
   const prevDay=DATA?JSON.stringify(cfg()):'';
   DATA=await Store.load(opts);
   if(!DATA)DATA=defaults();
@@ -4999,10 +5018,13 @@ async function init(){
     if(document.visibilityState==='visible'&&firebaseReady&&firebase.auth().currentUser){
       userDoc(firebase.auth().currentUser.uid).get().then(snap=>{
         if(!snap.exists||!snap.data()?.data||snap.metadata?.hasPendingWrites)return;
+        if(gymLiftPanelActive())return;
         Store.applyRemoteData(snap.data().data,snap.data().updatedAt?.toMillis?.()||0);
       }).catch(()=>{});
     }
-    renderClocks();renderNowBanner();renderSched();renderHabitWeekly();renderGymLog();renderCountdowns();
+    renderClocks();renderNowBanner();renderSched();renderHabitWeekly();
+    if(!gymLiftPanelActive())renderGymLog();
+    renderCountdowns();
   },30000);
 }
 init();
