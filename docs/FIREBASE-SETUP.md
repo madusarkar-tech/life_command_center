@@ -96,6 +96,7 @@ Sign in on a second browser (or phone) with the **same Google account** — data
 - Data is stored in Firestore: `users/{your-uid}` with field `data` (full dashboard JSON).
 - Each save updates localStorage immediately, then syncs to cloud ~600ms later.
 - On sign-in: cloud data wins if it’s newer; if cloud is empty, your local Mac data is uploaded once.
+- Tab visibility and custom tabs sync via `data.tabUi` (`hiddenTabs`, `customTabs`) with `tabUiUpdatedAt` (last-write-wins across devices).
 
 ## Troubleshooting
 
@@ -106,3 +107,4 @@ Sign in on a second browser (or phone) with the **same Google account** — data
 | Sign-in loops back to “Sign in to sync…” | Add `YOUR_USERNAME.github.io` in Authorized domains; on iPhone disable Private Browsing / cross-site tracking |
 | `auth/unauthorized-domain` | Add your `*.github.io` domain in Authorized domains |
 | Permission denied in Firestore | Publish `firestore.rules` from this repo |
+| Stuck on “Loading your day…” after refresh | Hard refresh again after latest deploy; if it persists, check browser console for JS errors (tab UI must run only after data loads) |

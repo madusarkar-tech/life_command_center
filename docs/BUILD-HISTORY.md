@@ -105,6 +105,11 @@ After the initial repo import, development continued in Cursor:
 | `0fb0441` | Unified 4-band schedule; calendar shift nights (Sun–Thu work / Fri–Sat off); removed day picker and Weekend Plan modal |
 | `94a8aba` | **Quick Glance removed** — Weekly habits card, Workout log (yoga/cardio/lift + lift panel), split Work/Other to-dos; `habitDaily` + `gymLog` sync merge |
 | `0dfc253` | Weekly habits UX — tap-to-log grid, partial progress labels, bordered Log panel, live sleep input, `workoutOff` for manual workout |
+| `70569b0` | Workout log per-day LWW by `updatedAt` — fixes duplicate sets and resurrected deletes when signed in |
+| `dd69a2c` | Workout log sync stability — in-memory merge priority, skip re-render while lift focused, immediate local write |
+| `b899d59` | Collapsible lift log disclosure — `gymLiftOpen` persisted |
+| `7dfffe9` | **Tab manager** — hide Week/PMP/Jobs; custom notes-only tabs; `DATA.tabUi` + `mergeTabUi` |
+| `3304854` | Tab manager startup fix — `applyTabUi()` only after `DATA` loads |
 
 Baseline tag: `baseline-2026-06-10` at app `540a3a5`. Prior: `baseline-2026-06-09` at `884cd10`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
 

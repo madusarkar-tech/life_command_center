@@ -17,7 +17,7 @@ This document captures the real-world constraints that shaped the dashboard. It 
 ## Non-negotiable principles (product context)
 
 1. **Sleep is the constraint.** One protected sleep block (~3:00 AM → logged wake). Avoid split sleep; wrap work before logoff when possible.
-2. **Goals:** PMP exam **June 22, 2026** (through that date inclusive); job target **August 1, 2026** — job countdown always shown; PMP UI only through exam day.
+2. **Goals:** PMP exam **June 22, 2026** (through that date inclusive); job target **August 1, 2026** — job countdown shown when Job Search tab is visible; PMP UI through exam day (or until manually hidden).
 3. **Operations are capped.** Animals, garden, meals, and workouts use scheduled blocks with durations — not unlimited time sinks.
 4. **Meal prep is batched.** Saturday batch prep feeds weekday lunches; shift days show a banner if last Saturday’s prep was skipped (manual `mealPrep` checkbox).
 
@@ -114,10 +114,22 @@ Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge
 - Prev / next week and **Today** buttons adjust `weekViewOffset`.
 - Data source is the same `dayConfig[*].suddenTasks` store as Today's bands — not a separate calendar backend.
 
-### Notes (scratch, PMP, job)
+### Tab manager
+
+- **⋯ button** at the right end of the tab bar opens **Manage tabs**.
+- **Built-in tabs** — Week, PMP Prep, Job Search can be shown or hidden via checkboxes. **Today** is always visible.
+- **PMP** still auto-hides after the exam date (`isPmpActive()`); the manager shows “Hidden after exam” when that applies.
+- Hiding **Job Search** also hides the job countdown card; hiding **PMP Prep** hides the PMP countdown.
+- **Custom tabs** — add a name to create a notes-only focus-area tab (max 12). Rename or remove from the same modal.
+- **Storage** — `DATA.tabUi = { hiddenTabs: [], customTabs: [{ id, label, notes }] }` with `tabUiUpdatedAt` for sync.
+- **Implementation** — `applyTabUi()`, `renderCustomTabs()`, `isTabVisible()`; built-in tab renders (`renderPMP`, `renderJobs`) skip when hidden.
+- **Startup** — tab UI runs only after `DATA` is loaded (`renderAll()`); do not call `applyTabUi()` before `Store.load()`.
+
+### Notes (scratch, PMP, job, custom tabs)
 
 - `todayNotes` (Today scratchpad), `pmpNotes`, `jobNotes` — each field syncs independently with `*UpdatedAt` timestamps.
-- Debounced input calls `commitNoteField()` → `save()`.
+- Custom tab notes live in `DATA.tabUi.customTabs[].notes`; the whole `tabUi` object syncs via `tabUiUpdatedAt`.
+- Debounced input calls `commitNoteField()` → `save()` (built-in notes) or updates `tabUi` + `touchTabUi()` (custom tabs).
 
 ### Weekly habits (Today sidebar)
 
@@ -141,7 +153,7 @@ Legacy `DATA.habits` (date-set union) still powers PMP study habit from schedule
 Separate from the schedule's gym band — a week planner and lift logger:
 
 - **Plan grid** — Sun–Sat rows for **Yoga**, **Cardio**, **Lift** (tap checkbox per day).
-- **Lift panel** — when lift is planned for selected day: add exercises (presets + free text), log weight/reps per set.
+- **Lift panel** — when lift is planned for selected day: add exercises (presets + free text), log weight/reps per set. Collapsible disclosure (`gymLiftOpen`) for long sessions.
 - **Monthly summary** — per exercise: max weight, average weight, session count.
 - **Storage** — `DATA.gymLog[date] = { plan: { yoga, cardio, lift }, exercises: [...], updatedAt }`.
 - **Sync** — `mergeGymLogMap`: per-date LWW by `updatedAt` (whole day entry wins).
@@ -186,6 +198,7 @@ Separate from the schedule's gym band — a week planner and lift logger:
 | Task alarms | Start-of-block (default on); ⏱ end warn per task |
 | Pin start time | 📌 on band row → `periodPinnedStart` |
 | Week calendar | Sun–Sat grid; tap slot to add fixed-window sudden |
+| Tab manager | **⋯** on tab bar — hide Week/PMP/Jobs; add custom note tabs |
 | Today's bands | Reorder / move / drag across all four bands (night locked on shift days) |
 | Weekly habits | Tap grid or use Log panel; sleep / workout / water tracked per day |
 | Workout log | Week planner (yoga/cardio/lift) + lift sets; monthly stats |
@@ -198,6 +211,7 @@ Separate from the schedule's gym band — a week planner and lift logger:
 - **Push:** `pushCloud` merge-before-push — reads cloud, merges, then writes (avoids stale device overwrite).
 - **dayConfig:** per-date, per-field LWW on `DAY_LWW_FIELDS` (wake, bands, suddens, pins, etc.).
 - **Notes:** per-field LWW on `todayNotes`, `pmpNotes`, `jobNotes`.
+- **tabUi:** object-level LWW on `tabUiUpdatedAt` — hidden built-in tabs + custom tab list/notes (`mergeTabUi`).
 - **Todos / job todos / jobs:** list-level LWW — entire array wins by `todosUpdatedAt` / `jobTodosUpdatedAt` / `jobsUpdatedAt`.
 - **Habits (legacy):** date-set union per habit id (PMP study from blocks).
 - **habitDaily:** per-date merge — max sleep/water, OR workout (`mergeHabitDailyMap`).

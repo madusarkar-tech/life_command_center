@@ -5,7 +5,7 @@
 
 Use this when you want future work (or a new chat) to treat the app as **known-good** and avoid accidental changes to sync, field-level merge, sudden/band scheduling, or Week calendar unless you explicitly ask otherwise.
 
-**Current `main`:** `0dfc253` — weekly habits, workout log planner, split to-dos, habit logging UX. See [Changes since `baseline-2026-06-10`](#changes-since-baseline-2026-06-10-540a3a5-app) below.
+**Current `main`:** `3304854` — tab manager, workout log sync fixes, lift disclosure, weekly habits, workout log planner, split to-dos. See [Changes since `baseline-2026-06-10`](#changes-since-baseline-2026-06-10-540a3a5-app) below.
 
 ## Git reference (baseline tag)
 
@@ -35,7 +35,7 @@ List what the tag contains:
 git show baseline-2026-06-10 --stat
 ```
 
-**Live site:** GitHub Pages follows `main` (currently `0dfc253`).
+**Live site:** GitHub Pages follows `main` (currently `3304854`).
 
 ---
 
@@ -43,6 +43,11 @@ git show baseline-2026-06-10 --stat
 
 | Commit | Summary |
 |--------|---------|
+| `3304854` | **Tab manager startup fix** — `applyTabUi()` only after `DATA` loads; null guards on `isTabVisible` / `isTabHidden` |
+| `7dfffe9` | **Tab manager** — hide Week/PMP/Jobs; custom notes-only tabs; `DATA.tabUi` + `mergeTabUi`; **⋯** modal |
+| `b899d59` | **Lift log disclosure** — collapsible lift panel; `gymLiftOpen` persisted |
+| `dd69a2c` | **Workout log sync stability** — `mergeLocal()` prefers in-memory `DATA`; skip re-render while lift focused; immediate local write on lift edits |
+| `70569b0` | **Workout log LWW** — per-day `gymLog` merge by `updatedAt` (fixes duplicate sets / resurrected deletes when signed in) |
 | `0dfc253` | **Weekly habits UX** — bordered “Log today” panel; tap-to-log grid cells; partial progress labels (`3/5` water, sleep hours); live sleep input; `workoutOff` respects manual workout un-mark |
 | `94a8aba` | **Today sidebar + workout log** — replaced Quick Glance with Weekly habits card; full-width Workout log (yoga/cardio/lift Sun–Sat grid + lift detail panel); split to-dos into Work vs Other; `DATA.habitDaily` + `DATA.gymLog` with per-date merge; startup `qMin` fix |
 | `e3dd749` | Docs update for 4-band schedule and job sync |
@@ -96,11 +101,12 @@ git show baseline-2026-06-10 --stat
 - **Today's bands** — reorder (↑↓ / drag), move between bands, add extras, **blockDur −/+**, Gym/Home/Skip + Extra pickers, **⏱ end-warn**, **📌 pin start**, **⚡ sudden tasks**, **✕ skip for today**, capacity toast, **· not on timeline** when unpacked
 - **Week** — calendar grid (Sun–Sat, 5am–midnight); tap hour → add fixed-window sudden; Flex row for anytime suddens; prev/next/today navigation
 - **Weekly habits** — sleep (≥6h), workout, water (≥5 glasses); Sun–Sat grid with partial progress; tap grid to log; “Log today” panel below grid
-- **Workout log** — Sun–Sat planner (yoga / cardio / lift checkboxes); lift detail panel (exercises, sets, weight/reps); monthly max/avg/sessions summary
-- **PMP Prep** / **Job Search** — notes with per-field sync
+- **Workout log** — Sun–Sat planner (yoga / cardio / lift checkboxes); lift detail panel (exercises, sets, weight/reps); collapsible lift disclosure; monthly max/avg/sessions summary
+- **PMP Prep** / **Job Search** — notes with per-field sync; can be hidden via tab manager
+- **Custom tabs** — notes-only focus areas added via **⋯** tab manager
 - **Sync** — Google Auth + Firestore; localStorage when signed out
 
-**Tabs:** Today · Week · PMP Prep · Job Search
+**Tabs:** Today · Week · PMP Prep · Job Search · *(optional custom tabs)* · **⋯** to manage visibility
 
 > **At tag `540a3a5` only:** Weekend Plan modal + `weekendPeriodTemplate` existed. Removed on `main` at `0fb0441`.
 
@@ -119,6 +125,7 @@ git show baseline-2026-06-10 --stat
 | **Habits (legacy)** | `DATA.habits` | Date-set union merge — still used for PMP study habit sync from schedule blocks |
 | **Weekly habits** | `DATA.habitDaily[date]` | Per-date merge: max sleep/water, OR workout (`mergeHabitDailyMap`) |
 | **Workout log** | `DATA.gymLog[date]` | Per-date LWW by `updatedAt` — whole day entry wins (`mergeGymLogMap`) |
+| **tabUi** | `DATA.tabUi` | Object-level LWW by `tabUiUpdatedAt` — hidden built-in tabs + custom tab list/notes (`mergeTabUi`) |
 | **Jobs** | `DATA.jobs` | List-level LWW at `3d15a16+` (`jobsUpdatedAt`); union merge at tag `540a3a5` only |
 
 ### Day rollover & shift inference
@@ -154,6 +161,7 @@ Document-level winner-take-all for most scalar fields. Exceptions merged separat
 |------|----------|
 | `dayConfig` | Per-date `mergeDayEntry` (field-level LWW) |
 | `todayNotes`, `pmpNotes`, `jobNotes` | Per-field LWW (`mergeNoteFields`) |
+| `tabUi` | Object-level LWW (`mergeTabUi` on `tabUiUpdatedAt`) |
 | `todos`, `jobTodos`, `jobs` | List-level LWW (`pickListWinner`) — `jobs` added at `3d15a16` |
 | `habits` | Per-habit date union |
 | `habitDaily` | Per-date entry merge (`mergeHabitDailyMap`) — max sleep/water, OR workout |
@@ -183,9 +191,9 @@ Legacy whole-day `_syncAt` still used for `tasks` / `weekendPlan` only.
 
 **At tag `540a3a5`:** workday = 3 bands + Work + Sleep; weekend = 4 bands + Plan templates.
 
-**Current `main` (`0dfc253`):** 4 bands always; `buildPeriodSeq` + `hasWorkShift`; night locked on shift days; Weekly habits + Workout log on Today tab.
+**Current `main` (`3304854`):** 4 bands always; `buildPeriodSeq` + `hasWorkShift`; night locked on shift days; Weekly habits + Workout log on Today tab; tab manager for hideable/custom tabs.
 
-- **Key functions:** `buildSeq`, `buildPeriodSeq`, `hasWorkShift`, `packPeriodBand`, `effectivePeriodLists`, `displaceSuddenOverlaps`, `applySuddenTasks`, `getPeriodPinStart`, `setPeriodPinStart`, `renderWeekCalendar`, `openCalEventModal`, `skipPeriodTask`, `repairSuddenBandLinks`, `bandCapacityStatus`, `checkTaskAlarms`, `calendarDayTypeForKey`, `activeDayKey`, `renderHabitWeekly`, `renderGymLog`, `habitTapCell`, `mergeHabitDailyMap`, `mergeGymLogMap`.
+- **Key functions:** `buildSeq`, `buildPeriodSeq`, `hasWorkShift`, `packPeriodBand`, `effectivePeriodLists`, `displaceSuddenOverlaps`, `applySuddenTasks`, `getPeriodPinStart`, `setPeriodPinStart`, `renderWeekCalendar`, `openCalEventModal`, `skipPeriodTask`, `repairSuddenBandLinks`, `bandCapacityStatus`, `checkTaskAlarms`, `calendarDayTypeForKey`, `activeDayKey`, `renderHabitWeekly`, `renderGymLog`, `habitTapCell`, `mergeHabitDailyMap`, `mergeGymLogMap`, `applyTabUi`, `renderCustomTabs`, `mergeTabUi`, `isTabVisible`.
 
 Full band windows: [DESIGN.md](./DESIGN.md).
 
@@ -206,7 +214,7 @@ Full band windows: [DESIGN.md](./DESIGN.md).
 
 ## For Cursor / new chats
 
-> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, field-level timestamps, sudden/band packing, or Week calendar unless I ask. Match tag `baseline-2026-06-10` for the frozen contract; current `main` adds 4-band unification, jobs list LWW, weekly habits, workout log, and split to-dos.
+> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, field-level timestamps, sudden/band packing, or Week calendar unless I ask. Match tag `baseline-2026-06-10` for the frozen contract; current `main` adds 4-band unification, jobs list LWW, weekly habits, workout log, split to-dos, tab manager, and workout log sync fixes.
 
 ```text
 When I say "return to baseline" or "restore baseline-2026-06-10", read docs/BASELINE.md and treat it as the contract. Prefer minimal diffs.

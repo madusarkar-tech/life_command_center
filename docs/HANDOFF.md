@@ -9,7 +9,7 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 
 > Update **HEAD** below when `main` moves.
 
-**HEAD:** `0dfc253` on `main` · **Baseline tag:** `baseline-2026-06-10` (app `540a3a5`)
+**HEAD:** `3304854` on `main` · **Baseline tag:** `baseline-2026-06-10` (app `540a3a5`)
 
 **Spec:** [DESIGN.md](./DESIGN.md) · **Baseline:** [BASELINE.md](./BASELINE.md) (tag `baseline-2026-06-10`)
 
@@ -25,20 +25,36 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 | **Night band** | **Shift days:** locked in bands UI (Work 8pm–3am); timeline adds Work + Sleep blocks. **Off days:** editable band 8pm–midnight, packs on timeline. |
 | **Week** | Sun–Sat grid (5am–midnight); fixed-window suddens as blocks; anytime in Flex row; tap slot to add via `calEventModal` |
 | **Weekly habits** | Sidebar card — `DATA.habitDaily[date]`; sleep ≥6h, workout toggle, water ≥5 glasses; Sun–Sat grid with partial progress; tap grid to log; “Log today” panel |
-| **Workout log** | Full-width card below Today grid — `DATA.gymLog[date]`; yoga/cardio/lift week planner; lift detail panel (exercises, sets, weight/reps); monthly max/avg/sessions |
+| **Workout log** | Full-width card below Today grid — `DATA.gymLog[date]`; yoga/cardio/lift week planner; lift detail panel (exercises, sets, weight/reps); collapsible lift disclosure (`gymLiftOpen`); monthly max/avg/sessions |
+| **Tab manager** | **⋯** on tab bar — `DATA.tabUi` (`hiddenTabs`, `customTabs`); hide Week/PMP/Jobs; add custom notes-only tabs; `tabUiUpdatedAt` LWW sync; `applyTabUi()` after DATA load |
 | **To-Do (Today)** | Split **Work** and **Other** lists (`list: 'work' \| 'other'` on `DATA.todos`); `mostUrgentTodo()` in now banner |
 | **Band vs timeline** | Band list = intent; `packPeriodBand()` packs in band order (honors `periodPinnedStart`); fixed-window suddens keep clock time |
 | **Sudden tasks** | `dayConfig[date].suddenTasks`; band key `sudden:st_*`; Week tab reads/writes same store |
 | **Skip for today** | `periodSkips` — ✕ on band rows or timeline; **↺ unskip all tasks** in bands footer |
 | **Default bands** | Single model — `periodTemplate` preExam/postExam + hardcoded defaults; empty `night: []` by default |
 | **Notes** | `todayNotes` (scratch), `pmpNotes`, `jobNotes` — each field has own `*UpdatedAt` |
-| **Sync** | Firebase + localStorage; field-level LWW for notes + dayConfig; list LWW for todos, jobTodos, **jobs**; per-date merge for `habitDaily` + `gymLog` |
+| **Sync** | Firebase + localStorage; field-level LWW for notes + dayConfig; list LWW for todos, jobTodos, **jobs**; per-date merge for `habitDaily` + `gymLog`; object LWW for `tabUi` |
 
 All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8pm→midnight or locked work on shift nights).
 
 ---
 
 ## Recently shipped (since `baseline-2026-06-10`)
+
+### Tab manager (`7dfffe9`, fix `3304854`)
+
+- **⋯ Manage tabs** — show/hide Week, PMP Prep, Job Search; Today always on
+- **Custom tabs** — add renameable notes-only focus areas (max 12); debounced save
+- **`DATA.tabUi`** + `tabUiUpdatedAt` — synced via `mergeTabUi`
+- **`applyTabUi()`** — hides tabs + countdowns; switches to Today if active tab hidden
+- **Startup fix** — do not call tab UI before `DATA` loads (was crashing on hard refresh)
+
+### Workout log sync + UX (`b899d59`, `dd69a2c`, `70569b0`)
+
+- **Per-day LWW** for `gymLog` by `updatedAt` (replaced set-union merge that duplicated sets)
+- **`mergeLocal()`** prefers in-memory `DATA` during cloud apply
+- Skip cloud re-render while lift inputs focused; immediate `writeLocal` on lift edits
+- **Collapsible lift disclosure** — `gymLiftOpen` persisted; summary row toggles panel
 
 ### Weekly habits UX (`0dfc253`)
 
@@ -99,6 +115,9 @@ All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8
 - Legacy `weekendPeriodTemplate` / stored `dayType` in cloud data is ignored (not migrated)
 - **`workoutOff`** is session-local (not synced) — prevents gym block from re-checking workout after manual un-mark on same device
 - Weekly habit **%** is binary per day (goal met or not), while grid shows partial progress
+- Lift panel re-renders skip when `gymLiftPanelActive()` (focused weight/reps inputs)
+- **`gymLiftOpen`** syncs open/closed state for lift disclosure
+- **`tabUi`** must load before `applyTabUi()` — calling it in `init()` before `Store.load()` breaks startup
 
 ---
 
