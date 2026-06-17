@@ -901,7 +901,19 @@ function localUpdatedAt(){
   try{const m=JSON.parse(localStorage.getItem(META_KEY)||'{}');return m.updatedAt||0;}catch(e){return 0;}
 }
 function mergeLocal(){
-  return DATA||readLocal();
+  if(!DATA)return readLocal();
+  const stored=readLocal();
+  if(!stored)return JSON.parse(JSON.stringify(DATA));
+  const out=JSON.parse(JSON.stringify(stored));
+  LIST_LWW_FIELDS.forEach(({arr,ts})=>{
+    const dTs=typeof DATA[ts]==='number'?DATA[ts]:0;
+    const sTs=typeof out[ts]==='number'?out[ts]:0;
+    if(dTs>sTs||(dTs>0&&dTs===sTs)){
+      out[arr]=JSON.parse(JSON.stringify(DATA[arr]||[]));
+      if(dTs>0)out[ts]=dTs;
+    }
+  });
+  return out;
 }
 function gymLiftPanelActive(){
   const panel=document.getElementById('gymLiftPanel');
@@ -1113,10 +1125,14 @@ function pickListWinner(local,cloud,arrKey,tsKey,localTime,cloudTime){
   const cTs=cHas?cloud[tsKey]:0;
   if(lTs>cTs)return{list:lArr,ts:lTs};
   if(cTs>lTs)return{list:cArr,ts:cTs};
-  if(!lArr.length&&cArr.length)return{list:cArr,ts:cTs||cloudTime||0};
+  if(!lArr.length&&!cArr.length)return{list:[],ts:Math.max(lTs,cTs,localTime,cloudTime)};
+  if(!lArr.length&&cArr.length){
+    if(lHas&&(!cHas||lTs>=cTs))return{list:lArr,ts:lTs||localTime||0};
+    return{list:cArr,ts:cTs||cloudTime||0};
+  }
   if(lArr.length&&!cArr.length)return{list:lArr,ts:lTs||localTime||0};
-  if(cHas&&!lHas)return{list:cArr,ts:cTs};
   if(lHas&&!cHas)return{list:lArr,ts:lTs};
+  if(cHas&&!lHas)return{list:cArr,ts:cTs};
   // Neither list has field stamp: document time decides; cloud wins on tie.
   if(cloudTime>localTime)return{list:cArr,ts:cloudTime||0};
   if(localTime>cloudTime)return{list:lArr,ts:localTime||0};
@@ -1293,7 +1309,8 @@ const Store={
           const cloud=snap.data().data;
           const cloudTime=snap.data().updatedAt?.toMillis?.()||0;
           const localTime=localUpdatedAt();
-          toPush=mergeAppData(d,cloud,localTime,cloudTime)||d;
+          const local=mergeLocal()||d;
+          toPush=mergeAppData(local,cloud,localTime,cloudTime)||d;
           if(DATA&&dataSnapshotEqual(DATA,toPush)===false){
             DATA=toPush;
             writeLocalAfterSync(DATA,localTime,cloudTime);
@@ -1411,7 +1428,8 @@ function migrateData(){
   }
   repairSuddenBandLinks();
   (DATA.jobs||[]).forEach(j=>{if(!j.id)j.id='job_'+Date.now()+Math.random().toString(36).slice(2,7);});
-  (DATA.todos||[]).forEach(t=>{if(!t.list)t.list='other';});
+  (DATA.todos||[]).forEach(t=>{if(!t.list)t.list='other';if(!t.id)t.id='td_'+Date.now()+Math.random().toString(36).slice(2,7);});
+  (DATA.jobTodos||[]).forEach(t=>{if(!t.id)t.id='jtd_'+Date.now()+Math.random().toString(36).slice(2,7);});
   if(!DATA.habitDaily||typeof DATA.habitDaily!=='object')DATA.habitDaily={};
   if(!DATA.gymLog||typeof DATA.gymLog!=='object')DATA.gymLog={};
   Object.keys(DATA.gymLog).forEach(k=>{
@@ -4358,7 +4376,14 @@ function renderTodoList(listId,countId,clearId,todos,onUpdate,listKey,masterTodo
   if(!todos.length){list.innerHTML='<div class="empty">Nothing here yet — add above.</div>';return;}
   open.sort((a,b)=>{const ad=a.due||'9999-12-31',bd=b.due||'9999-12-31';if(ad!==bd)return ad.localeCompare(bd);return (a.created||'').localeCompare(b.created||'');});
   const ordered=[...open,...done];
-  const refresh=()=>{if(listKey)touchListField(listKey);save();if(masterTodos)renderTodos();else renderTodoList(listId,countId,clearId,todos,onUpdate,listKey);if(onUpdate)onUpdate();};
+  const refresh=()=>{
+    if(listKey)touchListField(listKey);
+    writeLocal(DATA);
+    save(listKey?{urgent:true,silent:true}:undefined);
+    if(masterTodos)renderTodos();
+    else renderTodoList(listId,countId,clearId,todos,onUpdate,listKey,masterTodos);
+    if(onUpdate)onUpdate();
+  };
   ordered.forEach(t=>{
     const idx=store.indexOf(t);
     let badge='';
@@ -5235,10 +5260,11 @@ function wire(){
     touchListField('jobTodos');
     if(jobTodoInput)jobTodoInput.value='';
     if(jobTodoDue)jobTodoDue.value='';
-    save();renderJobTodos();
+    writeLocal(DATA);
+    save({urgent:true});renderJobTodos();
   };
   if(jobTodoInput)jobTodoInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&addJobTodoBtn)addJobTodoBtn.click();});
-  if(clearJobDoneBtn)clearJobDoneBtn.onclick=()=>{DATA.jobTodos=(DATA.jobTodos||[]).filter(t=>!t.done);touchListField('jobTodos');save();renderJobTodos();};
+  if(clearJobDoneBtn)clearJobDoneBtn.onclick=()=>{DATA.jobTodos=(DATA.jobTodos||[]).filter(t=>!t.done);touchListField('jobTodos');writeLocal(DATA);save({urgent:true});renderJobTodos();};
   document.querySelectorAll('.domain input').forEach(inp=>{
     inp.addEventListener('input',e=>{const k=e.target.closest('.domain').dataset.d;DATA.domains[k]=parseInt(e.target.value);e.target.closest('.domain').querySelector('.dv').textContent=e.target.value+'%';weighted.textContent=Math.round((DATA.domains.people*.42)+(DATA.domains.process*.50)+(DATA.domains.business*.08))+'%';});
     inp.addEventListener('change',save);
