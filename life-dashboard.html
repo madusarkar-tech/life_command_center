@@ -1435,10 +1435,19 @@ function ensureTabUi(){
   }));
 }
 function touchTabUi(){DATA.tabUiUpdatedAt=Date.now();}
-function isTabHidden(id){ensureTabUi();return DATA.tabUi.hiddenTabs.includes(id);}
-function isTabVisible(id){
+function isTabHidden(id){
+  if(!DATA)return false;
   ensureTabUi();
+  return DATA.tabUi.hiddenTabs.includes(id);
+}
+function isTabVisible(id){
   if(id==='today')return true;
+  if(!DATA){
+    if(id==='pmp')return isPmpActive();
+    if(id==='week'||id==='jobs')return true;
+    return false;
+  }
+  ensureTabUi();
   if(id.startsWith('ct_'))return DATA.tabUi.customTabs.some(t=>t.id===id);
   if(id==='pmp')return isPmpActive()&&!isTabHidden('pmp');
   if(id==='week'||id==='jobs')return !isTabHidden(id);
@@ -1464,6 +1473,7 @@ function activateTab(tabId){
   if(tabId==='week')renderWeekCalendar();
 }
 function applyTabUi(){
+  if(!DATA)return;
   ensureTabUi();
   MANAGED_BUILTIN_TABS.forEach(({id})=>{
     const tab=document.querySelector(`nav.tabs button[data-v="${id}"]`);
@@ -5288,7 +5298,6 @@ function wire(){
 
 async function init(){
   initFirebase();
-  applyTabUi();
   if(isPmpActive()){
     try{await ensurePmpQuestionsScript();}catch(e){console.warn('PMP questions',e);}
   }
