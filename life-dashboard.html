@@ -463,8 +463,17 @@
   .gym-week-grid th.hwk-day.today .day-num{color:var(--gold)}
   .gym-week-grid .plan-cell{cursor:pointer;user-select:none}
   .gym-week-grid .dot.plan{cursor:pointer}
-  .gym-lift-panel{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)}
-  .gym-lift-panel .glp-head{font-size:12px;font-weight:700;color:var(--muted2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em}
+  .gym-lift-panel{margin-top:0;padding-top:0;border-top:none}
+  .gym-lift-disclosure{border:1px solid var(--line-soft);border-radius:12px;overflow:hidden;background:var(--bg2);margin-top:14px}
+  .gym-lift-disclosure summary.gym-lift-summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;color:var(--text);user-select:none}
+  .gym-lift-disclosure summary.gym-lift-summary::-webkit-details-marker{display:none}
+  .gym-lift-disclosure summary.gym-lift-summary::marker{content:''}
+  .gym-lift-disclosure .tri{width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid var(--sage);flex-shrink:0;transition:transform .2s ease}
+  .gym-lift-disclosure[open] .tri{transform:rotate(90deg)}
+  .gym-lift-disclosure .sum-txt{flex:0 1 auto;min-width:0}
+  .gym-lift-disclosure .sum-hint{font-size:12px;font-weight:500;color:var(--muted);flex:1;min-width:0;text-align:right}
+  .gym-lift-disclosure .gym-lift-body{padding:0 16px 16px;border-top:1px solid var(--line-soft)}
+  .gym-lift-disclosure:not([open]) .gym-lift-body{display:none}
   .todo-section{margin-bottom:18px}
   .todo-section:last-child{margin-bottom:0}
   .todo-section h3{font-family:'Fraunces',serif;font-size:16px;font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:8px}
@@ -672,7 +681,14 @@
     </div>
     <div class="gym-week-stats" id="gymWeekStats"></div>
     <div class="gym-week-scroll"><div id="gymWeekGrid"></div></div>
-    <div id="gymLiftPanel"></div>
+    <details class="gym-lift-disclosure" id="gymLiftDisclosure" style="display:none">
+      <summary class="gym-lift-summary">
+        <span class="tri" aria-hidden="true"></span>
+        <span class="sum-txt" id="gymLiftSumTxt">Lift log</span>
+        <span class="sum-hint" id="gymLiftSummaryHint">Tap to expand</span>
+      </summary>
+      <div class="gym-lift-body gym-lift-panel" id="gymLiftPanel"></div>
+    </details>
     <details class="gym-month-summary" id="gymMonthDetails">
       <summary>Monthly lift summary</summary>
       <div style="padding-top:10px">
@@ -1260,7 +1276,7 @@ const Store={
   }
 };
 let DATA=null;
-function defaults(){return{scheduleChecks:{},habits:{},habitDaily:{},gymLog:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,periodPlanOpen:false,periodTemplate:null,alarmOn:true,alarmEndOn:true,alarmEndTasks:null};}
+function defaults(){return{scheduleChecks:{},habits:{},habitDaily:{},gymLog:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,gymLiftOpen:true,periodPlanOpen:false,periodTemplate:null,alarmOn:true,alarmEndOn:true,alarmEndTasks:null};}
 const PMP=new Date('2026-06-22T00:00:00');
 const PMP_EXAM_KEY='2026-06-22';
 const JOB=new Date('2026-08-01T00:00:00');
@@ -2293,6 +2309,7 @@ function gymPlanForDay(dayKey){
 function toggleGymPlan(dayKey,rowId){
   const day=gymDayLog(dayKey,true);
   day.plan[rowId]=!day.plan[rowId];
+  if(rowId==='lift'&&day.plan.lift)DATA.gymLiftOpen=true;
   touchGymDay(dayKey);
 }
 function gymWeekCount(rowId,dayKeys){
@@ -2621,16 +2638,18 @@ function renderGymLiftPanel(dayKey,panelEl){
   if(!panelEl)return;
   panelEl.innerHTML='';
   const plan=gymPlanForDay(dayKey);
-  if(!plan.lift){
-    panelEl.style.display='none';
-    return;
-  }
-  panelEl.style.display='';
+  if(!plan.lift)return;
   const day=gymDayLog(dayKey,true);
-  const head=document.createElement('div');
-  head.className='glp-head';
-  head.textContent='Lift log · '+formatDayKeyLabel(dayKey);
-  panelEl.appendChild(head);
+  const sumTxt=document.getElementById('gymLiftSumTxt');
+  const hintEl=document.getElementById('gymLiftSummaryHint');
+  const editLbl=dayKey===activeDayKey()?'Today':formatDayKeyLabel(dayKey);
+  if(sumTxt)sumTxt.textContent='Lift log · '+editLbl;
+  if(hintEl){
+    const n=day.exercises.length;
+    const sets=day.exercises.reduce((a,ex)=>a+(ex.sets||[]).length,0);
+    if(!n)hintEl.textContent='Tap to expand';
+    else hintEl.textContent=n+' exercise'+(n===1?'':'s')+' · '+sets+' set'+(sets===1?'':'s');
+  }
   const presetsEl=document.createElement('div');
   presetsEl.className='gym-presets';
   presetsEl.id='gymPresets';
@@ -2725,6 +2744,7 @@ function renderGymLog(){
   const statsEl=document.getElementById('gymWeekStats');
   const gridWrap=document.getElementById('gymWeekGrid');
   const panelEl=document.getElementById('gymLiftPanel');
+  const liftDisc=document.getElementById('gymLiftDisclosure');
   const monthLabel=document.getElementById('gymMonthLabel');
   const monthStats=document.getElementById('gymMonthStats');
   if(!gridWrap)return;
@@ -2778,10 +2798,14 @@ function renderGymLog(){
   table.appendChild(tbody);
   gridWrap.innerHTML='';
   gridWrap.appendChild(table);
-  if(panelEl){
-    panelEl.className='gym-lift-panel';
-    renderGymLiftPanel(selKey,panelEl);
-  }
+  const selPlan=gymPlanForDay(selKey);
+  if(liftDisc){
+    if(selPlan.lift){
+      liftDisc.style.display='';
+      if(panelEl)renderGymLiftPanel(selKey,panelEl);
+      setDetailsOpen(liftDisc,DATA.gymLiftOpen!==false);
+    }else liftDisc.style.display='none';
+  }else if(panelEl)renderGymLiftPanel(selKey,panelEl);
   const{ym,label,keys}=monthKeysForOffset(gymMonthOffset);
   if(monthLabel)monthLabel.textContent=label;
   if(monthStats){
@@ -4968,6 +4992,11 @@ function wire(){
     scratchDisclosure.addEventListener('toggle',()=>{DATA.scratchpadOpen=scratchDisclosure.open;save();});
   }
   setDetailsOpen(scratchDisclosure,!!DATA.scratchpadOpen);
+  const gymLiftDisclosure=document.getElementById('gymLiftDisclosure');
+  if(gymLiftDisclosure&&!gymLiftDisclosure.dataset.wired){
+    gymLiftDisclosure.dataset.wired='1';
+    gymLiftDisclosure.addEventListener('toggle',()=>{DATA.gymLiftOpen=gymLiftDisclosure.open;save({silent:true});});
+  }
   let todayScratchTimer;
   const todayScratchEl=document.getElementById('todayScratch');
   if(todayScratchEl){
