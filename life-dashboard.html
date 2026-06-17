@@ -420,12 +420,16 @@
   .habit-week-grid th.hwk-day.sel{background:rgba(184,120,12,.14);color:var(--gold)}
   .habit-week-grid .habit-lbl{text-align:left;font-weight:600;color:var(--text);white-space:nowrap}
   .habit-week-grid .habit-lbl small{display:block;font-weight:500;color:var(--muted);font-size:10px}
-  .habit-week-grid .dot{display:inline-block;width:22px;height:22px;line-height:22px;border-radius:6px;font-size:11px;font-weight:800}
+  .habit-week-grid td.habit-cell{cursor:pointer;user-select:none}
+  .habit-week-grid .dot{display:inline-block;min-width:22px;height:22px;line-height:22px;padding:0 3px;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer}
+  .habit-week-grid .dot.prog{min-width:30px;font-size:10px;font-variant-numeric:tabular-nums}
   .habit-week-grid .dot.ok{background:rgba(74,122,61,.14);color:var(--sage)}
   .habit-week-grid .dot.no{background:var(--bg2);color:var(--muted2)}
   .habit-week-grid .dot.today{outline:2px solid rgba(184,120,12,.45)}
-  .habit-today-panel{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)}
-  .habit-today-panel .ht-label{font-size:12px;font-weight:700;color:var(--muted2);margin-bottom:10px}
+  .habit-today-panel{margin-top:14px}
+  .habit-edit-box{background:var(--bg2);border:1px solid var(--line-soft);border-radius:12px;padding:14px 14px 6px}
+  .habit-edit-box .ht-label{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--text);margin-bottom:2px}
+  .habit-edit-box .ht-hint{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.35}
   .habit-field{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
   .habit-field .hf-name{font-weight:600;font-size:14px}
   .habit-field .hf-name small{display:block;font-weight:500;font-size:11px;color:var(--muted)}
@@ -614,7 +618,7 @@
     <div class="sidebar-col">
       <div class="card" id="habitWeeklyCard">
         <h2>📊 Weekly habits</h2>
-        <div class="h-sub" id="habitWeekRange">Sun–Sat · tap a day to edit</div>
+        <div class="h-sub" id="habitWeekRange">Sun–Sat · tap grid to log</div>
         <div class="habit-week-summary" id="habitWeekSummary"></div>
         <div id="habitWeekGrid"></div>
         <div class="habit-today-panel" id="habitTodayPanel"></div>
@@ -1381,6 +1385,7 @@ function toggleBlockDone(blockId){
   if(blockId==='gym'&&ch[blockId]){
     const entry=habitEntryForDay(activeDayKey(),true);
     entry.workout=true;
+    delete entry.workoutOff;
   }
 }
 
@@ -2231,6 +2236,7 @@ const WEEK_CAL_END_H=24;
 let weekViewOffset=0;
 let calModalCtx=null;
 let habitEditDayKey=null;
+let habitFocusSleep=false;
 let gymWeekOffset=0;
 let gymEditDayKey=null;
 let gymMonthOffset=0;
@@ -2303,8 +2309,104 @@ function maybeSyncWorkoutHabit(dayKey){
   const ch=dayChecks();
   if(ws!=='skip'&&ch.gym){
     const entry=habitEntryForDay(dayKey,true);
-    if(!entry.workout){entry.workout=true;}
+    if(!entry.workoutOff&&!entry.workout)entry.workout=true;
   }
+}
+function habitGridLabel(trackId,entry){
+  const e=entry||{};
+  if(trackId==='sleep'){
+    if(habitTrackMet('sleep',e))return{text:'✓',met:true,prog:false};
+    const h=parseFloat(e.sleepHrs);
+    if(!isNaN(h)&&h>0)return{text:String(h),met:false,prog:true};
+    return{text:'·',met:false,prog:false};
+  }
+  if(trackId==='workout'){
+    const on=!!e.workout;
+    return{text:on?'✓':'·',met:on,prog:false};
+  }
+  if(trackId==='water'){
+    const w=parseInt(e.water,10)||0;
+    if(w>=WATER_HABIT_MIN)return{text:'✓',met:true,prog:false};
+    if(w>0)return{text:w+'/'+WATER_HABIT_MIN,met:false,prog:true};
+    return{text:'·',met:false,prog:false};
+  }
+  return{text:'·',met:false,prog:false};
+}
+function habitTapCell(trackId,dayKey){
+  habitEditDayKey=dayKey;
+  const entry=habitEntryForDay(dayKey,true);
+  if(trackId==='water'){
+    entry.water=(entry.water|0)+1;
+    save();renderHabitWeekly();habitScrollPanel();
+    return;
+  }
+  if(trackId==='workout'){
+    entry.workout=!entry.workout;
+    if(entry.workout)delete entry.workoutOff;
+    else entry.workoutOff=true;
+    save();renderHabitWeekly();habitScrollPanel();
+    return;
+  }
+  if(trackId==='sleep'){
+    habitFocusSleep=true;
+    renderHabitWeekly();
+  }
+}
+function habitScrollPanel(){
+  const panel=document.getElementById('habitTodayPanel');
+  if(panel)requestAnimationFrame(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}));
+}
+function commitSleepHrs(entry,inputEl,live){
+  const v=parseFloat(inputEl.value);
+  entry.sleepHrs=isNaN(v)||inputEl.value===''?null:v;
+  if(live){
+    refreshHabitGrid();
+    clearTimeout(commitSleepTimer);
+    commitSleepTimer=setTimeout(()=>save(),400);
+    return;
+  }
+  clearTimeout(commitSleepTimer);
+  save();renderHabitWeekly();
+}
+let commitSleepTimer;
+function refreshHabitGrid(){
+  const gridEl=document.getElementById('habitWeekGrid');
+  const summaryEl=document.getElementById('habitWeekSummary');
+  const dayKeys=weekDayKeys(0);
+  if(summaryEl){
+    let overall=0;
+    const stats=summaryEl.querySelectorAll('.hw-stat');
+    HABIT_TRACKS.forEach((tr,i)=>{
+      const pct=habitWeekPct(tr.id,dayKeys);
+      overall+=pct;
+      const el=stats[i];
+      if(el){
+        const vEl=el.querySelector('.v');
+        if(vEl)vEl.textContent=pct+'%';
+      }
+    });
+    const ov=stats[HABIT_TRACKS.length];
+    if(ov){
+      const vEl=ov.querySelector('.v');
+      if(vEl)vEl.textContent=Math.round(overall/HABIT_TRACKS.length)+'%';
+    }
+  }
+  if(!gridEl)return;
+  const rows=gridEl.querySelectorAll('tbody tr');
+  HABIT_TRACKS.forEach((tr,ri)=>{
+    const row=rows[ri];
+    if(!row)return;
+    const cells=row.querySelectorAll('td.habit-cell');
+    dayKeys.forEach((dk,di)=>{
+      const td=cells[di];
+      if(!td)return;
+      const lab=habitGridLabel(tr.id,habitEntryForDay(dk));
+      const dot=td.querySelector('.dot');
+      if(!dot)return;
+      dot.className='dot '+(lab.met?'ok':'no')+(lab.prog?' prog':'')+(dk===activeDayKey()?' today':'');
+      dot.textContent=lab.text;
+    });
+  });
 }
 function monthKeysForOffset(offset){
   const p=activeDayKey().split('-').map(Number);
@@ -2351,7 +2453,7 @@ function renderHabitWeekly(){
   if(!gridEl||!panelEl)return;
   const dayKeys=weekDayKeys(0);
   const editKey=habitEditDayKey&&dayKeys.includes(habitEditDayKey)?habitEditDayKey:activeDayKey();
-  if(rangeEl)rangeEl.textContent=weekRangeLabel(0)+' · tap a day to edit';
+  if(rangeEl)rangeEl.textContent=weekRangeLabel(0)+' · tap grid to log';
   if(summaryEl){
     summaryEl.innerHTML='';
     let overall=0;
@@ -2395,10 +2497,16 @@ function renderHabitWeekly(){
     row.appendChild(lbl);
     dayKeys.forEach(dk=>{
       const td=document.createElement('td');
-      const met=habitTrackMet(tr.id,habitEntryForDay(dk));
+      td.className='habit-cell';
+      const cellEntry=habitEntryForDay(dk);
+      const lab=habitGridLabel(tr.id,cellEntry);
       const dot=document.createElement('span');
-      dot.className='dot '+(met?'ok':'no')+(dk===activeDayKey()?' today':'');
-      dot.textContent=met?'✓':'·';
+      dot.className='dot '+(lab.met?'ok':'no')+(lab.prog?' prog':'')+(dk===activeDayKey()?' today':'');
+      dot.textContent=lab.text;
+      const dayLbl=formatDayKeyLabel(dk);
+      dot.title=dayLbl+' — '+tr.nm+(tr.id==='water'?' · tap +1 glass':tr.id==='workout'?' · tap to toggle':' · tap to log hours');
+      dot.onclick=e=>{e.stopPropagation();habitTapCell(tr.id,dk);};
+      td.onclick=()=>habitTapCell(tr.id,dk);
       td.appendChild(dot);
       row.appendChild(td);
     });
@@ -2409,25 +2517,41 @@ function renderHabitWeekly(){
   gridEl.appendChild(table);
   const entry=habitEntryForDay(editKey,true);
   const editLbl=editKey===activeDayKey()?'Today':formatDayKeyLabel(editKey);
-  panelEl.innerHTML=`<div class="ht-label">Edit · ${editLbl}</div>`;
+  panelEl.innerHTML='';
+  const editBox=document.createElement('div');
+  editBox.className='habit-edit-box';
+  const head=document.createElement('div');
+  head.className='ht-label';
+  head.textContent='Log '+editLbl.toLowerCase();
+  const hint=document.createElement('div');
+  hint.className='ht-hint';
+  hint.textContent='Tap the grid above for quick log · use fields below for sleep hours and water adjustments';
+  editBox.appendChild(head);
+  editBox.appendChild(hint);
   const sleepRow=document.createElement('div');
   sleepRow.className='habit-field';
   sleepRow.innerHTML=`<div class="hf-name">😴 Sleep<small>Hours slept (≥ ${SLEEP_HABIT_MIN})</small></div>`;
   const sleepIn=document.createElement('input');
   sleepIn.type='number';sleepIn.className='hf-sleep';sleepIn.min='0';sleepIn.max='24';sleepIn.step='0.5';
   sleepIn.placeholder='hrs';sleepIn.value=entry.sleepHrs!=null?entry.sleepHrs:'';
-  sleepIn.onchange=()=>{const v=parseFloat(sleepIn.value);entry.sleepHrs=isNaN(v)?null:v;save();renderHabitWeekly();};
+  sleepIn.oninput=()=>commitSleepHrs(entry,sleepIn,true);
+  sleepIn.onchange=()=>commitSleepHrs(entry,sleepIn,false);
   sleepRow.appendChild(sleepIn);
-  panelEl.appendChild(sleepRow);
+  editBox.appendChild(sleepRow);
   const woRow=document.createElement('div');
   woRow.className='habit-field';
   woRow.innerHTML=`<div class="hf-name">🏋️ Workout<small>Mark when you worked out</small></div>`;
   const woBtn=document.createElement('button');
   woBtn.type='button';woBtn.className='habit-toggle'+(entry.workout?' on':'');
   woBtn.textContent=entry.workout?'✓ Done':'Mark done';
-  woBtn.onclick=()=>{entry.workout=!entry.workout;save();renderHabitWeekly();};
+  woBtn.onclick=()=>{
+    entry.workout=!entry.workout;
+    if(entry.workout)delete entry.workoutOff;
+    else entry.workoutOff=true;
+    save();renderHabitWeekly();
+  };
   woRow.appendChild(woBtn);
-  panelEl.appendChild(woRow);
+  editBox.appendChild(woRow);
   const waterRow=document.createElement('div');
   waterRow.className='habit-field';
   waterRow.innerHTML=`<div class="hf-name">💧 Water<small>Glasses today (goal ${WATER_HABIT_MIN})</small></div>`;
@@ -2443,7 +2567,12 @@ function renderHabitWeekly(){
   wPlus.onclick=()=>{entry.water=(entry.water|0)+1;save();renderHabitWeekly();};
   step.appendChild(wMinus);step.appendChild(wVal);step.appendChild(wPlus);
   waterRow.appendChild(step);
-  panelEl.appendChild(waterRow);
+  editBox.appendChild(waterRow);
+  panelEl.appendChild(editBox);
+  if(habitFocusSleep){
+    habitFocusSleep=false;
+    requestAnimationFrame(()=>{sleepIn.focus();sleepIn.select();panelEl.scrollIntoView({behavior:'smooth',block:'nearest'});});
+  }
 }
 function renderGymLiftPanel(dayKey,panelEl){
   if(!panelEl)return;
@@ -4723,8 +4852,10 @@ function wire(){
   if(calEventModal)calEventModal.addEventListener('click',e=>{if(e.target===calEventModal)closeCalEventModal();});
   const addSessBtn=document.getElementById('addSess');
   if(addSessBtn)addSessBtn.onclick=()=>{const m=parseInt(sMins.value);if(!m||m<1){sMins.focus();return;}logStudyMinutes(m,sTopic.value);sMins.value='';sTopic.value='';save();renderPMP();};
-  wakeTime.onchange=()=>{setWakeTime(wakeTime.value||'10:00',true);renderSched();renderNowBanner();renderHabitWeekly();};
-  wokeBtn.onclick=()=>{
+  const wakeTimeEl=document.getElementById('wakeTime');
+  const wokeBtnEl=document.getElementById('wokeBtn');
+  if(wakeTimeEl)wakeTimeEl.onchange=()=>{setWakeTime(wakeTimeEl.value||'10:00',true);renderSched();renderNowBanner();renderHabitWeekly();};
+  if(wokeBtnEl)wokeBtnEl.onclick=()=>{
     const c=cfg();
     if(c.wakeLocked){
       c.wakeLocked=false;
@@ -4735,14 +4866,18 @@ function wire(){
     }
     const n=new Date();
     const t=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');
-    wakeTime.value=t;
+    if(wakeTimeEl)wakeTimeEl.value=t;
     setWakeTime(t,true);
     renderSched();renderNowBanner();renderHabitWeekly();
     flash('Wake time saved for today');
   };
   if(sTopic&&addSessBtn)sTopic.addEventListener('keydown',e=>{if(e.key==='Enter')addSessBtn.click();});
-  addJob.onclick=()=>{const c=jCo.value.trim();if(!c){jCo.focus();return;}DATA.jobs.push({id:'job_'+Date.now(),company:c,role:jRo.value.trim(),status:jSt.value});touchListField('jobs');jCo.value='';jRo.value='';save();renderJobs();renderCountdowns();};
-  jRo.addEventListener('keydown',e=>{if(e.key==='Enter')addJob.click();});
+  const addJobBtn=document.getElementById('addJob');
+  const jCoEl=document.getElementById('jCo');
+  const jRoEl=document.getElementById('jRo');
+  const jStEl=document.getElementById('jSt');
+  if(addJobBtn)addJobBtn.onclick=()=>{const c=jCoEl&&jCoEl.value.trim();if(!c){if(jCoEl)jCoEl.focus();return;}DATA.jobs.push({id:'job_'+Date.now(),company:c,role:jRoEl&&jRoEl.value.trim()||'',status:jStEl&&jStEl.value||'lead'});touchListField('jobs');if(jCoEl)jCoEl.value='';if(jRoEl)jRoEl.value='';save();renderJobs();renderCountdowns();};
+  if(jRoEl&&addJobBtn)jRoEl.addEventListener('keydown',e=>{if(e.key==='Enter')addJobBtn.click();});
   const addJobTodoBtn=document.getElementById('addJobTodo');
   const jobTodoInput=document.getElementById('jobTodoInput');
   const jobTodoDue=document.getElementById('jobTodoDue');
