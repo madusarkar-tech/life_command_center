@@ -2213,7 +2213,7 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
       return;
     }
     const pinMin=getPeriodPinStart(taskKey,dayKey);
-    const pinAt=pinMin!=null?Math.max(pinMin,bandStart):null;
+    const pinAt=pinMin!=null?Math.max(toMin(pinMin),bandStart):null;
     start=pinAt!=null?pinAt:cur;
     if(pinAt!=null&&start<cur){
       block.overflow=true;
