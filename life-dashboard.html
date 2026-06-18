@@ -2035,21 +2035,30 @@ function moveOpenSlotPeriod(dayKey,slotId,toPeriod){
   const found=findOpenSlot(dayKey,slotId);
   if(!found)return;
   const c=dayCfg(dayKey);
-  const wake=c.wake;
+  if(toPeriod==='night'&&hasWorkShift(dayKey))return;
   const iv=slotInterval(found.slot);
   if(!iv)return;
-  let dest=toPeriod;
-  const bounds=bandClockBounds(dest,wake);
-  if(iv.s<bounds.start||iv.e>bounds.end)dest=bandForClockRange(iv.s,iv.e,wake);
-  if(dest==='night'&&hasWorkShift(dayKey))return;
+  const bounds=bandClockBounds(toPeriod,c.wake);
+  const dur=iv.len;
+  let start=iv.s,end=iv.e;
+  if(start<bounds.start||end>bounds.end){
+    start=bounds.start;
+    end=Math.min(bounds.start+dur,bounds.end);
+    if(end-start<5)return;
+    found.slot.start=minToTime(start);
+    found.slot.end=minToTime(end);
+    found.slot.auto=false;
+    if(found.slot.kind==='open')found.slot.kind='activity';
+  }
   const from=found.period;
-  if(from===dest)return;
+  if(from===toPeriod)return;
   if(!c.periodOpenSlots)c.periodOpenSlots={};
   c.periodOpenSlots[from]=(c.periodOpenSlots[from]||[]).filter(s=>s.id!==slotId);
-  if(!c.periodOpenSlots[dest])c.periodOpenSlots[dest]=[];
-  c.periodOpenSlots[dest].push(found.slot);
-  c.periodOpenSlots[dest].sort((a,b)=>pinToMin(a.start)-pinToMin(b.start));
+  if(!c.periodOpenSlots[toPeriod])c.periodOpenSlots[toPeriod]=[];
+  c.periodOpenSlots[toPeriod].push(found.slot);
+  c.periodOpenSlots[toPeriod].sort((a,b)=>pinToMin(a.start)-pinToMin(b.start));
   touchDayField(dayKey,'periodOpenSlots');
+  return{shifted:start!==iv.s||end!==iv.e,start,end};
 }
 function periodTaskLabel(key,dayKey){
   if(key.startsWith('open:')){
@@ -2683,7 +2692,11 @@ function movePeriodTask(taskKey,toPeriod,ctx){
   const keys=periodKeysForDayKey(dayKey);
   if(!keys.includes(toPeriod))return;
   if(toPeriod==='night'&&hasWorkShift(dayKey))return;
-  if(isOpenSlotKey(taskKey)){moveOpenSlotPeriod(dayKey,openSlotIdFromKey(taskKey),toPeriod);return;}
+  if(isOpenSlotKey(taskKey)){
+    const r=moveOpenSlotPeriod(dayKey,openSlotIdFromKey(taskKey),toPeriod);
+    if(r&&r.shifted)flash('Moved to '+PERIOD_LABELS[toPeriod]+' · '+fmt12(minToTime(r.start))+'–'+fmt12(minToTime(r.end)));
+    return;
+  }
   const c=dayCfg(dayKey);
   if(taskKey.startsWith('extra:')){
     const id=taskKey.slice(6);
@@ -2699,6 +2712,12 @@ function movePeriodTask(taskKey,toPeriod,ctx){
       c.periodExtras[toPeriod].push(item);
     }
   }else if(isMovablePeriodTask(taskKey,dayKey)){
+    const pin=getPeriodPinStart(taskKey,dayKey);
+    if(pin){
+      const b=bandClockBounds(toPeriod,dayCfg(dayKey).wake);
+      const pm=pinToMin(pin);
+      if(pm!=null&&(pm<b.start||pm>=b.end))setPeriodPinStart(taskKey,dayKey,null);
+    }
     if(!c.periodMoves)c.periodMoves={};
     c.periodMoves[taskKey]=toPeriod;
   }else return;
