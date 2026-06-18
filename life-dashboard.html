@@ -144,7 +144,11 @@
   .blk{display:grid;grid-template-columns:84px 1fr auto;align-items:center;gap:14px;padding:11px 12px;border-radius:11px;border:1px solid transparent;transition:.2s;cursor:pointer;position:relative}
   .blk:hover{background:var(--surface2)}
   .blk.info{cursor:default}.blk.info:hover{background:transparent}
-  .blk.flex{opacity:.92;border-style:dashed}
+  .period-task.pt-open{background:var(--bg2)}
+  .period-task.pt-open .pt-lab input{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:4px 8px;font-size:13px;font-weight:600;width:100%;min-width:80px}
+  .period-task .pt-times{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11px}
+  .period-task .pt-times input[type=time]{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:3px 6px;font-size:12px}
+  .blk.open-slot{opacity:.92;border-style:dashed}
   .blk.anchored .lab small{color:var(--gold-soft)}
   .fixtag{font-size:10px;background:rgba(127,168,201,.18);color:var(--sky);font-weight:800;padding:2px 7px;border-radius:20px;letter-spacing:.06em;margin-left:6px;vertical-align:middle}
   .blk .time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);font-weight:600;font-family:'Fraunces',serif}
@@ -935,7 +939,7 @@ function userDoc(uid){return firebase.firestore().collection('users').doc(uid);}
 
 const DAY_LWW_FIELDS=[
   'wake','wakeLocked','dayType','workout','nonFixedPick',
-  'periodOrder','periodMoves','blockDur','periodSkips','periodPinnedStart','periodExtras','suddenTasks'
+  'periodOrder','periodMoves','blockDur','periodSkips','periodPinnedStart','periodExtras','periodOpenSlots','suddenTasks'
 ];
 function touchDayField(dayKey,...fields){
   const c=dayCfg(dayKey||activeDayKey());
@@ -1747,6 +1751,7 @@ function periodKeysForDayType(dt){return PERIOD_KEYS;}
 function periodEndMap(dt){return PERIOD_END;}
 function periodWindowsFor(dt){return PERIOD_WINDOWS;}
 function isMovablePeriodTask(taskKey,dayKey){
+  if(isOpenSlotKey(taskKey))return true;
   if(isSuddenTaskKey(taskKey)||taskKey.startsWith('extra:'))return true;
   if(hasWorkShift(dayKey))return MOVABLE_SHIFT_TASKS.has(taskKey);
   return MOVABLE_SHIFT_TASKS.has(taskKey)||MOVABLE_OFF_SHIFT_EXTRA.has(taskKey);
@@ -1770,7 +1775,256 @@ function findPeriodExtra(dayKey,extraId){
   }
   return null;
 }
+const DEFAULT_OPEN_SLOT_NAME='Open time';
+function isOpenSlotKey(taskKey){return taskKey.startsWith('open:');}
+function openSlotKey(id){return 'open:'+id;}
+function openSlotIdFromKey(taskKey){return taskKey.slice(5);}
+function ensurePeriodOpenSlots(c){
+  if(!c.periodOpenSlots)c.periodOpenSlots=null;
+}
+function findOpenSlot(dayKey,slotId){
+  const c=dayCfg(dayKey);
+  if(!c.periodOpenSlots)return null;
+  for(const p of PERIOD_KEYS){
+    const hit=(c.periodOpenSlots[p]||[]).find(s=>s.id===slotId);
+    if(hit)return{slot:hit,period:p};
+  }
+  return null;
+}
+function bandClockBounds(period,wakeMin){
+  const wake=toMin(wakeMin);
+  if(period==='morning')return{start:wake,end:PERIOD_END.morning};
+  if(period==='afternoon')return{start:PERIOD_END.morning,end:PERIOD_END.afternoon};
+  if(period==='evening')return{start:PERIOD_END.afternoon,end:PERIOD_END.evening};
+  if(period==='night')return{start:PERIOD_END.evening,end:PERIOD_END.night};
+  return{start:wake,end:PERIOD_END.morning};
+}
+function bandForClockRange(startMin,endMin,wakeMin){
+  const wake=toMin(wakeMin);
+  if(startMin>=wake&&endMin<=PERIOD_END.morning)return'morning';
+  if(startMin>=PERIOD_END.morning&&endMin<=PERIOD_END.afternoon)return'afternoon';
+  if(startMin>=PERIOD_END.afternoon&&endMin<=PERIOD_END.evening)return'evening';
+  if(startMin>=PERIOD_END.evening&&endMin<=PERIOD_END.night)return'night';
+  if(startMin<PERIOD_END.morning)return'morning';
+  if(startMin<PERIOD_END.afternoon)return'afternoon';
+  if(startMin<PERIOD_END.evening)return'evening';
+  return'night';
+}
+function slotInterval(slot){
+  const s=pinToMin(slot.start),e=pinToMin(slot.end);
+  if(!Number.isFinite(s)||!Number.isFinite(e)||e<=s)return null;
+  return{s,e,len:e-s};
+}
+function intervalsOverlap(a,b){return a.s<b.e&&b.s<a.e;}
+function subtractIntervalFromList(intervals,sub){
+  const out=[];
+  intervals.forEach(iv=>{
+    if(!intervalsOverlap(iv,sub)){out.push(iv);return;}
+    if(sub.s>iv.s)out.push({s:iv.s,e:sub.s,len:sub.s-iv.s});
+    if(sub.e<iv.e)out.push({s:sub.e,e:iv.e,len:iv.e-sub.e});
+  });
+  return out.filter(x=>x.len>=5);
+}
+function intersectSlotWithGaps(slot,gaps){
+  const iv=slotInterval(slot);
+  if(!iv)return null;
+  let parts=[];
+  gaps.forEach(g=>{
+    const s=Math.max(iv.s,g.start),e=Math.min(iv.e,g.end);
+    if(e-s>=5)parts.push({s,e,len:e-s});
+  });
+  if(!parts.length)return null;
+  parts.sort((a,b)=>a.s-b.s);
+  const p=parts[0];
+  return{...slot,start:minToTime(p.s),end:minToTime(p.e)};
+}
+function clipActivitySlotsToGaps(activities,gaps,reserved){
+  const out=[];
+  activities.forEach(slot=>{
+    const clipped=intersectSlotWithGaps(slot,gaps);
+    if(clipped){
+      const iv=slotInterval(clipped);
+      const hits=reserved.some(r=>intervalsOverlap(iv,{s:r.start,e:r.end}));
+      if(hits)clipped.overflow=true;
+      out.push(clipped);
+    }else{
+      out.push({...slot,overflow:true});
+    }
+  });
+  return out;
+}
+function gapsMinusSlots(gaps,slots){
+  let free=gaps.map(g=>({s:g.start,e:g.end,len:g.end-g.start}));
+  slots.forEach(slot=>{
+    const iv=slotInterval(slot);
+    if(!iv)return;
+    free=free.reduce((acc,g)=>acc.concat(subtractIntervalFromList([g],iv)),[]);
+  });
+  return free.filter(g=>g.len>=5);
+}
+function syncPeriodOpenSlotsForBand(dayKey,period,bandStart,bandEnd,reserved){
+  const c=dayCfg(dayKey);
+  ensurePeriodOpenSlots(c);
+  if(!c.periodOpenSlots)c.periodOpenSlots={};
+  const gaps=findGapsInWindow(
+    reserved.map(r=>({s:r.start,e:r.end})),
+    bandStart,bandEnd
+  ).map(g=>({start:g.start,end:g.end,len:g.end-g.start}));
+  const stored=(c.periodOpenSlots[period]||[]).slice();
+  const activities=clipActivitySlotsToGaps(
+    stored.filter(s=>s.kind==='activity'),
+    gaps,reserved
+  );
+  let freeGaps=gapsMinusSlots(gaps,activities);
+  const openSlots=freeGaps.map((g,i)=>{
+    const reuse=stored.find(s=>s.kind==='open'&&s.auto&&slotInterval(s)&&intervalsOverlap(slotInterval(s),{s:g.s,e:g.e}));
+    return{
+      id:reuse?reuse.id:'os_'+Date.now()+'_'+i,
+      kind:'open',
+      name:DEFAULT_OPEN_SLOT_NAME,
+      start:minToTime(g.s),
+      end:minToTime(g.e),
+      auto:true
+    };
+  });
+  const merged=[...activities,...openSlots].sort((a,b)=>pinToMin(a.start)-pinToMin(b.start));
+  c.periodOpenSlots[period]=merged;
+  return merged;
+}
+function precomputeOpenSlotsForDay(dayKey,c,ws,ov){
+  const wakeMin=toMin(c.wake);
+  const shift=hasWorkShift(dayKey);
+  const lists=effectivePeriodLists(dayKey,true);
+  const keys=periodKeysForDayKey(dayKey);
+  keys.forEach(period=>{
+    if(period==='night'&&shift)return;
+    let bandStart,bandEnd;
+    if(period==='morning'){bandStart=wakeMin;bandEnd=PERIOD_END.morning;}
+    else if(period==='afternoon'){bandStart=PERIOD_END.morning;bandEnd=PERIOD_END.afternoon;}
+    else if(period==='evening'){bandStart=PERIOD_END.afternoon;bandEnd=PERIOD_END.evening;}
+    else{bandStart=PERIOD_END.evening;bandEnd=PERIOD_END.night;}
+    const seq=[];
+    dryPackPeriodBand(seq,period,bandStart,bandEnd,(lists[period]||[]).filter(k=>!isOpenSlotKey(k)),c,ws,ov,dayKey);
+    const reserved=seq.filter(b=>b.period===period&&!b.flex).map(b=>({start:b.start,end:b.end}));
+    syncPeriodOpenSlotsForBand(dayKey,period,bandStart,bandEnd,reserved);
+  });
+}
+function dryPackPeriodBand(seq,period,bandStart,bandEnd,taskKeys,c,ws,ov,dayKey){
+  packPeriodBand(seq,[],null,period,bandStart,bandEnd,taskKeys,c,ws,ov,dayKey,{skipOpenSlots:true});
+}
+function resolveOpenSlotBlock(slot){
+  const iv=slotInterval(slot);
+  if(!iv)return null;
+  const isOpen=slot.kind==='open';
+  return{
+    id:slot.id,
+    ico:isOpen?'⏳':'✨',
+    lab:slot.name||(isOpen?DEFAULT_OPEN_SLOT_NAME:'Activity'),
+    sub:(isOpen?'Open · ':'')+fmt12(slot.start)+'–'+fmt12(slot.end),
+    dur:iv.len,
+    custom:true,
+    openSlot:true,
+    slotKind:slot.kind
+  };
+}
+function openSlotCountsTowardBand(slot){return slot&&slot.kind==='activity';}
+function taskClockSortMin(taskKey,dayKey){
+  if(isSuddenTaskKey(taskKey)){
+    const t=findSuddenTask(dayKey,suddenIdFromKey(taskKey));
+    if(t&&t.mode==='window'&&t.windowStart)return pinToMin(t.windowStart)??9999;
+    return 8000;
+  }
+  if(isOpenSlotKey(taskKey)){
+    const found=findOpenSlot(dayKey,openSlotIdFromKey(taskKey));
+    if(found)return pinToMin(found.slot.start)??9000;
+    return 9000;
+  }
+  const pin=getPeriodPinStart(taskKey,dayKey);
+  if(pin)return pinToMin(pin)??7000;
+  return 6000;
+}
+function removeOpenSlot(dayKey,slotId){
+  const c=dayCfg(dayKey);
+  if(!c.periodOpenSlots)return;
+  PERIOD_KEYS.forEach(p=>{
+    c.periodOpenSlots[p]=(c.periodOpenSlots[p]||[]).filter(s=>s.id!==slotId);
+  });
+  if(!PERIOD_KEYS.some(p=>(c.periodOpenSlots[p]||[]).length))c.periodOpenSlots=null;
+  touchDayField(dayKey,'periodOpenSlots');
+}
+function setOpenSlotName(dayKey,slotId,name){
+  const found=findOpenSlot(dayKey,slotId);
+  if(!found)return;
+  const trimmed=(name||'').trim();
+  found.slot.name=trimmed||DEFAULT_OPEN_SLOT_NAME;
+  if(found.slot.kind==='open'&&trimmed&&trimmed!==DEFAULT_OPEN_SLOT_NAME)found.slot.kind='activity';
+  if(found.slot.kind==='activity')found.slot.auto=false;
+  touchDayField(dayKey,'periodOpenSlots');
+}
+function setOpenSlotWindow(dayKey,slotId,startMin,endMin){
+  const found=findOpenSlot(dayKey,slotId);
+  if(!found||!Number.isFinite(startMin)||!Number.isFinite(endMin)||endMin-startMin<5)return;
+  const c=dayCfg(dayKey);
+  const wake=c.wake;
+  const slot=found.slot;
+  const oldIv=slotInterval(slot);
+  const newIv={s:startMin,e:endMin,len:endMin-startMin};
+  if(slot.kind==='open'&&oldIv&&newIv.s>=oldIv.s&&newIv.e<=oldIv.e&&(newIv.s>oldIv.s||newIv.e<oldIv.e)){
+    slot.kind='activity';
+    slot.auto=false;
+    if(!slot.name||slot.name===DEFAULT_OPEN_SLOT_NAME)slot.name='Activity';
+    slot.start=minToTime(newIv.s);
+    slot.end=minToTime(newIv.e);
+    const arr=c.periodOpenSlots[found.period]||[];
+    if(newIv.s>oldIv.s){
+      arr.push({id:'os_'+Date.now()+'_a',kind:'open',name:DEFAULT_OPEN_SLOT_NAME,start:minToTime(oldIv.s),end:minToTime(newIv.s),auto:true});
+    }
+    if(newIv.e<oldIv.e){
+      arr.push({id:'os_'+Date.now()+'_b',kind:'open',name:DEFAULT_OPEN_SLOT_NAME,start:minToTime(newIv.e),end:minToTime(oldIv.e),auto:true});
+    }
+    c.periodOpenSlots[found.period]=arr.sort((a,b)=>pinToMin(a.start)-pinToMin(b.start));
+  }else{
+    slot.start=minToTime(startMin);
+    slot.end=minToTime(endMin);
+    if(slot.kind==='activity')slot.auto=false;
+  }
+  touchDayField(dayKey,'periodOpenSlots');
+}
+function applyOpenSlotDurDelta(dayKey,slotId,delta){
+  const found=findOpenSlot(dayKey,slotId);
+  if(!found)return;
+  const iv=slotInterval(found.slot);
+  if(!iv)return;
+  const newEnd=Math.max(iv.s+5,iv.e+delta);
+  setOpenSlotWindow(dayKey,slotId,iv.s,newEnd);
+}
+function moveOpenSlotPeriod(dayKey,slotId,toPeriod){
+  const found=findOpenSlot(dayKey,slotId);
+  if(!found)return;
+  const c=dayCfg(dayKey);
+  const wake=c.wake;
+  const iv=slotInterval(found.slot);
+  if(!iv)return;
+  let dest=toPeriod;
+  const bounds=bandClockBounds(dest,wake);
+  if(iv.s<bounds.start||iv.e>bounds.end)dest=bandForClockRange(iv.s,iv.e,wake);
+  if(dest==='night'&&hasWorkShift(dayKey))return;
+  const from=found.period;
+  if(from===dest)return;
+  if(!c.periodOpenSlots)c.periodOpenSlots={};
+  c.periodOpenSlots[from]=(c.periodOpenSlots[from]||[]).filter(s=>s.id!==slotId);
+  if(!c.periodOpenSlots[dest])c.periodOpenSlots[dest]=[];
+  c.periodOpenSlots[dest].push(found.slot);
+  c.periodOpenSlots[dest].sort((a,b)=>pinToMin(a.start)-pinToMin(b.start));
+  touchDayField(dayKey,'periodOpenSlots');
+}
 function periodTaskLabel(key,dayKey){
+  if(key.startsWith('open:')){
+    const found=findOpenSlot(dayKey||activeDayKey(),openSlotIdFromKey(key));
+    if(!found)return DEFAULT_OPEN_SLOT_NAME;
+    const s=found.slot;
+    return(s.name||DEFAULT_OPEN_SLOT_NAME)+' · '+fmt12(s.start)+'–'+fmt12(s.end);
+  }
   if(key.startsWith('sudden:')){
     const t=findSuddenTask(dayKey||activeDayKey(),key.slice(7));
     if(!t)return 'Sudden';
@@ -1792,6 +2046,11 @@ function periodTaskLabel(key,dayKey){
   return map[key]||key;
 }
 function periodTaskIco(key,dayKey){
+  if(key.startsWith('open:')){
+    const found=findOpenSlot(dayKey||activeDayKey(),openSlotIdFromKey(key));
+    if(found&&found.slot.kind==='activity')return '✨';
+    return '⏳';
+  }
   if(key.startsWith('sudden:'))return '⚡';
   if(key.startsWith('extra:')){
     const found=findPeriodExtra(dayKey||activeDayKey(),key.slice(6));
@@ -1802,7 +2061,7 @@ function periodTaskIco(key,dayKey){
 }
 function hasPeriodOverrides(dayKey){
   const c=dayCfg(dayKey);
-  return!!(c.periodOrder||c.periodMoves||c.periodExtras);
+  return!!(c.periodOrder||c.periodMoves||c.periodExtras||c.periodOpenSlots);
 }
 function isPeriodTaskSkipped(taskKey,dayKey){
   const sk=dayCfg(dayKey).periodSkips;
@@ -1813,6 +2072,7 @@ function hasPeriodSkips(dayKey){
   return!!(sk&&Object.keys(sk).some(k=>sk[k]));
 }
 function skipPeriodTask(taskKey,dayKey){
+  if(isOpenSlotKey(taskKey)){removeOpenSlot(dayKey,openSlotIdFromKey(taskKey));return;}
   if(isSuddenTaskKey(taskKey)){removeSuddenTask(suddenIdFromKey(taskKey),dayKey);return;}
   const c=dayCfg(dayKey);
   if(!c.periodSkips)c.periodSkips={};
@@ -1866,6 +2126,7 @@ function clearPeriodPins(dayKey){
   touchDayField(dayKey,'periodPinnedStart');
 }
 function taskShowsPinUi(taskKey,dayKey){
+  if(isOpenSlotKey(taskKey))return false;
   if(isSuddenTaskKey(taskKey)){
     const t=findSuddenTask(dayKey,suddenIdFromKey(taskKey));
     return!!(t&&t.mode!=='window');
@@ -1874,12 +2135,13 @@ function taskShowsPinUi(taskKey,dayKey){
 }
 function skipKeyForTimelineBlock(b,dayKey){
   if(b.sudden)return 'sudden:'+b.id;
+  if(b.openSlot)return 'open:'+b.id;
   if(b.nonFixed)return 'nonFixed';
   if(b.templateExtra||(b.custom&&findPeriodExtra(dayKey,b.id)))return 'extra:'+b.id;
   return b.id;
 }
 function isSuddenTaskKey(taskKey){return taskKey.startsWith('sudden:');}
-function isUserBandTask(taskKey){return taskKey.startsWith('extra:')||isSuddenTaskKey(taskKey);}
+function isUserBandTask(taskKey){return taskKey.startsWith('extra:')||isSuddenTaskKey(taskKey)||isOpenSlotKey(taskKey);}
 function suddenTaskKey(id){return 'sudden:'+id;}
 function suddenIdFromKey(taskKey){return taskKey.slice(7);}
 function iterateSuddenTargetingDay(scheduleDayKey,fn){
@@ -1981,6 +2243,7 @@ function removeSuddenTask(id,scheduleDayKey){
 }
 function taskKeyFromPackedBlock(b,dayKey){
   if(b.sudden)return 'sudden:'+b.id;
+  if(b.openSlot)return 'open:'+b.id;
   if(b.nonFixed)return 'nonFixed';
   if(b.templateExtra||(b.custom&&findPeriodExtra(dayKey,b.id)))return 'extra:'+b.id;
   return b.id;
@@ -2049,7 +2312,11 @@ function displaceSuddenOverlaps(task,dayKey,c,ws,ov){
   }
   return moved;
 }
-function effectivePeriodLists(dayKey){
+function effectivePeriodLists(dayKey,skipOpenPrecompute){
+  if(!skipOpenPrecompute){
+    const c=dayCfg(dayKey);
+    precomputeOpenSlotsForDay(dayKey,c,workoutStateForDay(dayKey),blockDurOv(dayKey));
+  }
   const keys=periodKeysForDayKey(dayKey);
   const base=basePeriodTemplate(dayKey);
   const c=dayCfg(dayKey);
@@ -2058,7 +2325,7 @@ function effectivePeriodLists(dayKey){
   const taskPeriod={};
   keys.forEach(p=>{(base[p]||[]).forEach(t=>{taskPeriod[t]=p;});});
   Object.keys(moves).forEach(t=>{
-    if(isSuddenTaskKey(t))return;
+    if(isSuddenTaskKey(t)||isOpenSlotKey(t))return;
     if(isMovablePeriodTask(t,dayKey)&&keys.includes(moves[t]))taskPeriod[t]=moves[t];
   });
   const out={};
@@ -2078,11 +2345,19 @@ function effectivePeriodLists(dayKey){
       const dest=moves[tk]||defaultPeriodForSudden(task,dayKey);
       if(dest===p)list.push(tk);
     });
+    (c.periodOpenSlots&&c.periodOpenSlots[p]||[]).forEach(sl=>{
+      const ok=openSlotKey(sl.id);
+      if(isPeriodTaskSkipped(ok,dayKey))return;
+      const dest=moves[ok]||p;
+      if(dest===p)list.push(ok);
+    });
     if(order[p]&&order[p].length){
       const ordered=[];
       order[p].forEach(t=>{if(list.includes(t))ordered.push(t);});
       list.forEach(t=>{if(!ordered.includes(t))ordered.push(t);});
       list=ordered;
+    }else{
+      list=list.slice().sort((a,b)=>taskClockSortMin(a,dayKey)-taskClockSortMin(b,dayKey));
     }
     out[p]=list;
   });
@@ -2110,6 +2385,11 @@ function applyBlockDurDelta(b,delta){
 }
 function applyBandTaskDurDelta(taskKey,ctx,delta){
   const dayKey=ctx.dayKey||activeDayKey();
+  if(isOpenSlotKey(taskKey)){
+    applyOpenSlotDurDelta(dayKey,openSlotIdFromKey(taskKey),delta);
+    touchDayField(dayKey,'periodOpenSlots');
+    return;
+  }
   if(isSuddenTaskKey(taskKey)){
     const t=findSuddenTask(dayKey,suddenIdFromKey(taskKey));
     if(!t)return;
@@ -2209,7 +2489,9 @@ function resolvePeriodBlock(taskKey,c,ws,ov,dayKey,durCap){
   if(durCap!=null)dur=Math.min(dur,durCap);
   return{...d,dur:Math.max(5,dur)};
 }
-function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,c,ws,ov,dayKey){
+function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,c,ws,ov,dayKey,opts){
+  opts=opts||{};
+  const packKeys=(taskKeys||[]).filter(k=>!isOpenSlotKey(k));
   let cur=bandStart;
   const label=PERIOD_LABELS[bandKey];
   const placeInBand=(taskKey,block,fixedStart,fixedEnd)=>{
@@ -2226,7 +2508,9 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
         block.overflow=true;
         warnings.push({msg:label+' — “'+block.lab+'” fixed window extends outside '+label.toLowerCase()+' band'});
       }
-      if(start>cur+4)pushFlexGap(seq,cur,start,'Open time · '+label);
+      const useOpenSlots=!opts.skipOpenSlots;
+      if(start>cur+4&&!useOpenSlots&&!block.openSlot)pushFlexGap(seq,cur,start,'Open time · '+label);
+      else if(start>cur+4&&useOpenSlots&&!block.openSlot)cur=Math.max(cur,start);
       else if(start<cur){
         block.overflow=true;
         warnings.push({msg:'“'+block.lab+'” at '+fmt12(minToTime(start))+' overlaps earlier blocks — reorder or shorten'});
@@ -2247,7 +2531,8 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
       block.overflow=true;
       warnings.push({msg:'“'+block.lab+'” pinned at '+fmt12(minToTime(start))+' — overlaps earlier band tasks'});
     }
-    if(start>cur+4)pushFlexGap(seq,cur,start,'Open time · '+label);
+    const useOpenSlots=!opts.skipOpenSlots;
+    if(start>cur+4&&!useOpenSlots)pushFlexGap(seq,cur,start,'Open time · '+label);
     const room=bandEnd-start;
     if(room<5){
       if(isUserBandTask(taskKey)){
@@ -2279,7 +2564,7 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
     seq.push(block);
     cur=Math.max(cur,block.end);
   };
-  taskKeys.forEach(taskKey=>{
+  packKeys.forEach(taskKey=>{
     if(isSuddenTaskKey(taskKey)){
       const t=findSuddenTask(dayKey,suddenIdFromKey(taskKey));
       if(!t)return;
@@ -2292,7 +2577,7 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
       return;
     }
     const pinMin=getPeriodPinStart(taskKey,dayKey);
-    const userTask=isUserBandTask(taskKey);
+    const userTask=isUserBandTask(taskKey)&&!isOpenSlotKey(taskKey);
     const pinMinsCap=pinMin!=null?pinToMin(pinMin):null;
     const roomForCap=pinMinsCap!=null?bandEnd-Math.max(pinMinsCap,bandStart):bandEnd-cur;
     if(roomForCap<5&&!userTask){
@@ -2303,7 +2588,19 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
     if(!block)return;
     placeInBand(taskKey,block,null,null);
   });
-  if(cur<bandEnd-4)pushFlexGap(seq,cur,bandEnd,'Open time · '+label);
+  if(!opts.skipOpenSlots){
+    const reserved=seq.filter(b=>b.period===bandKey&&!b.flex).map(b=>({start:b.start,end:b.end}));
+    const slots=syncPeriodOpenSlotsForBand(dayKey,bandKey,bandStart,bandEnd,reserved);
+    slots.forEach(slot=>{
+      const block=resolveOpenSlotBlock(slot);
+      if(!block)return;
+      const ws=pinToMin(slot.start),we=pinToMin(slot.end);
+      if(!Number.isFinite(ws)||!Number.isFinite(we)||we-ws<5)return;
+      placeInBand(openSlotKey(slot.id),block,ws,we);
+    });
+  }else if(cur<bandEnd-4){
+    pushFlexGap(seq,cur,bandEnd,'Open time · '+label);
+  }
 }
 function suddenTasksNotInSeq(seq,suddenTasks){
   const packed=new Set((seq||[]).filter(b=>b.sudden).map(b=>b.id));
@@ -2330,7 +2627,7 @@ function buildPeriodSeq(c,ws,ov,dayKey,suddenTasks){
   const withFlex=[];
   let cur=wakeMin;
   applied.seq.filter(b=>!b.flex).sort((a,b)=>a.start-b.start).forEach(b=>{
-    if(b.start>cur+4)pushFlexGap(withFlex,cur,b.start,'Open time');
+    if(b.start>cur+4&&!b.openSlot)pushFlexGap(withFlex,cur,b.start,'Open time');
     withFlex.push(b);
     cur=Math.max(cur,b.end);
   });
@@ -2344,13 +2641,15 @@ function clearPeriodOverrides(dayKey){
   c.periodOrder=null;
   c.periodMoves=null;
   c.periodExtras=null;
-  touchDayField(dayKey,'periodOrder','periodMoves','periodExtras');
+  c.periodOpenSlots=null;
+  touchDayField(dayKey,'periodOrder','periodMoves','periodExtras','periodOpenSlots');
 }
 function movePeriodTask(taskKey,toPeriod,ctx){
   const dayKey=ctx&&ctx.dayKey?ctx.dayKey:activeDayKey();
   const keys=periodKeysForDayKey(dayKey);
   if(!keys.includes(toPeriod))return;
   if(toPeriod==='night'&&hasWorkShift(dayKey))return;
+  if(isOpenSlotKey(taskKey)){moveOpenSlotPeriod(dayKey,openSlotIdFromKey(taskKey),toPeriod);return;}
   const c=dayCfg(dayKey);
   if(taskKey.startsWith('extra:')){
     const id=taskKey.slice(6);
@@ -2472,6 +2771,12 @@ function bandCapacityMinutes(period,dt,wakeMin){
 }
 function taskMinutesForBandRow(taskKey,ctx){
   const dayKey=ctx.dayKey||activeDayKey();
+  if(isOpenSlotKey(taskKey)){
+    const found=findOpenSlot(dayKey,openSlotIdFromKey(taskKey));
+    if(!found||!openSlotCountsTowardBand(found.slot))return 0;
+    const iv=slotInterval(found.slot);
+    return iv?iv.len:0;
+  }
   if(isSuddenTaskKey(taskKey)){
     const t=findSuddenTask(dayKey,suddenIdFromKey(taskKey));
     return t?suddenTaskMinutes(t):0;
@@ -2561,6 +2866,7 @@ function dayCfg(k){
   if(!c.periodExtras)c.periodExtras=null;
   if(!c.periodSkips)c.periodSkips=null;
   if(!c.periodPinnedStart)c.periodPinnedStart=null;
+  if(!c.periodOpenSlots)c.periodOpenSlots=null;
   return c;
 }
 function blockDurOv(dayKey){
@@ -4054,6 +4360,95 @@ function wireBandMiniSeg(container,buttons,activeVal,onPick){
   });
   container.appendChild(seg);
 }
+function appendOpenSlotBandRow(band,period,taskKey,idx,items,wrap,ctx){
+  const dayKey=ctx.dayKey||activeDayKey();
+  const found=findOpenSlot(dayKey,openSlotIdFromKey(taskKey));
+  if(!found)return;
+  const slot=found.slot;
+  const iv=slotInterval(slot);
+  const mins=iv?iv.len:0;
+  const row=document.createElement('div');
+  row.className='period-task pt-open'+(slot.kind==='open'?' pt-open-gap':' pt-open-act');
+  row.innerHTML='<span class="pt-drag" title="Drag to reorder">⠿</span><span class="pt-ico">'+periodTaskIco(taskKey,dayKey)+'</span><span class="pt-lab"></span><span class="pt-dur"></span><span class="pt-act"></span>';
+  const labEl=row.querySelector('.pt-lab');
+  const nameIn=document.createElement('input');
+  nameIn.type='text';
+  nameIn.value=slot.name||DEFAULT_OPEN_SLOT_NAME;
+  nameIn.title='Rename — use a real name to count toward band capacity';
+  nameIn.onchange=()=>{
+    setOpenSlotName(dayKey,slot.id,nameIn.value);
+    saveDay();renderSched();
+    flash(nameIn.value.trim()===DEFAULT_OPEN_SLOT_NAME?'Open time restored':'Renamed to “'+nameIn.value.trim()+'”');
+  };
+  nameIn.onclick=(e)=>e.stopPropagation();
+  labEl.appendChild(nameIn);
+  const durEl=row.querySelector('.pt-dur');
+  if(slot.kind==='open'){
+    durEl.textContent=mins+'m';
+    durEl.title='Open time does not count toward band capacity until renamed';
+  }else{
+    durEl.innerHTML='<span class="stepper"><button type="button" data-step="-1">−</button><span class="val">'+mins+'m</span><button type="button" data-step="1">+</button></span>';
+    durEl.querySelectorAll('.stepper button').forEach(btn=>{
+      btn.onclick=(e)=>{
+        e.stopPropagation();
+        applyOpenSlotDurDelta(dayKey,slot.id,parseInt(btn.dataset.step,10)*5);
+        saveDay();renderSched();
+      };
+    });
+  }
+  const times=document.createElement('div');
+  times.className='pt-times';
+  const startIn=document.createElement('input');
+  startIn.type='time';
+  startIn.value=slot.start;
+  startIn.title='Start time';
+  const endIn=document.createElement('input');
+  endIn.type='time';
+  endIn.value=slot.end;
+  endIn.title='End time';
+  const applyTimes=()=>{
+    const s=pinToMin(startIn.value),e=pinToMin(endIn.value);
+    if(s==null||e==null||e-s<5){flash('Need at least 5 minutes');return;}
+    setOpenSlotWindow(dayKey,slot.id,s,e);
+    saveDay();renderSched();
+  };
+  startIn.onchange=applyTimes;
+  endIn.onchange=applyTimes;
+  startIn.onclick=(e)=>e.stopPropagation();
+  endIn.onclick=(e)=>e.stopPropagation();
+  times.appendChild(startIn);
+  times.appendChild(document.createTextNode('–'));
+  times.appendChild(endIn);
+  labEl.appendChild(times);
+  const act=row.querySelector('.pt-act');
+  if(idx>0){
+    const up=document.createElement('button');
+    up.type='button';up.textContent='↑';
+    up.onclick=()=>{reorderPeriodTask(period,taskKey,-1,ctx);saveDay();renderSched();};
+    act.appendChild(up);
+  }
+  if(idx<items.length-1){
+    const dn=document.createElement('button');
+    dn.type='button';dn.textContent='↓';
+    dn.onclick=()=>{reorderPeriodTask(period,taskKey,1,ctx);saveDay();renderSched();};
+    act.appendChild(dn);
+  }
+  PERIOD_KEYS.filter(p=>p!==period&&!(p==='night'&&hasWorkShift(dayKey))).forEach(p=>{
+    const mb=document.createElement('button');
+    mb.type='button';
+    mb.textContent='→ '+PERIOD_LABELS[p].slice(0,3);
+    mb.title='Move to '+PERIOD_LABELS[p];
+    mb.onclick=()=>{movePeriodTask(taskKey,p,ctx);saveDay();renderSched();};
+    act.appendChild(mb);
+  });
+  const rm=document.createElement('button');
+  rm.type='button';rm.className='pt-rm';rm.textContent='✕';
+  rm.title=slot.kind==='activity'?'Remove activity':'Remove open slot';
+  rm.onclick=()=>{removeOpenSlot(dayKey,slot.id);saveDay();renderSched();flash('Removed');};
+  act.appendChild(rm);
+  wirePeriodTaskDrag(row,period,taskKey,idx,wrap,ctx);
+  band.appendChild(row);
+}
 function appendBandPinControl(row,taskKey,ctx){
   const dayKey=ctx.dayKey||activeDayKey();
   if(!taskShowsPinUi(taskKey,dayKey))return;
@@ -4146,6 +4541,10 @@ function renderPeriodBands(wrap,ctx){
       return;
     }
     items.forEach((taskKey,idx)=>{
+      if(isOpenSlotKey(taskKey)){
+        appendOpenSlotBandRow(band,period,taskKey,idx,items,wrap,ctx);
+        return;
+      }
       const row=document.createElement('div');
       row.className='period-task'+(isSuddenTaskKey(taskKey)?' pt-sudden':'');
       const mins=taskMinutesForBandRow(taskKey,ctx);
@@ -4321,22 +4720,23 @@ function renderSched(){
   seq.forEach(b=>{
     const startHH=minToTime(b.start);const done=!!checks[b.id];const now=!done&&nowMin()>=b.start&&nowMin()<b.end;
     const isFlex=!!b.flex;
-    const el=document.createElement('div');el.className='blk'+(done?' done':'')+(now?' now':'')+(isFlex?' flex info':'')+(b.anchored?' anchored':'')+(b.overflow?' overflow':'')+(b.period?' period-'+b.period:'');
+    const el=document.createElement('div');el.className='blk'+(done?' done':'')+(now?' now':'')+(isFlex?' flex info':'')+(b.openSlot&&b.slotKind==='open'?' open-slot':'')+(b.anchored?' anchored':'')+(b.overflow?' overflow':'')+(b.period?' period-'+b.period:'');
     let rightHTML;
     if(!isFlex){
       rightHTML=`<span class="delx" title="Skip for today">✕</span><div class="chk"></div>`;
     } else rightHTML='';
     const endLbl=b.end!=null?fmt12(minToTime(b.end)):'';
     el.innerHTML=`<div class="time">${fmt12(startHH)}${endLbl?'<br><span style="font-size:11px;color:var(--muted2)">→ '+endLbl+'</span>':''}</div>
-      <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.overflow?'<span class="overflowtag">OVERLAP</span>':''}${b.custom&&!b.sudden?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.nonFixed?'<span class="custag">PICK</span>':''}${b.period?'<span class="period-tag">'+PERIOD_LABELS[b.period]+'</span>':''}${b.pinned?'<span class="custag">PIN</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.dur}m</small></span></div>
+      <div class="body"><span class="ico">${b.ico}</span><span class="lab">${b.lab}${now?'<span class="nowtag">NOW</span>':''}${b.sudden?'<span class="suddentag">SUDDEN</span>':''}${b.replaced?'<span class="displacedtag">BUMPED</span>':''}${b.overflow?'<span class="overflowtag">OVERLAP</span>':''}${b.custom&&!b.sudden&&!b.openSlot?'<span class="custag">ADDED</span>':''}${b.openSlot&&b.slotKind==='open'?'<span class="custag">OPEN</span>':''}${b.openSlot&&b.slotKind==='activity'?'<span class="custag">ADDED</span>':''}${b.planned?'<span class="custag">PLAN</span>':''}${b.nonFixed?'<span class="custag">PICK</span>':''}${b.period?'<span class="period-tag">'+PERIOD_LABELS[b.period]+'</span>':''}${b.pinned?'<span class="custag">PIN</span>':''}${b.anchored?'<span class="fixtag">FIXED</span>':''}<small>${b.dur}m</small></span></div>
       <div class="right">${rightHTML}</div>`;
     if(!isFlex) {
       const chk=el.querySelector('.chk');
-      if(chk)chk.onclick=(e)=>{e.stopPropagation();if(b.id&&!b.id.startsWith('flex_'))toggleBlockDone(b.id);};
+      if(chk)chk.onclick=(e)=>{e.stopPropagation();if(b.id&&!b.id.startsWith('flex_')&&!b.openSlot)toggleBlockDone(b.id);};
     }
     const dx=el.querySelector('.delx');if(dx)dx.onclick=(e)=>{e.stopPropagation();
       const dk=activeDayKey();
-      if(b.sudden){removeSuddenTask(b.id,dk);saveDay();}
+      if(b.openSlot){removeOpenSlot(dk,b.id);saveDay();}
+      else if(b.sudden){removeSuddenTask(b.id,dk);saveDay();}
       else if(b.periodCustom&&!b.templateExtra){
         periodKeysForDayKey(dk).forEach(p=>{
           c.periodExtras=(c.periodExtras||{});
