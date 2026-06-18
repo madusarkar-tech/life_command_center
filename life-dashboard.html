@@ -1427,6 +1427,7 @@ function migrateData(){
     delete DATA.templateDur;
   }
   repairSuddenBandLinks();
+  Object.keys(DATA.dayConfig||{}).forEach(k=>{if(/^\d{4}-\d{2}-\d{2}$/.test(k))normalizePeriodPins(k);});
   (DATA.jobs||[]).forEach(j=>{if(!j.id)j.id='job_'+Date.now()+Math.random().toString(36).slice(2,7);});
   (DATA.todos||[]).forEach(t=>{if(!t.list)t.list='other';if(!t.id)t.id='td_'+Date.now()+Math.random().toString(36).slice(2,7);});
   (DATA.jobTodos||[]).forEach(t=>{if(!t.id)t.id='jtd_'+Date.now()+Math.random().toString(36).slice(2,7);});
@@ -1824,7 +1825,9 @@ function clearPeriodSkips(dayKey){
 }
 function getPeriodPinStart(taskKey,dayKey){
   const p=dayCfg(dayKey).periodPinnedStart;
-  return p&&p[taskKey]?p[taskKey]:null;
+  if(!p||!Object.prototype.hasOwnProperty.call(p,taskKey))return null;
+  const v=p[taskKey];
+  return v==null||v===''?null:v;
 }
 function hasPeriodPins(dayKey){
   const p=dayCfg(dayKey).periodPinnedStart;
@@ -1836,8 +1839,27 @@ function setPeriodPinStart(taskKey,dayKey,hhmm){
   if(!hhmm){
     delete c.periodPinnedStart[taskKey];
     if(!Object.keys(c.periodPinnedStart).length)c.periodPinnedStart=null;
-  }else c.periodPinnedStart[taskKey]=hhmm;
+  }else{
+    const m=pinToMin(hhmm);
+    if(m==null)delete c.periodPinnedStart[taskKey];
+    else c.periodPinnedStart[taskKey]=minToTime(m);
+  }
   touchDayField(dayKey,'periodPinnedStart');
+}
+function normalizePeriodPins(dayKey){
+  const c=dayCfg(dayKey);
+  if(!c.periodPinnedStart)return;
+  let touched=false;
+  Object.keys(c.periodPinnedStart).forEach(k=>{
+    const m=pinToMin(c.periodPinnedStart[k]);
+    if(m==null){delete c.periodPinnedStart[k];touched=true;}
+    else{
+      const norm=minToTime(m);
+      if(c.periodPinnedStart[k]!==norm){c.periodPinnedStart[k]=norm;touched=true;}
+    }
+  });
+  if(!Object.keys(c.periodPinnedStart).length)c.periodPinnedStart=null;
+  if(touched)touchDayField(dayKey,'periodPinnedStart');
 }
 function clearPeriodPins(dayKey){
   dayCfg(dayKey).periodPinnedStart=null;
@@ -2150,8 +2172,9 @@ function resolvePeriodBlock(taskKey,c,ws,ov,dayKey,durCap){
     if(!found)return null;
     const hit=found.hit;
     let dur=ov[hit.id]!=null?ov[hit.id]:(hit.mins||30);
+    dur=safeTaskDur(dur,hit.mins||30);
     if(durCap!=null)dur=Math.min(dur,durCap);
-    return{id:hit.id,ico:hit.ico||'✨',lab:hit.name,sub:'Custom · today',dur:Math.max(5,dur),custom:true,periodCustom:true};
+    return{id:hit.id,ico:hit.ico||'✨',lab:hit.name,sub:'Custom · today',dur:safeTaskDur(dur,hit.mins||30),custom:true,periodCustom:true};
   }
   if(taskKey==='gym')return gymBlockForPeriod(ws,ov,durCap);
   if(taskKey==='nonFixed'){
@@ -2213,8 +2236,13 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
       return;
     }
     const pinMin=getPeriodPinStart(taskKey,dayKey);
-    const pinAt=pinMin!=null?Math.max(toMin(pinMin),bandStart):null;
+    const pinMins=pinMin!=null?pinToMin(pinMin):null;
+    const pinAt=pinMins!=null?Math.max(pinMins,bandStart):null;
     start=pinAt!=null?pinAt:cur;
+    if(pinMin!=null&&pinMins==null){
+      block.overflow=true;
+      warnings.push({msg:'Invalid pin time for “'+block.lab+'” — clear the pin and set it again.'});
+    }
     if(pinAt!=null&&start<cur){
       block.overflow=true;
       warnings.push({msg:'“'+block.lab+'” pinned at '+fmt12(minToTime(start))+' — overlaps earlier band tasks'});
@@ -2265,7 +2293,8 @@ function packPeriodBand(seq,warnings,skipped,bandKey,bandStart,bandEnd,taskKeys,
     }
     const pinMin=getPeriodPinStart(taskKey,dayKey);
     const userTask=isUserBandTask(taskKey);
-    const roomForCap=pinMin!=null?bandEnd-Math.max(toMin(pinMin),bandStart):bandEnd-cur;
+    const pinMinsCap=pinMin!=null?pinToMin(pinMin):null;
+    const roomForCap=pinMinsCap!=null?bandEnd-Math.max(pinMinsCap,bandStart):bandEnd-cur;
     if(roomForCap<5&&!userTask){
       if(skipped)skipped.push({taskKey,bandKey,lab:periodTaskLabel(taskKey,dayKey)});
       return;
@@ -2494,6 +2523,22 @@ const HABITS=[
 ];
 
 function toMin(hhmm){const[h,m]=hhmm.split(':').map(Number);return h*60+m;}
+function pinToMin(pin){
+  if(pin==null||pin==='')return null;
+  if(typeof pin==='number')return Number.isFinite(pin)?((Math.round(pin)%1440)+1440)%1440:null;
+  if(typeof pin==='string'){
+    if(pin.includes(':')){
+      const parts=pin.split(':').map(Number);
+      const h=parts[0],m=parts[1]||0;
+      if(!Number.isFinite(h)||!Number.isFinite(m))return null;
+      return h*60+m;
+    }
+    const n=Number(pin);
+    if(Number.isFinite(n)&&n>=0)return((Math.round(n)%1440)+1440)%1440;
+  }
+  return null;
+}
+function safeTaskDur(d,fallback){const n=Number(d);return Number.isFinite(n)?Math.max(5,n):Math.max(5,fallback||30);}
 function minToTime(m){m=((Math.round(m)%1440)+1440)%1440;const h=Math.floor(m/60),mm=m%60;return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');}
 function fmt12(hhmm){let[h,m]=hhmm.split(':').map(Number);const ap=h>=12?'pm':'am';h=h%12||12;return h+(m?':'+String(m).padStart(2,'0'):'')+ap;}
 function nowMin(){const d=new Date();return d.getHours()*60+d.getMinutes();}
