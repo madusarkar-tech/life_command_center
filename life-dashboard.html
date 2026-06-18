@@ -144,10 +144,14 @@
   .blk{display:grid;grid-template-columns:84px 1fr auto;align-items:center;gap:14px;padding:11px 12px;border-radius:11px;border:1px solid transparent;transition:.2s;cursor:pointer;position:relative}
   .blk:hover{background:var(--surface2)}
   .blk.info{cursor:default}.blk.info:hover{background:transparent}
-  .period-task.pt-open{background:var(--bg2)}
-  .period-task.pt-open .pt-lab input{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:4px 8px;font-size:13px;font-weight:600;width:100%;min-width:80px}
-  .period-task .pt-times{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11px}
-  .period-task .pt-times input[type=time]{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:3px 6px;font-size:12px}
+  .period-task.pt-open{align-items:center;flex-wrap:nowrap}
+  .period-task.pt-open .pt-lab{display:flex;align-items:center;gap:6px;flex:1;min-width:0;flex-wrap:nowrap}
+  .period-task.pt-open .pt-lab input[type=text]{flex:0 1 88px;width:88px;min-width:64px;max-width:120px;padding:4px 6px;font-size:12px;font-weight:600;background:var(--surface);border:1px solid var(--line);border-radius:7px}
+  .period-task.pt-open .pt-times{display:inline-flex;gap:4px;align-items:center;flex:0 0 auto;flex-wrap:nowrap;white-space:nowrap;font-size:11px;color:var(--muted2)}
+  .period-task.pt-open .pt-times input[type=time]{width:62px;padding:2px 4px;font-size:11px;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+  .period-task.pt-open .pt-dur{flex:0 0 auto;min-width:28px;font-size:10px}
+  .period-task.pt-open .pt-act{flex:0 0 auto;flex-wrap:nowrap}
+  .period-task.pt-open .pt-act button{padding:3px 6px;font-size:10px}
   .blk.open-slot{opacity:.92;border-style:dashed}
   .blk.anchored .lab small{color:var(--gold-soft)}
   .fixtag{font-size:10px;background:rgba(127,168,201,.18);color:var(--sky);font-weight:800;padding:2px 7px;border-radius:20px;letter-spacing:.06em;margin-left:6px;vertical-align:middle}
@@ -4373,6 +4377,7 @@ function appendOpenSlotBandRow(band,period,taskKey,idx,items,wrap,ctx){
   const labEl=row.querySelector('.pt-lab');
   const nameIn=document.createElement('input');
   nameIn.type='text';
+  nameIn.className='pt-open-name';
   nameIn.value=slot.name||DEFAULT_OPEN_SLOT_NAME;
   nameIn.title='Rename — use a real name to count toward band capacity';
   nameIn.onchange=()=>{
@@ -4381,22 +4386,7 @@ function appendOpenSlotBandRow(band,period,taskKey,idx,items,wrap,ctx){
     flash(nameIn.value.trim()===DEFAULT_OPEN_SLOT_NAME?'Open time restored':'Renamed to “'+nameIn.value.trim()+'”');
   };
   nameIn.onclick=(e)=>e.stopPropagation();
-  labEl.appendChild(nameIn);
-  const durEl=row.querySelector('.pt-dur');
-  if(slot.kind==='open'){
-    durEl.textContent=mins+'m';
-    durEl.title='Open time does not count toward band capacity until renamed';
-  }else{
-    durEl.innerHTML='<span class="stepper"><button type="button" data-step="-1">−</button><span class="val">'+mins+'m</span><button type="button" data-step="1">+</button></span>';
-    durEl.querySelectorAll('.stepper button').forEach(btn=>{
-      btn.onclick=(e)=>{
-        e.stopPropagation();
-        applyOpenSlotDurDelta(dayKey,slot.id,parseInt(btn.dataset.step,10)*5);
-        saveDay();renderSched();
-      };
-    });
-  }
-  const times=document.createElement('div');
+  const times=document.createElement('span');
   times.className='pt-times';
   const startIn=document.createElement('input');
   startIn.type='time';
@@ -4419,7 +4409,22 @@ function appendOpenSlotBandRow(band,period,taskKey,idx,items,wrap,ctx){
   times.appendChild(startIn);
   times.appendChild(document.createTextNode('–'));
   times.appendChild(endIn);
+  labEl.appendChild(nameIn);
   labEl.appendChild(times);
+  const durEl=row.querySelector('.pt-dur');
+  if(slot.kind==='open'){
+    durEl.textContent=mins+'m';
+    durEl.title='Open time does not count toward band capacity until renamed';
+  }else{
+    durEl.innerHTML='<span class="stepper"><button type="button" data-step="-1">−</button><span class="val">'+mins+'m</span><button type="button" data-step="1">+</button></span>';
+    durEl.querySelectorAll('.stepper button').forEach(btn=>{
+      btn.onclick=(e)=>{
+        e.stopPropagation();
+        applyOpenSlotDurDelta(dayKey,slot.id,parseInt(btn.dataset.step,10)*5);
+        saveDay();renderSched();
+      };
+    });
+  }
   const act=row.querySelector('.pt-act');
   if(idx>0){
     const up=document.createElement('button');
