@@ -943,7 +943,7 @@ function userDoc(uid){return firebase.firestore().collection('users').doc(uid);}
 
 const DAY_LWW_FIELDS=[
   'wake','wakeLocked','dayType','workout','nonFixedPick',
-  'periodOrder','periodMoves','blockDur','periodSkips','periodPinnedStart','periodExtras','periodOpenSlots','suddenTasks'
+  'periodOrder','periodMoves','blockDur','periodSkips','periodPinnedStart','periodExtras','periodOpenSlots','periodOpenSlotHidden','suddenTasks'
 ];
 function touchDayField(dayKey,...fields){
   const c=dayCfg(dayKey||activeDayKey());
@@ -1866,6 +1866,29 @@ function gapsMinusSlots(gaps,slots){
   });
   return free.filter(g=>g.len>=5);
 }
+function gapsMinusHidden(gaps,hidden){
+  let free=gaps.slice();
+  hidden.forEach(h=>{
+    free=free.reduce((acc,g)=>acc.concat(subtractIntervalFromList([g],h)),[]);
+  });
+  return free.filter(g=>g.len>=5);
+}
+function hiddenGapsForBand(dayKey,period,bandStart,bandEnd){
+  const list=(dayCfg(dayKey).periodOpenSlotHidden&&dayCfg(dayKey).periodOpenSlotHidden[period])||[];
+  return list.map(h=>{
+    const s=Math.max(pinToMin(h.start)??0,bandStart);
+    const e=Math.min(pinToMin(h.end)??0,bandEnd);
+    if(e-s<5)return null;
+    return{s,e,len:e-s};
+  }).filter(Boolean);
+}
+function hideOpenSlotInterval(dayKey,period,start,end){
+  const c=dayCfg(dayKey);
+  if(!c.periodOpenSlotHidden)c.periodOpenSlotHidden={};
+  if(!c.periodOpenSlotHidden[period])c.periodOpenSlotHidden[period]=[];
+  c.periodOpenSlotHidden[period].push({start,end});
+  touchDayField(dayKey,'periodOpenSlotHidden');
+}
 function syncPeriodOpenSlotsForBand(dayKey,period,bandStart,bandEnd,reserved){
   const c=dayCfg(dayKey);
   ensurePeriodOpenSlots(c);
@@ -1880,6 +1903,7 @@ function syncPeriodOpenSlotsForBand(dayKey,period,bandStart,bandEnd,reserved){
     gaps,reserved
   );
   let freeGaps=gapsMinusSlots(gaps,activities);
+  freeGaps=gapsMinusHidden(freeGaps,hiddenGapsForBand(dayKey,period,bandStart,bandEnd));
   const openSlots=freeGaps.map((g,i)=>{
     const reuse=stored.find(s=>s.kind==='open'&&s.auto&&slotInterval(s)&&intervalsOverlap(slotInterval(s),{s:g.s,e:g.e}));
     return{
@@ -1949,6 +1973,11 @@ function taskClockSortMin(taskKey,dayKey){
 }
 function removeOpenSlot(dayKey,slotId){
   const c=dayCfg(dayKey);
+  const found=findOpenSlot(dayKey,slotId);
+  if(found){
+    const slot=found.slot;
+    if(slot.kind==='open'||slot.auto)hideOpenSlotInterval(dayKey,found.period,slot.start,slot.end);
+  }
   if(!c.periodOpenSlots)return;
   PERIOD_KEYS.forEach(p=>{
     c.periodOpenSlots[p]=(c.periodOpenSlots[p]||[]).filter(s=>s.id!==slotId);
@@ -2646,7 +2675,8 @@ function clearPeriodOverrides(dayKey){
   c.periodMoves=null;
   c.periodExtras=null;
   c.periodOpenSlots=null;
-  touchDayField(dayKey,'periodOrder','periodMoves','periodExtras','periodOpenSlots');
+  c.periodOpenSlotHidden=null;
+  touchDayField(dayKey,'periodOrder','periodMoves','periodExtras','periodOpenSlots','periodOpenSlotHidden');
 }
 function movePeriodTask(taskKey,toPeriod,ctx){
   const dayKey=ctx&&ctx.dayKey?ctx.dayKey:activeDayKey();
@@ -2871,6 +2901,7 @@ function dayCfg(k){
   if(!c.periodSkips)c.periodSkips=null;
   if(!c.periodPinnedStart)c.periodPinnedStart=null;
   if(!c.periodOpenSlots)c.periodOpenSlots=null;
+  if(!c.periodOpenSlotHidden)c.periodOpenSlotHidden=null;
   return c;
 }
 function blockDurOv(dayKey){
