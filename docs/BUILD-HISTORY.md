@@ -110,6 +110,13 @@ After the initial repo import, development continued in Cursor:
 | `b899d59` | Collapsible lift log disclosure — `gymLiftOpen` persisted |
 | `7dfffe9` | **Tab manager** — hide Week/PMP/Jobs; custom notes-only tabs; `DATA.tabUi` + `mergeTabUi` |
 | `3304854` | Tab manager startup fix — `applyTabUi()` only after `DATA` loads |
+| `1a4272a` | Job to-do list-level LWW (`jobTodosUpdatedAt`) — deletes stick after sync |
+| `b0c70fc` | Pin fix — `toMin()` on `periodPinnedStart` in `packPeriodBand` (fixes `12am` / `NaNm` timeline) |
+| `c2e2815` | Pin hardening — `pinToMin()`, `safeTaskDur()`, `normalizePeriodPins()` on load |
+| `1c9934e` | **Open-time slots in bands** — `periodOpenSlots`; rename/split/move; auto-shrink; activity vs open kinds |
+| `0f04f43` | Open-slot band UI — compact single-row layout (name + times + duration) |
+| `8e320cb` | Open-slot dismiss — `periodOpenSlotHidden` prevents sync from recreating dismissed gaps |
+| `cab37ed` | Cross-band open-slot move — shift clock times into target band window; clear gym pin outside band |
 
 Baseline tag: `baseline-2026-06-10` at app `540a3a5`. Prior: `baseline-2026-06-09` at `884cd10`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
 

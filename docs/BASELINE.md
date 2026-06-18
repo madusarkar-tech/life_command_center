@@ -5,7 +5,7 @@
 
 Use this when you want future work (or a new chat) to treat the app as **known-good** and avoid accidental changes to sync, field-level merge, sudden/band scheduling, or Week calendar unless you explicitly ask otherwise.
 
-**Current `main`:** `3304854` — tab manager, workout log sync fixes, lift disclosure, weekly habits, workout log planner, split to-dos. See [Changes since `baseline-2026-06-10`](#changes-since-baseline-2026-06-10-540a3a5-app) below.
+**Current `main`:** `cab37ed` — open-time slots in bands, pin fixes, job to-do delete sync. See [Changes since `baseline-2026-06-10`](#changes-since-baseline-2026-06-10-540a3a5-app) below.
 
 ## Git reference (baseline tag)
 
@@ -35,7 +35,7 @@ List what the tag contains:
 git show baseline-2026-06-10 --stat
 ```
 
-**Live site:** GitHub Pages follows `main` (currently `3304854`).
+**Live site:** GitHub Pages follows `main` (currently `cab37ed`).
 
 ---
 
@@ -43,6 +43,14 @@ git show baseline-2026-06-10 --stat
 
 | Commit | Summary |
 |--------|---------|
+| `cab37ed` | **Cross-band open-slot move** — shifting times into target band window (e.g. workout 1pm → afternoon at 2pm); clears gym pin outside destination band |
+| `8e320cb` | **Open-slot dismiss** — `periodOpenSlotHidden` so ✕ on open time persists (sync no longer recreates dismissed gaps) |
+| `0f04f43` | **Open-slot band UI** — single-row layout (name + times + duration inline) |
+| `1c9934e` | **Configurable open-time slots** — `periodOpenSlots` in bands; rename/split/move; auto-shrink; activity slots count toward band capacity |
+| `c2e2815` | **Pin hardening** — `pinToMin()` + `normalizePeriodPins()` for invalid stored pin values |
+| `b0c70fc` | **Pin fix** — `packPeriodBand` uses `toMin()` on `periodPinnedStart` (fixes `12am` / `NaNm` timeline rows) |
+| `1a4272a` | **Job to-do delete sync** — `jobTodosUpdatedAt` list-level LWW (like work todos) |
+| `ef49a4c` | Docs update for tab manager, workout log sync, lift disclosure |
 | `3304854` | **Tab manager startup fix** — `applyTabUi()` only after `DATA` loads; null guards on `isTabVisible` / `isTabHidden` |
 | `7dfffe9` | **Tab manager** — hide Week/PMP/Jobs; custom notes-only tabs; `DATA.tabUi` + `mergeTabUi`; **⋯** modal |
 | `b899d59` | **Lift log disclosure** — collapsible lift panel; `gymLiftOpen` persisted |
@@ -98,7 +106,7 @@ git show baseline-2026-06-10 --stat
 ### Product surfaces
 
 - **Today** — period-band schedule, Today's Flow timeline, sudden tasks, alarms, **Work / Other to-dos**, **Weekly habits** sidebar card, **Workout log** full-width card below main grid
-- **Today's bands** — reorder (↑↓ / drag), move between bands, add extras, **blockDur −/+**, Gym/Home/Skip + Extra pickers, **⏱ end-warn**, **📌 pin start**, **⚡ sudden tasks**, **✕ skip for today**, capacity toast, **· not on timeline** when unpacked
+- **Today's bands** — reorder (↑↓ / drag), move between bands, add extras, **blockDur −/+**, Gym/Home/Skip + Extra pickers, **⏱ end-warn**, **📌 pin start**, **⚡ sudden tasks**, **⏳ open-time slots** (rename, clock window, move, dismiss), **✕ skip for today**, capacity toast, **· not on timeline** when unpacked
 - **Week** — calendar grid (Sun–Sat, 5am–midnight); tap hour → add fixed-window sudden; Flex row for anytime suddens; prev/next/today navigation
 - **Weekly habits** — sleep (≥6h), workout, water (≥5 glasses); Sun–Sat grid with partial progress; tap grid to log; “Log today” panel below grid
 - **Workout log** — Sun–Sat planner (yoga / cardio / lift checkboxes); lift detail panel (exercises, sets, weight/reps); collapsible lift disclosure; monthly max/avg/sessions summary
@@ -115,10 +123,11 @@ git show baseline-2026-06-10 --stat
 | Concept | Storage | Notes |
 |---------|---------|--------|
 | **Default bands** | `periodTemplate` (`preExam` / `postExam`) | Same defaults all days; empty `night: []`; no separate weekend template on current `main` |
-| **Today's bands** | `dayConfig[date]` | `periodOrder`, `periodMoves`, `periodExtras`, `periodSkips`, `periodPinnedStart`, `blockDur`; suddens as `sudden:st_*` |
+| **Today's bands** | `dayConfig[date]` | `periodOrder`, `periodMoves`, `periodExtras`, `periodSkips`, `periodPinnedStart`, `periodOpenSlots`, `periodOpenSlotHidden`, `blockDur`; suddens as `sudden:st_*`; open slots as `open:os_*` |
+| **Open-time slots** | `dayConfig[date].periodOpenSlots` | Per-band `{ id, kind: 'open'\|'activity', name, start, end, auto? }`; gaps auto-sync; dismiss → `periodOpenSlotHidden` |
 | **Sudden tasks** | `dayConfig[*].suddenTasks` | Any date bucket; `targetDayKey` selects schedule day; Week grid + bands + timeline share data |
 | **Week calendar** | Read/write `suddenTasks` | Fixed-window → grid blocks; anytime → Flex chips |
-| **Today's Flow** | Computed | `packPeriodBand` (honors pins) → optional `applySuddenTasks` for unpackable remainder |
+| **Today's Flow** | Computed | `packPeriodBand` (honors pins) → `syncPeriodOpenSlotsForBand` → optional `applySuddenTasks` for unpackable remainder |
 | **Scratch / notes** | `todayNotes`, `pmpNotes`, `jobNotes` | Per-field LWW with `*UpdatedAt` |
 | **Alarms** | `DATA.alarmOn`, `alarmEndOn`, `alarmEndTasks` | Start-of-block default on; 5m end warn per ⏱ |
 | **To-Do** | `DATA.todos`, `DATA.jobTodos` | List-level LWW — whole list wins by `todosUpdatedAt` / `jobTodosUpdatedAt`; Today todos split by `list: 'work' \| 'other'` |
@@ -171,7 +180,7 @@ Document-level winner-take-all for most scalar fields. Exceptions merged separat
 
 Each field in `DAY_LWW_FIELDS` merged independently via `pickDayLwwField` + `fieldUpdatedAt` timestamps:
 
-`wake`, `wakeLocked`, `dayType`, `workout`, `nonFixedPick`, `periodOrder`, `periodMoves`, `blockDur`, `periodSkips`, `periodPinnedStart`, `periodExtras`, `suddenTasks`
+`wake`, `wakeLocked`, `dayType`, `workout`, `nonFixedPick`, `periodOrder`, `periodMoves`, `blockDur`, `periodSkips`, `periodPinnedStart`, `periodExtras`, `periodOpenSlots`, `periodOpenSlotHidden`, `suddenTasks`
 
 Legacy whole-day `_syncAt` still used for `tasks` / `weekendPlan` only.
 
@@ -191,9 +200,9 @@ Legacy whole-day `_syncAt` still used for `tasks` / `weekendPlan` only.
 
 **At tag `540a3a5`:** workday = 3 bands + Work + Sleep; weekend = 4 bands + Plan templates.
 
-**Current `main` (`3304854`):** 4 bands always; `buildPeriodSeq` + `hasWorkShift`; night locked on shift days; Weekly habits + Workout log on Today tab; tab manager for hideable/custom tabs.
+**Current `main` (`cab37ed`):** 4 bands always; `buildPeriodSeq` + `hasWorkShift`; night locked on shift days; **open-time slots** in bands + timeline; pin fixes (`pinToMin`); Weekly habits + Workout log on Today tab; tab manager.
 
-- **Key functions:** `buildSeq`, `buildPeriodSeq`, `hasWorkShift`, `packPeriodBand`, `effectivePeriodLists`, `displaceSuddenOverlaps`, `applySuddenTasks`, `getPeriodPinStart`, `setPeriodPinStart`, `renderWeekCalendar`, `openCalEventModal`, `skipPeriodTask`, `repairSuddenBandLinks`, `bandCapacityStatus`, `checkTaskAlarms`, `calendarDayTypeForKey`, `activeDayKey`, `renderHabitWeekly`, `renderGymLog`, `habitTapCell`, `mergeHabitDailyMap`, `mergeGymLogMap`, `applyTabUi`, `renderCustomTabs`, `mergeTabUi`, `isTabVisible`.
+- **Key functions:** `buildSeq`, `buildPeriodSeq`, `hasWorkShift`, `packPeriodBand`, `effectivePeriodLists`, `syncPeriodOpenSlotsForBand`, `precomputeOpenSlotsForDay`, `moveOpenSlotPeriod`, `removeOpenSlot`, `pinToMin`, `displaceSuddenOverlaps`, `applySuddenTasks`, `getPeriodPinStart`, `setPeriodPinStart`, `renderWeekCalendar`, `openCalEventModal`, `skipPeriodTask`, `repairSuddenBandLinks`, `bandCapacityStatus`, `checkTaskAlarms`, `calendarDayTypeForKey`, `activeDayKey`, `renderHabitWeekly`, `renderGymLog`, `habitTapCell`, `mergeHabitDailyMap`, `mergeGymLogMap`, `applyTabUi`, `renderCustomTabs`, `mergeTabUi`, `isTabVisible`.
 
 Full band windows: [DESIGN.md](./DESIGN.md).
 
@@ -214,7 +223,7 @@ Full band windows: [DESIGN.md](./DESIGN.md).
 
 ## For Cursor / new chats
 
-> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, field-level timestamps, sudden/band packing, or Week calendar unless I ask. Match tag `baseline-2026-06-10` for the frozen contract; current `main` adds 4-band unification, jobs list LWW, weekly habits, workout log, split to-dos, tab manager, and workout log sync fixes.
+> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, field-level timestamps, sudden/band packing, open-slot sync, or Week calendar unless I ask. Match tag `baseline-2026-06-10` for the frozen contract; current `main` adds open-time slots, pin fixes, 4-band unification, jobs/jobTodos list LWW, weekly habits, workout log, split to-dos, and tab manager.
 
 ```text
 When I say "return to baseline" or "restore baseline-2026-06-10", read docs/BASELINE.md and treat it as the contract. Prefer minimal diffs.
@@ -230,7 +239,8 @@ See [HANDOFF.md](./HANDOFF.md).
 - Google Calendar / Todoist
 - Multi-user `DATA.profile`
 - Weak merge for `scheduleChecks` (block checkboxes)
-- Gym spillover across bands when morning is full (partial: displacement on sudden add only)
+- **Human-like gap replanning** — auto-place displaced gym/PMP/job into open slots before eviction (see DESIGN.md planning notes)
+- Gym spillover across bands when morning is full (partial: sudden displacement + open slots; no full replan loop)
 - Reliable background alarms (tab/permission dependent)
 
 ---

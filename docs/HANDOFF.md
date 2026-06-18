@@ -9,7 +9,7 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 
 > Update **HEAD** below when `main` moves.
 
-**HEAD:** `3304854` on `main` · **Baseline tag:** `baseline-2026-06-10` (app `540a3a5`)
+**HEAD:** `cab37ed` on `main` · **Baseline tag:** `baseline-2026-06-10` (app `540a3a5`)
 
 **Spec:** [DESIGN.md](./DESIGN.md) · **Baseline:** [BASELINE.md](./BASELINE.md) (tag `baseline-2026-06-10`)
 
@@ -20,7 +20,7 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 | Surface | What it is |
 |---------|------------|
 | **Today's Flow** | Computed timeline — `buildSeq()` → `renderSched()` → `#sched`; duration-only labels + checkboxes |
-| **Today's bands** | Four bands every day; today-only reorder/move/duration/skip/pin in `dayConfig[date]`; **sudden tasks (⚡)**; Gym/Home/Skip & Extra on band rows; ⏱ end-warn; 📌 pin start; capacity warnings |
+| **Today's bands** | Four bands every day; today-only reorder/move/duration/skip/pin in `dayConfig[date]`; **sudden tasks (⚡)**; **open-time slots (⏳)** — rename, clock window, move, dismiss; Gym/Home/Skip & Extra on band rows; ⏱ end-warn; 📌 pin start; capacity warnings |
 | **Shift vs off** | Calendar-only — `hasWorkShift(dayKey)`: Sun–Thu = shift; Fri–Sat = off. No day-type picker. |
 | **Night band** | **Shift days:** locked in bands UI (Work 8pm–3am); timeline adds Work + Sleep blocks. **Off days:** editable band 8pm–midnight, packs on timeline. |
 | **Week** | Sun–Sat grid (5am–midnight); fixed-window suddens as blocks; anytime in Flex row; tap slot to add via `calEventModal` |
@@ -28,7 +28,8 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 | **Workout log** | Full-width card below Today grid — `DATA.gymLog[date]`; yoga/cardio/lift week planner; lift detail panel (exercises, sets, weight/reps); collapsible lift disclosure (`gymLiftOpen`); monthly max/avg/sessions |
 | **Tab manager** | **⋯** on tab bar — `DATA.tabUi` (`hiddenTabs`, `customTabs`); hide Week/PMP/Jobs; add custom notes-only tabs; `tabUiUpdatedAt` LWW sync; `applyTabUi()` after DATA load |
 | **To-Do (Today)** | Split **Work** and **Other** lists (`list: 'work' \| 'other'` on `DATA.todos`); `mostUrgentTodo()` in now banner |
-| **Band vs timeline** | Band list = intent; `packPeriodBand()` packs in band order (honors `periodPinnedStart`); fixed-window suddens keep clock time |
+| **Band vs timeline** | Band list = intent; `packPeriodBand()` packs in band order (honors `periodPinnedStart` via `pinToMin`); open gaps → `periodOpenSlots` rows; fixed-window suddens keep clock time |
+| **Open-time slots** | `dayConfig[date].periodOpenSlots` + `periodOpenSlotHidden`; keys `open:os_*` in band lists; kinds `open` (unnamed gap) vs `activity` (renamed, counts toward capacity); auto-shrink when schedule changes |
 | **Sudden tasks** | `dayConfig[date].suddenTasks`; band key `sudden:st_*`; Week tab reads/writes same store |
 | **Skip for today** | `periodSkips` — ✕ on band rows or timeline; **↺ unskip all tasks** in bands footer |
 | **Default bands** | Single model — `periodTemplate` preExam/postExam + hardcoded defaults; empty `night: []` by default |
@@ -40,6 +41,20 @@ All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8
 ---
 
 ## Recently shipped (since `baseline-2026-06-10`)
+
+### Open-time slots + pin fixes (`b0c70fc` → `cab37ed`)
+
+- **`periodOpenSlots`** — configurable open-time rows in Today's bands (not timeline-only Flex chips)
+- **Rename / split** — set name + clock window inside open slot → remainder stays as open row; renamed slots become `activity` and count toward band capacity
+- **Move / dismiss** — move between bands (times shift into target band window, e.g. 1pm morning → 2pm afternoon); ✕ dismiss stores interval in `periodOpenSlotHidden` so sync won't recreate
+- **Auto-shrink** — open slots clip when neighbors change; overflow warning on activities
+- **Reset today's order** — clears `periodOpenSlots` + `periodOpenSlotHidden` along with order/moves/extras
+- **Pin fix** — `toMin()` on `periodPinnedStart` in `packPeriodBand`; `pinToMin()` + `normalizePeriodPins()` on load (fixes `12am` / `NaNm` on pinned gym)
+- **Cross-band move** — `moveOpenSlotPeriod` shifts clock times into destination band; clears gym pin if outside target band
+
+### Job to-do delete sync (`1a4272a`)
+
+- **`jobTodosUpdatedAt`** — list-level LWW like work todos; deleted job to-dos stay deleted after cloud sync
 
 ### Tab manager (`7dfffe9`, fix `3304854`)
 
@@ -96,7 +111,8 @@ All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8
 ## Not built yet (user wants)
 
 - **Recurring calendar events**
-- **Gym spillover** — if morning band full, gym should try afternoon/evening before dropping lower-priority tasks
+- **Human-like gap replanning** — when suddens displace tasks, try open slots / afternoon before eviction (`DISPLACE_PRIO` still evicts gym first)
+- **Gym spillover** — if morning band full, gym should try afternoon/evening open slots before dropping lower-priority tasks
 - **`scheduleChecks`** — block checkboxes weak merge
 - **Multi-user profiles** — after stable baseline
 - **Google Calendar / Todoist** — later
@@ -108,7 +124,8 @@ All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8
 - Custom template extras (`custom:true`) — stepper may hit wrong branch (`c.tasks` vs `periodExtras`)
 - Band cap can hide tasks; overfull still allowed; warnings surface skips
 - Fixed-window sudden reorder changes **neighbor** order on timeline, not the sudden's clock time
-- Flex “Open time” rows have no steppers or ✕
+- **Open slots vs bands** — clock time is authoritative; moving a 1pm slot to afternoon shifts to afternoon window (2–5pm), not a no-op
+- **Dismissed open slots** — hidden via `periodOpenSlotHidden`; reset today's order clears them
 - Alarms need tab open or browser notification permission; Web Audio may be blocked until user clicks the page
 - Gym/nonFixed show “Skipped” on band row when Skip selected (workout picker), separate from `periodSkips`
 - Week grid shows fixed-window suddens only in hour columns; anytime suddens in Flex row

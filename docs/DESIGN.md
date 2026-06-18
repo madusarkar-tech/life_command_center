@@ -74,10 +74,11 @@ Defaults live in `DATA.periodTemplate` (`preExam` / `postExam`) with the same li
 - **periodMoves** — move a task to another band today only (e.g. gym → morning); sudden tasks use keys `sudden:st_*`.
 - **periodExtras** — custom named activities in a band.
 - **periodSkips** — ✕ skip a task for today only; **↺ unskip all tasks** restores defaults.
-- **periodPinnedStart** — 📌 pin a task to a clock time within its band (e.g. gym at 11:00); `packPeriodBand` honors pins.
+- **periodPinnedStart** — 📌 pin a task to a clock time within its band (e.g. gym at 11:00); `packPeriodBand` honors pins via `pinToMin()`; invalid pins normalized on load.
+- **periodOpenSlots** — ⏳ open-time rows per band `{ id, kind, name, start, end, auto? }`; auto-synced from gaps; rename → `activity` (counts toward capacity); dismiss → `periodOpenSlotHidden`.
 - **blockDur** — today-only duration per task key; edited via **−/+ steppers** on band rows (not a separate timeline edit mode).
 - **suddenTasks** — sudden / planned appointments; appear in bands as ⚡ rows; packed in band order; also shown on **Week** tab.
-- **Reset today's order** — clears `periodOrder` / `periodMoves` / `periodExtras`; does not clear skips, pins, or suddens.
+- **Reset today's order** — clears `periodOrder` / `periodMoves` / `periodExtras` / `periodOpenSlots` / `periodOpenSlotHidden`; does not clear skips, pins, or suddens.
 
 Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge (`mergeDayEntry`).
 
@@ -86,8 +87,28 @@ Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge
 - **Gym row:** Gym / Home / Skip picker.
 - **Non-fixed row:** Auto / Read / AI / QGIS / Skip picker.
 - **⏱ toggle:** optional 5-minute end warning for that task (`alarmEndTasks`).
-- **📌 pin:** set a start time within the band window (`periodPinnedStart`).
+- **📌 pin:** set a start time within the band window (`periodPinnedStart`); stored as minutes, read via `pinToMin()`.
+- **⏳ open slot:** gap row with inline name + start/end times + duration; rename to create activity; move across bands; ✕ dismiss.
 - **Shift night row:** read-only Work label in the night band (no add/reorder).
+
+### Open-time slots (bands)
+
+Gaps between packed tasks are no longer timeline-only “Flex Open time” chips — they are **first-class band rows**:
+
+| Kind | Behavior |
+|------|----------|
+| **`open`** | Unnamed gap; does **not** count toward band capacity; auto-created from free time in band |
+| **`activity`** | Renamed slot with clock window; **counts** toward capacity like other tasks |
+
+**Rules:**
+
+1. **Auto-shrink** — when neighbors change, open slots clip to remaining gap (activities may show overflow warning).
+2. **Clock-first** — slots store `start` / `end` minutes; bands are organizational. Moving across bands **shifts times** into the target band window (e.g. workout at 1pm in morning → 2pm in afternoon).
+3. **Split** — rename + set a window inside open time → activity row + remainder open row.
+4. **Dismiss** — ✕ stores the interval in `periodOpenSlotHidden` so `syncPeriodOpenSlotsForBand` won't recreate it.
+5. **Reset** — “Reset today's order” clears open slots and hidden intervals.
+
+Band keys: `open:os_*`. Sync fields: `periodOpenSlots`, `periodOpenSlotHidden` (per-field LWW in `DAY_LWW_FIELDS`).
 
 ### Today's Flow (computed timeline)
 
@@ -102,8 +123,9 @@ Each field above has its own `fieldUpdatedAt` timestamp for per-field sync merge
 - Shown in **Today's bands** as ⚡ with reorder, move, duration, remove.
 - **Fixed window** (e.g. 10–11am): keeps clock time on timeline; band reorder changes what packs before/after.
 - **Anytime**: packed sequentially in band order like other tasks.
-- On add with overlap: `displaceSuddenOverlaps` tries `periodMoves` for displaced tasks (gym → afternoon/evening first).
+- On add with overlap: `displaceSuddenOverlaps` tries `periodMoves` for displaced tasks (gym → afternoon/evening first per `DISPLACE_PRIO` — gym is lowest priority and evicted first).
 - Remaining suddens not packed in bands may still flow through `applySuddenTasks`.
+- **Not yet:** full gap-based replan — displaced tasks do not automatically land in open slots before eviction.
 
 ### Week calendar tab
 
@@ -196,7 +218,8 @@ Separate from the schedule's gym band — a week planner and lift logger:
 | Skip for today | ✕ on band row or timeline → `periodSkips` |
 | Block lengths (`blockDur`) | −/+ steppers on Today's band rows |
 | Task alarms | Start-of-block (default on); ⏱ end warn per task |
-| Pin start time | 📌 on band row → `periodPinnedStart` |
+| Pin start time | 📌 on band row → `periodPinnedStart` (via `pinToMin`) |
+| Open-time slots | ⏳ in bands — rename/split, clock window, move, dismiss; auto-shrink |
 | Week calendar | Sun–Sat grid; tap slot to add fixed-window sudden |
 | Tab manager | **⋯** on tab bar — hide Week/PMP/Jobs; add custom note tabs |
 | Today's bands | Reorder / move / drag across all four bands (night locked on shift days) |
@@ -209,7 +232,7 @@ Separate from the schedule's gym band — a week planner and lift logger:
 - **Cloud:** Firestore `users/{uid}` `{ data, updatedAt }`.
 - **Load / snapshot:** `mergeAppData` combines local + cloud; `writeLocalAfterSync` sets meta to `max(local, cloud)`.
 - **Push:** `pushCloud` merge-before-push — reads cloud, merges, then writes (avoids stale device overwrite).
-- **dayConfig:** per-date, per-field LWW on `DAY_LWW_FIELDS` (wake, bands, suddens, pins, etc.).
+- **dayConfig:** per-date, per-field LWW on `DAY_LWW_FIELDS` (wake, bands, suddens, pins, open slots, etc.).
 - **Notes:** per-field LWW on `todayNotes`, `pmpNotes`, `jobNotes`.
 - **tabUi:** object-level LWW on `tabUiUpdatedAt` — hidden built-in tabs + custom tab list/notes (`mergeTabUi`).
 - **Todos / job todos / jobs:** list-level LWW — entire array wins by `todosUpdatedAt` / `jobTodosUpdatedAt` / `jobsUpdatedAt`.
@@ -222,7 +245,8 @@ Separate from the schedule's gym band — a week planner and lift logger:
 - Cloud backup beyond Firebase sign-in
 - Google Calendar / Todoist integration
 - **Recurring calendar events**
-- **Gym spillover** — if morning band is full, gym should try afternoon/evening before dropping lower-priority tasks (partial: displacement on sudden add only)
+- **Human-like gap replanning** — displaced tasks should try open slots before eviction (partial: open slots exist; sudden path still uses band-to-band displacement)
+- **Gym spillover** — if morning band is full, gym should try afternoon/evening open slots before dropping lower-priority tasks (partial: displacement on sudden add + manual open-slot moves)
 - Separate weekly Fri/Sat band templates (removed — use Today's bands per day instead)
 
 See [BUILD-HISTORY.md](BUILD-HISTORY.md) for feature evolution.
