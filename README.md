@@ -36,20 +36,21 @@ No output = local only. See [docs/GITHUB-SETUP.md](docs/GITHUB-SETUP.md) to push
 |-----|---------|
 | **Today** | Four period bands (night locked Sun–Thu); sudden ⚡, skip ✕, pin 📌, **open-time slots ⏳**; reorder; Today's Flow timeline; alarms; **Work / Other to-dos**; **Weekly habits** sidebar; **Workout log** below grid |
 | **Week** | Sun–Sat calendar (5am–midnight); tap slots to add fixed-window appointments; Flex row for anytime tasks |
-| **PMP Prep** | Study log, domain sliders, notes, countdown to June 22, 2026 (hidden after exam day; can be hidden manually) |
-| **Job Search** | Application pipeline, notes, deadline Aug 1, 2026; primary flexible schedule focus after June 22, 2026 (>2h/day on workdays) |
+| **Life Plan** | **Life phases** with date ranges; per-phase **default day template** (bands + durations); **PMP / Job module toggles**; north-star notes; drives Today's default bands |
+| **PMP Prep** | Study log, domain sliders, notes, countdown to June 22, 2026 (hidden when phase module off or via tab manager) |
+| **Job Search** | Application pipeline, notes, deadline Aug 1, 2026; primary focus after exam when job-hunt phase is active |
 | **Custom tabs** | Add via **⋯** on the tab bar — notes-only focus areas (rename/remove in tab manager) |
 
-**Tab manager:** click **⋯** at the end of the tab bar to show/hide Week, PMP Prep, and Job Search, or add custom note tabs. Today always stays visible. Preferences sync via `DATA.tabUi`.
+**Tab manager:** click **⋯** at the end of the tab bar to show/hide Week, PMP Prep, and Job Search, or add custom note tabs. **Today** and **Life Plan** always stay visible. Preferences sync via `DATA.tabUi`; Life Plan blueprint syncs via `DATA.lifePlan`.
 
 Design details: [docs/DESIGN.md](docs/DESIGN.md) · Build history: [docs/BUILD-HISTORY.md](docs/BUILD-HISTORY.md) · Onboarding: [docs/HANDOFF.md](docs/HANDOFF.md)
 
-**Stable baseline:** tag `baseline-2026-06-10` (app `540a3a5`) — contract in [docs/BASELINE.md](docs/BASELINE.md). Current `main` is `cab37ed` (open-time slots in bands, pin fixes, job to-do delete sync). Say *"Return to baseline"* in a new chat to anchor agents at the tag.
+**Stable baseline:** tag `baseline-2026-06-10` (app `540a3a5`) — contract in [docs/BASELINE.md](docs/BASELINE.md). Current `main` is `d45ade5` (Life Plan phases + blueprint editor, open-time slots, pin fixes). Say *"Return to baseline"* in a new chat to anchor agents at the tag.
 
 ## Data persistence
 
 - **Signed out:** saves to browser `localStorage` on that device only.
-- **Signed in:** syncs to your Firebase account (Mac + phone + iPad share one dataset). Field-level merge for bands (including open-time slots), notes, and pins; list-level merge for todos, job todos, and job pipeline; per-date merge for weekly habits and workout log; object-level LWW for tab visibility/custom tabs (`tabUi`); merge-before-push on save.
+- **Signed in:** syncs to your Firebase account (Mac + phone + iPad share one dataset). Field-level merge for bands (including open-time slots), notes, and pins; object-level LWW for **Life Plan** (`lifePlan`) and tab visibility (`tabUi`); list-level merge for todos, job todos, and job pipeline; per-date merge for weekly habits and workout log; merge-before-push on save.
 
 ## Project layout
 

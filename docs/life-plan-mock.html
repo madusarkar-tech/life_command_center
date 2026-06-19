@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Life Plan — Design Mock · Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f1e8;--bg2:#efe8dc;--surface:#fffcf7;--surface2:#f5efe4;
+    --line:#d9cfc0;--line-soft:#e6ddd0;--gold:#b8780c;--gold-soft:#9a6509;
+    --sage:#4a7a3d;--terra:#b84a32;--rust:#b4503c;--sky:#3d6d8f;
+    --text:#1f1a14;--muted:#6b5f4d;--muted2:#8a7d68;
+    --radius:16px;--shadow:0 8px 28px -10px rgba(60,45,25,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{min-height:100%}
+  body{
+    font-family:'Hanken Grotesk',sans-serif;
+    background:radial-gradient(1200px 600px at 85% -10%, rgba(234,168,60,.14), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(156,186,143,.12), transparent 55%),var(--bg);
+    color:var(--text);-webkit-font-smoothing:antialiased;
+    padding:22px clamp(14px,4vw,46px) 60px;
+  }
+  .mock-banner{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    padding:10px 16px;margin-bottom:20px;border-radius:12px;
+    background:rgba(61,109,143,.1);border:1px solid rgba(61,109,143,.35);
+    font-size:13px;font-weight:600;color:var(--sky);
+  }
+  .mock-banner a{color:var(--gold);font-weight:700}
+  header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}
+  .brand h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(26px,4vw,38px);line-height:1;letter-spacing:-.02em}
+  .brand .greet{color:var(--muted);font-size:15px;margin-top:8px;font-weight:500}
+  .clocks{display:flex;gap:14px;flex-wrap:wrap}
+  .clock{background:linear-gradient(160deg,var(--surface),var(--bg2));border:1px solid var(--line-soft);border-radius:14px;padding:12px 18px;min-width:140px}
+  .clock .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted2);font-weight:700}
+  .clock .t{font-family:'Fraunces',serif;font-size:26px;font-weight:500;margin-top:2px;font-variant-numeric:tabular-nums}
+  .clock .d{font-size:12px;color:var(--muted);margin-top:1px}
+  .clock.bkk{border-color:rgba(234,168,60,.3)}.clock.bkk .t{color:var(--gold)}
+  .countdowns{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
+  @media(max-width:640px){.countdowns{grid-template-columns:1fr}}
+  .cd{position:relative;overflow:hidden;border-radius:var(--radius);padding:18px 20px;border:1px solid var(--line);background:linear-gradient(150deg,var(--surface),var(--bg2));box-shadow:var(--shadow)}
+  .cd::after{content:"";position:absolute;inset:0;background:radial-gradient(400px 200px at 110% -40%,rgba(234,168,60,.14),transparent 70%);pointer-events:none}
+  .cd.phase::after{background:radial-gradient(400px 200px at 110% -40%,rgba(74,122,61,.14),transparent 70%)}
+  .cd.jobs::after{background:radial-gradient(400px 200px at 110% -40%,rgba(221,122,95,.16),transparent 70%)}
+  .cd .top{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .cd .num{font-family:'Fraunces',serif;font-size:clamp(36px,5vw,52px);font-weight:600;line-height:1;margin:8px 0 2px}
+  .cd .num small{font-size:16px;color:var(--muted);font-weight:500;font-family:'Hanken Grotesk'}
+  .cd .sub{font-size:13px;color:var(--muted)}
+  .cd .bar{height:6px;border-radius:6px;background:var(--line);margin-top:12px;overflow:hidden}
+  .cd .bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--gold),var(--gold-soft))}
+  .cd.jobs .bar i{background:linear-gradient(90deg,var(--terra),#e89b85)}
+  .cd.phase .bar i{background:linear-gradient(90deg,var(--sage),#6a9a5c)}
+  .pill{font-family:'Fraunces',serif;font-size:12px;background:rgba(184,120,12,.14);color:var(--gold);padding:3px 10px;border-radius:20px;font-weight:600}
+  .cd.jobs .pill{background:rgba(184,74,50,.12);color:var(--terra)}
+  .cd.phase .pill{background:rgba(74,122,61,.14);color:var(--sage)}
+  nav.tabs{display:flex;gap:6px;margin-bottom:22px;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;align-items:flex-end}
+  nav.tabs button{background:none;border:none;color:var(--muted);font-family:'Hanken Grotesk';font-size:15px;font-weight:600;padding:10px 16px;cursor:pointer;position:relative;border-radius:8px 8px 0 0}
+  nav.tabs button.active{color:var(--gold)}
+  nav.tabs button.active::after{content:"";position:absolute;left:14px;right:14px;bottom:-1px;height:2px;background:var(--gold);border-radius:2px}
+  nav.tabs button.disabled{color:var(--muted2);cursor:default;opacity:.55}
+  .grid{display:grid;gap:18px}
+  .g-2{grid-template-columns:1.35fr 1fr}
+  @media(max-width:900px){.g-2{grid-template-columns:1fr}}
+  .card{background:linear-gradient(160deg,var(--surface),var(--bg2));border:1px solid var(--line-soft);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow)}
+  .card h2{font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card .h-sub{color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.45}
+  .sidebar-col{display:flex;flex-direction:column;gap:18px}
+  .btn{background:var(--gold);color:#fff;border:none;border-radius:10px;padding:10px 16px;font-family:'Hanken Grotesk';font-weight:700;font-size:13px;cursor:pointer;transition:.15s}
+  .btn:hover{background:var(--gold-soft)}
+  .btn.sm{padding:8px 12px;font-size:12px}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+  .btn.ghost:hover{color:var(--text);border-color:var(--gold)}
+  .ghostbtn{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:9px;padding:8px 13px;font-family:'Hanken Grotesk';font-weight:600;font-size:13px;cursor:pointer}
+  .ghostbtn:hover{color:var(--text);border-color:var(--gold)}
+  .phase-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+  .phase-card{
+    border:1px solid var(--line-soft);border-radius:12px;padding:14px 16px;background:var(--surface);
+    display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 16px;
+  }
+  .phase-card.active{border-color:rgba(74,122,61,.45);background:rgba(74,122,61,.06);box-shadow:inset 3px 0 0 var(--sage)}
+  .phase-card.archived{opacity:.72}
+  .phase-dot{width:10px;height:10px;border-radius:50%;background:var(--line);margin-top:5px;flex-shrink:0}
+  .phase-card.active .phase-dot{background:var(--sage);box-shadow:0 0 0 3px rgba(74,122,61,.2)}
+  .phase-card.archived .phase-dot{background:var(--muted2)}
+  .phase-body{flex:1;min-width:180px}
+  .phase-title{font-weight:700;font-size:15px;margin-bottom:4px}
+  .phase-meta{font-size:12px;color:var(--muted);line-height:1.5}
+  .phase-meta strong{color:var(--text);font-weight:600}
+  .phase-actions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .phase-actions button{font-size:11px;padding:5px 10px}
+  .phase-edit{
+    display:none;width:100%;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-soft);
+    gap:12px;flex-wrap:wrap;align-items:center;
+  }
+  .phase-card.editing .phase-edit{display:flex}
+  .field-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:100%}
+  .field-row label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2);min-width:88px}
+  .field-row input,.field-row select{
+    background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+    font-family:inherit;font-size:13px;color:var(--text);
+  }
+  .chk-row{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;font-weight:600}
+  .chk-row label{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .period-band{margin-bottom:12px;border:1px solid var(--line-soft);border-radius:10px;overflow:hidden}
+  .period-band-hdr{
+    display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg2);
+    font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2);cursor:pointer;user-select:none;
+  }
+  .period-band-hdr .win{font-weight:500;text-transform:none;letter-spacing:0;color:var(--muted)}
+  .period-band-hdr .band-fill{font-weight:700;text-transform:none;margin-left:8px}
+  .period-band-hdr .band-fill.ok{color:var(--sage)}
+  .period-band-hdr .band-fill.warn{color:var(--rust)}
+  .period-band-hdr.overfull{border-bottom:2px solid rgba(180,80,60,.35)}
+  .period-band.collapsed .period-band-body{display:none}
+  .period-task{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line-soft);font-size:13px;background:var(--surface);flex-wrap:wrap}
+  .period-task:first-of-type{border-top:none}
+  .period-task .pt-ico{width:22px;text-align:center;flex-shrink:0}
+  .period-task .pt-lab{flex:1;font-weight:600;min-width:100px}
+  .period-task .pt-lab small{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-top:1px}
+  .period-task.pt-open{align-items:center;flex-wrap:nowrap}
+  .period-task.pt-open .pt-lab{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
+  .period-task.pt-open .pt-lab input[type=text]{flex:0 1 88px;width:88px;padding:4px 6px;font-size:12px;border:1px solid var(--line);border-radius:7px;background:var(--surface)}
+  .period-task.pt-open .pt-times{display:inline-flex;gap:4px;align-items:center;font-size:11px;color:var(--muted2)}
+  .period-task.pt-open .pt-times input[type=time]{width:62px;padding:2px 4px;font-size:11px;border:1px solid var(--line);border-radius:6px}
+  .stepper{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface);flex-shrink:0}
+  .stepper button{background:transparent;border:none;color:var(--gold);width:24px;height:24px;font-size:14px;font-weight:800;cursor:pointer}
+  .stepper button:hover{background:var(--surface2)}
+  .stepper .val{font-size:11px;font-weight:700;min-width:34px;text-align:center;font-variant-numeric:tabular-nums}
+  .pt-pick{flex:1 1 100%;padding:2px 0 4px 30px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .seg button{background:transparent;border:none;color:var(--muted);padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer}
+  .seg button.on{background:var(--gold);color:#fff}
+  .seg.sky button.on{background:var(--sky);color:#fff}
+  .constraints .ctl-block{margin-bottom:14px}
+  .constraints .ctl-block:last-child{margin-bottom:0}
+  .constraints .lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted2);margin-bottom:6px}
+  .shift-days{display:flex;flex-wrap:wrap;gap:6px}
+  .shift-days label{
+    display:flex;align-items:center;justify-content:center;width:36px;height:32px;border-radius:8px;
+    border:1px solid var(--line);font-size:11px;font-weight:700;cursor:pointer;background:var(--surface);
+  }
+  .shift-days input{display:none}
+  .shift-days input:checked+span{background:var(--sky);color:#fff;border-color:var(--sky);border-radius:7px;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+  .min-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft);font-size:13px;font-weight:600}
+  .min-row:last-child{border-bottom:none}
+  .min-row.off{opacity:.45}
+  .min-row input[type=number]{width:56px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;text-align:center}
+  .period-disclosure{border:1px solid var(--line-soft);border-radius:12px;overflow:hidden;background:var(--bg2);margin-top:18px}
+  .period-disclosure summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
+  .period-disclosure summary::-webkit-details-marker{display:none}
+  .period-disclosure .tri{width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:7px solid var(--sky);transition:transform .2s}
+  .period-disclosure[open] .tri{transform:rotate(90deg)}
+  .period-disclosure .sum-hint{font-size:12px;color:var(--muted);font-weight:500;margin-left:auto}
+  .period-disclosure .period-body{padding:0 16px 16px;border-top:1px solid var(--line-soft)}
+  .preview-line{display:flex;gap:12px;padding:6px 0;font-size:13px;border-bottom:1px solid var(--line-soft)}
+  .preview-line:last-child{border-bottom:none}
+  .preview-line .t{width:52px;font-weight:700;color:var(--muted2);font-variant-numeric:tabular-nums;flex-shrink:0}
+  .preview-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .lp-notes textarea{
+    width:100%;min-height:100px;border:1px solid var(--line-soft);border-radius:11px;background:var(--bg2);
+    padding:12px 14px;font-family:inherit;font-size:14px;line-height:1.55;color:var(--text);resize:vertical;outline:none;
+  }
+  .lp-notes textarea:focus{border-color:var(--gold)}
+  .foot-note{text-align:center;font-size:12px;color:var(--muted2);margin-top:28px}
+  .resetlink{font-size:12px;color:var(--muted2);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:inherit}
+  .resetlink:hover{color:var(--terra)}
+  .template-foot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:12px;padding-top:8px}
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:var(--text);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;
+    opacity:0;transition:.3s ease;pointer-events:none;z-index:100;
+  }
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+  .onboard-overlay{
+    position:fixed;inset:0;background:rgba(31,26,20,.45);display:flex;align-items:center;justify-content:center;
+    padding:20px;z-index:50;
+  }
+  .onboard-overlay.hidden{display:none}
+  .onboard-panel{
+    max-width:520px;width:100%;background:var(--surface);border-radius:var(--radius);padding:28px 26px;
+    box-shadow:0 20px 60px rgba(40,30,15,.2);border:1px solid var(--line);
+  }
+  .onboard-panel h2{font-family:'Fraunces',serif;font-size:24px;margin-bottom:8px}
+  .onboard-panel p{color:var(--muted);font-size:14px;margin-bottom:20px;line-height:1.5}
+  .template-picks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+  @media(max-width:480px){.template-picks{grid-template-columns:1fr}}
+  .template-pick{
+    border:1px solid var(--line-soft);border-radius:12px;padding:14px;cursor:pointer;background:var(--bg2);
+    transition:.15s;text-align:left;font-family:inherit;
+  }
+  .template-pick:hover,.template-pick.selected{border-color:var(--gold);background:rgba(184,120,12,.08)}
+  .template-pick .tp-ico{font-size:22px;margin-bottom:6px}
+  .template-pick .tp-lab{font-weight:700;font-size:14px;color:var(--text)}
+  .template-pick .tp-sub{font-size:12px;color:var(--muted);margin-top:2px}
+</style>
+</head>
+<body>
+
+<div class="mock-banner">
+  <span>🎨 <strong>Design mock</strong> — Life Plan tab prototype. Not connected to <code>life-dashboard.html</code>.</span>
+  <span>
+    <button type="button" class="ghostbtn sm" id="btnShowOnboard">Show onboarding</button>
+    · <a href="../life-dashboard.html">Open live app</a>
+  </span>
+</div>
+
+<header>
+  <div class="brand">
+    <h1>Command Center</h1>
+    <div class="greet">Afternoon — prime focus hours.</div>
+  </div>
+  <div class="clocks">
+    <div class="clock">
+      <div class="lbl">Tallahassee</div>
+      <div class="t" id="cTLH">2:14 PM</div>
+      <div class="d">Thu Jun 18</div>
+    </div>
+    <div class="clock bkk">
+      <div class="lbl">Bangkok · Work</div>
+      <div class="t" id="cBKK">1:14 AM</div>
+      <div class="d">Fri Jun 19</div>
+    </div>
+  </div>
+</header>
+
+<div class="countdowns">
+  <div class="cd jobs">
+    <div class="top"><span>New job deadline</span><span class="pill">Aug 1</span></div>
+    <div class="num"><span id="jobDays">44</span> <small>days left</small></div>
+    <div class="sub">Applications in pipeline: 3</div>
+    <div class="bar"><i style="width:62%"></i></div>
+  </div>
+  <div class="cd phase">
+    <div class="top"><span>Active phase</span><span class="pill">Job hunt</span></div>
+    <div class="num" style="font-size:clamp(22px,4vw,32px);line-height:1.2;margin-top:10px">Post-PMP job hunt</div>
+    <div class="sub">Jun 23 → Aug 1 · Primary: Job applications · 2h/day</div>
+    <div class="bar"><i style="width:38%"></i></div>
+  </div>
+</div>
+
+<nav class="tabs" aria-label="Main navigation (mock)">
+  <button type="button">Today</button>
+  <button type="button">Week</button>
+  <button type="button" class="active">Life Plan</button>
+  <button type="button">Job Search</button>
+  <button type="button" class="disabled" title="Hidden — PMP phase ended">PMP Prep</button>
+</nav>
+
+<main>
+  <!-- Phase card -->
+  <div class="card" style="margin-bottom:18px">
+    <h2>🎯 Life phase</h2>
+    <div class="h-sub">What you're optimizing for — drives Today's default bands, countdown cards, and which goal tabs appear.</div>
+
+    <div class="phase-list">
+      <div class="phase-card active" id="phaseActive">
+        <div class="phase-dot" aria-hidden="true"></div>
+        <div class="phase-body">
+          <div class="phase-title">Post-PMP job hunt</div>
+          <div class="phase-meta">
+            <strong>Jun 23, 2026</strong> → <strong>Aug 1, 2026</strong><br>
+            Primary focus: 💼 Job applications · target <strong>120 min/day</strong><br>
+            Modules: Job Search ☑ · PMP Prep ☐
+          </div>
+          <div class="phase-edit">
+            <div class="field-row">
+              <label>Phase name</label>
+              <input type="text" value="Post-PMP job hunt" style="flex:1;min-width:160px">
+            </div>
+            <div class="field-row">
+              <label>Dates</label>
+              <input type="date" value="2026-06-23"> → <input type="date" value="2026-08-01">
+            </div>
+            <div class="field-row">
+              <label>Primary</label>
+              <select><option>Job applications</option><option>Study / cert</option><option>Custom focus</option></select>
+              <input type="number" value="120" min="15" step="15" style="width:72px"> min/day
+            </div>
+            <div class="field-row chk-row">
+              <label><input type="checkbox" checked> Job Search tab</label>
+              <label><input type="checkbox"> PMP Prep tab</label>
+            </div>
+            <button type="button" class="btn sm" data-toast="Phase saved (mock)">Save phase</button>
+          </div>
+        </div>
+        <div class="phase-actions">
+          <button type="button" class="ghostbtn sm" id="btnEditPhase">Edit</button>
+          <button type="button" class="ghostbtn sm" data-toast="Phase ended (mock)">End phase</button>
+        </div>
+      </div>
+
+      <div class="phase-card archived">
+        <div class="phase-dot" aria-hidden="true"></div>
+        <div class="phase-body">
+          <div class="phase-title">PMP exam prep</div>
+          <div class="phase-meta">Ended Jun 22, 2026 · was 2h study/day · PMP tab was on</div>
+        </div>
+        <div class="phase-actions">
+          <button type="button" class="ghostbtn sm" data-toast="Phase reactivated (mock)">Reactivate</button>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="btn ghost sm" data-toast="Add phase (mock)">+ Add life phase</button>
+  </div>
+
+  <div class="grid g-2">
+    <!-- Default template -->
+    <div class="card">
+      <h2>📋 Default day template</h2>
+      <div class="h-sub">Feeds <strong>Today's bands</strong> every day until you override that specific day. Same row controls as Today — durations here are blueprint defaults.</div>
+
+      <div id="bandMorning" class="period-band">
+        <div class="period-band-hdr" data-toggle-band>
+          <span>Morning <span class="win">wake → 2pm</span></span>
+          <span class="band-fill ok">210 / 240m</span>
+        </div>
+        <div class="period-band-body">
+          <div class="period-task">
+            <span class="pt-ico">🍳</span>
+            <span class="pt-lab">Breakfast</span>
+            <div class="stepper" data-step="30" data-min="10" data-max="60"><button type="button" data-d="-5">−</button><span class="val">30m</span><button type="button" data-d="5">+</button></div>
+            <span style="font-size:11px;color:var(--muted2)">↑↓ drag</span>
+          </div>
+          <div class="period-task has-pick">
+            <span class="pt-ico">🏋️</span>
+            <span class="pt-lab">Workout<small>Gym commute included</small></span>
+            <div class="stepper" data-step="90" data-min="20" data-max="120"><button type="button" data-d="-5">−</button><span class="val">90m</span><button type="button" data-d="5">+</button></div>
+            <div class="pt-pick">
+              <div class="seg" data-seg>
+                <button type="button" class="on">Gym</button>
+                <button type="button">Home</button>
+                <button type="button">Skip</button>
+              </div>
+            </div>
+          </div>
+          <div class="period-task pt-open">
+            <span class="pt-ico">⏳</span>
+            <span class="pt-lab">
+              <input type="text" value="Open time" readonly style="opacity:.85">
+              <span class="pt-times"><input type="time" value="12:00" readonly>–<input type="time" value="14:00" readonly></span>
+            </span>
+            <span class="stepper" style="pointer-events:none;opacity:.7"><span class="val" style="padding:0 8px">~90m</span></span>
+            <small style="font-size:10px;color:var(--muted2)">auto from gaps</small>
+          </div>
+        </div>
+      </div>
+
+      <div id="bandAfternoon" class="period-band">
+        <div class="period-band-hdr overfull" data-toggle-band>
+          <span>Afternoon <span class="win">2–5pm</span></span>
+          <span class="band-fill warn">187 / 180m</span>
+        </div>
+        <div class="period-band-body">
+          <div class="period-task">
+            <span class="pt-ico">💼</span>
+            <span class="pt-lab">Job applications<small>Part 1 · &gt;2h/day total</small></span>
+            <div class="stepper" data-step="61" data-min="30" data-max="120"><button type="button" data-d="-5">−</button><span class="val">61m</span><button type="button" data-d="5">+</button></div>
+          </div>
+          <div class="period-task">
+            <span class="pt-ico">💼</span>
+            <span class="pt-lab">Job applications (2/2)</span>
+            <div class="stepper" data-step="61" data-min="30" data-max="120"><button type="button" data-d="-5">−</button><span class="val">61m</span><button type="button" data-d="5">+</button></div>
+          </div>
+          <div class="period-task has-pick">
+            <span class="pt-ico">📖</span>
+            <span class="pt-lab">Non-fixed</span>
+            <div class="stepper" data-step="45" data-min="15" data-max="90"><button type="button" data-d="-5">−</button><span class="val">45m</span><button type="button" data-d="5">+</button></div>
+            <div class="pt-pick">
+              <div class="seg sky" data-seg>
+                <button type="button">Auto</button>
+                <button type="button" class="on">Read</button>
+                <button type="button">AI</button>
+                <button type="button">QGIS</button>
+                <button type="button">Skip</button>
+              </div>
+            </div>
+          </div>
+          <div class="period-task">
+            <span class="pt-ico">🍽️</span>
+            <span class="pt-lab">Dinner prep</span>
+            <div class="stepper" data-step="20" data-min="10" data-max="45"><button type="button" data-d="-5">−</button><span class="val">20m</span><button type="button" data-d="5">+</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="period-band collapsed">
+        <div class="period-band-hdr" data-toggle-band>
+          <span>Evening <span class="win">5–8pm</span></span>
+          <span class="band-fill ok">75 / 180m</span>
+        </div>
+        <div class="period-band-body">
+          <div class="period-task"><span class="pt-ico">🐕</span><span class="pt-lab">Dog walk &amp; feed</span><div class="stepper" data-step="45" data-min="20" data-max="60"><button type="button" data-d="-5">−</button><span class="val">45m</span><button type="button" data-d="5">+</button></div></div>
+          <div class="period-task"><span class="pt-ico">🍲</span><span class="pt-lab">Dinner</span><div class="stepper" data-step="60" data-min="30" data-max="90"><button type="button" data-d="-5">−</button><span class="val">60m</span><button type="button" data-d="5">+</button></div></div>
+          <div class="period-task"><span class="pt-ico">🌱</span><span class="pt-lab">Garden</span><div class="stepper" data-step="30" data-min="15" data-max="60"><button type="button" data-d="-5">−</button><span class="val">30m</span><button type="button" data-d="5">+</button></div></div>
+        </div>
+      </div>
+
+      <div class="period-band collapsed">
+        <div class="period-band-hdr" data-toggle-band>
+          <span>Night <span class="win">8pm → midnight</span></span>
+          <span class="band-fill ok">0 / 240m</span>
+        </div>
+        <div class="period-band-body">
+          <p style="padding:12px;font-size:12px;color:var(--muted);font-style:italic">Empty · locked to work row on Sun–Thu shift nights</p>
+        </div>
+      </div>
+
+      <div class="template-foot">
+        <button type="button" class="btn ghost sm" data-toast="Pick task (mock)">+ Add task to band</button>
+        <button type="button" class="resetlink" data-toast="Defaults restored (mock)">↺ Restore phase defaults</button>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar-col">
+      <div class="card constraints">
+        <h2>⏰ Constraints</h2>
+        <div class="h-sub">Immuable schedule skeleton — work block, shift nights, sleep.</div>
+        <div class="ctl-block">
+          <div class="lbl">Timezone</div>
+          <select style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--bg2)">
+            <option>America/New_York</option>
+            <option>America/Chicago</option>
+            <option>Europe/London</option>
+          </select>
+        </div>
+        <div class="ctl-block">
+          <div class="lbl">Default wake · day rolls at</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="time" value="10:00">
+            <input type="time" value="04:00" title="4am rollover">
+          </div>
+        </div>
+        <div class="ctl-block">
+          <div class="lbl">Work block (fixed on timeline)</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="time" value="20:00"> – <input type="time" value="03:00">
+          </div>
+          <input type="text" value="Bangkok" placeholder="Remote clock label" style="width:100%;margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--bg2)">
+        </div>
+        <div class="ctl-block">
+          <div class="lbl">Shift nights</div>
+          <div class="shift-days">
+            <label><input type="checkbox" checked><span>S</span></label>
+            <label><input type="checkbox" checked><span>M</span></label>
+            <label><input type="checkbox" checked><span>T</span></label>
+            <label><input type="checkbox" checked><span>W</span></label>
+            <label><input type="checkbox" checked><span>T</span></label>
+            <label><input type="checkbox"><span>F</span></label>
+            <label><input type="checkbox"><span>S</span></label>
+          </div>
+        </div>
+        <div class="ctl-block">
+          <div class="lbl">Protected sleep</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="time" value="03:00"> → wake
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>📊 Daily minimums</h2>
+        <div class="h-sub">Linked to Weekly habits and band warnings.</div>
+        <div class="min-row"><span>Sleep</span><span>≥ <input type="number" value="6" min="4" max="12"> hrs</span></div>
+        <div class="min-row"><span>Workout</span><span style="font-size:12px;color:var(--muted)">from gym block</span></div>
+        <div class="min-row"><span>Water</span><span>≥ <input type="number" value="5" min="1" max="12"> glasses</span></div>
+        <div class="min-row"><span>Job search</span><span>≥ <input type="number" value="120" min="15" step="15"> min/day</span></div>
+        <div class="min-row off"><span>PMP study</span><span style="font-size:12px;color:var(--muted)">off — phase ended</span></div>
+        <button type="button" class="ghostbtn sm" style="margin-top:12px" data-toast="Add habit (mock)">+ Add habit minimum</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <details class="period-disclosure card" style="padding:0;border:none;background:transparent;box-shadow:var(--shadow)">
+    <summary style="background:linear-gradient(160deg,var(--surface),var(--bg2));border:1px solid var(--line-soft);border-radius:var(--radius)">
+      <span class="tri" aria-hidden="true"></span>
+      <span style="font-family:'Fraunces',serif">👁 Preview typical Tuesday (shift night)</span>
+      <span class="sum-hint">read-only sample</span>
+    </summary>
+    <div class="period-body" style="background:var(--surface);border:1px solid var(--line-soft);border-top:none;border-radius:0 0 var(--radius) var(--radius);margin-top:-1px">
+      <div class="preview-line"><span class="t">10:00</span><span>Breakfast · 30m</span></div>
+      <div class="preview-line"><span class="t">10:30</span><span>Workout · 90m</span></div>
+      <div class="preview-line"><span class="t">12:00</span><span>Open time · ~90m</span></div>
+      <div class="preview-line"><span class="t">14:00</span><span>Job applications · 61m + 61m · Non-fixed Read · 45m · Dinner prep · 20m</span></div>
+      <div class="preview-line"><span class="t">17:00</span><span>Dogs · Dinner · Garden</span></div>
+      <div class="preview-line"><span class="t">20:00</span><span><strong>Work</strong> (fixed)</span></div>
+      <div class="preview-line"><span class="t">03:00</span><span><strong>Sleep</strong> (fixed)</span></div>
+      <div class="preview-actions">
+        <button type="button" class="btn sm" data-toast="Blueprint applied to today (mock)">Apply blueprint to today</button>
+        <a href="../life-dashboard.html" class="ghostbtn sm" style="text-decoration:none;display:inline-block">View on Today tab →</a>
+      </div>
+    </div>
+  </details>
+
+  <!-- Notes -->
+  <div class="card lp-notes" style="margin-top:18px">
+    <h2>📌 North star</h2>
+    <div class="h-sub">Long-form intent for this life phase — syncs like PMP / job notes.</div>
+    <textarea placeholder="Land a PM role by August. Protect sleep before shift. Batch meal prep Saturdays. Use morning open time for deep job work or networking.">Land a PM role by August. Protect sleep before shift. Batch meal prep Saturdays. Use morning open time for deep job work or networking.</textarea>
+  </div>
+</main>
+
+<p class="foot-note">Life Plan mock · Jun 2026 · for product review only</p>
+
+<div class="toast" id="toast" role="status"></div>
+
+<!-- Onboarding overlay -->
+<div class="onboard-overlay hidden" id="onboard">
+  <div class="onboard-panel" role="dialog" aria-labelledby="obTitle">
+    <h2 id="obTitle">Welcome to Command Center</h2>
+    <p>Pick a starting point for your Life Plan. You can change everything later in this tab.</p>
+    <div class="template-picks">
+      <button type="button" class="template-pick selected" data-template="night">
+        <div class="tp-ico">🌙</div>
+        <div class="tp-lab">Night shift remote</div>
+        <div class="tp-sub">Bangkok-style hours, shift nights</div>
+      </button>
+      <button type="button" class="template-pick" data-template="nine">
+        <div class="tp-ico">☀️</div>
+        <div class="tp-lab">Standard 9–5</div>
+        <div class="tp-sub">Day job, evening personal time</div>
+      </button>
+      <button type="button" class="template-pick" data-template="exam">
+        <div class="tp-ico">🎓</div>
+        <div class="tp-lab">Exam prep</div>
+        <div class="tp-sub">Study blocks + side goals</div>
+      </button>
+      <button type="button" class="template-pick" data-template="blank">
+        <div class="tp-ico">✨</div>
+        <div class="tp-lab">Blank slate</div>
+        <div class="tp-sub">Empty four-band template</div>
+      </button>
+    </div>
+    <button type="button" class="btn" id="btnOnboardDone" style="width:100%">Continue to Life Plan</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  function toast(msg){
+    const el=document.getElementById('toast');
+    el.textContent=msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t=setTimeout(()=>el.classList.remove('show'),2200);
+  }
+
+  document.querySelectorAll('[data-toast]').forEach(btn=>{
+    btn.addEventListener('click',()=>toast(btn.getAttribute('data-toast')));
+  });
+
+  document.getElementById('btnEditPhase').addEventListener('click',()=>{
+    document.getElementById('phaseActive').classList.toggle('editing');
+  });
+
+  document.querySelectorAll('[data-toggle-band]').forEach(hdr=>{
+    hdr.addEventListener('click',()=>hdr.closest('.period-band').classList.toggle('collapsed'));
+  });
+
+  document.querySelectorAll('.stepper').forEach(st=>{
+    if(!st.querySelector('button'))return;
+    const valEl=st.querySelector('.val');
+    let v=parseInt(st.dataset.step,10)||30;
+    const min=parseInt(st.dataset.min,10)||5;
+    const max=parseInt(st.dataset.max,10)||180;
+    const render=()=>{valEl.textContent=v+'m';};
+    st.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const d=parseInt(btn.dataset.d,10);
+        v=Math.min(max,Math.max(min,v+d));
+        render();
+      });
+    });
+  });
+
+  document.querySelectorAll('[data-seg]').forEach(seg=>{
+    seg.querySelectorAll('button').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        seg.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+        btn.classList.add('on');
+      });
+    });
+  });
+
+  const onboard=document.getElementById('onboard');
+  document.getElementById('btnShowOnboard').addEventListener('click',()=>onboard.classList.remove('hidden'));
+  document.getElementById('btnOnboardDone').addEventListener('click',()=>onboard.classList.add('hidden'));
+  document.querySelectorAll('.template-pick').forEach(p=>{
+    p.addEventListener('click',()=>{
+      document.querySelectorAll('.template-pick').forEach(x=>x.classList.remove('selected'));
+      p.classList.add('selected');
+    });
+  });
+
+  function tickClocks(){
+    const now=new Date();
+    const tlh=now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    document.getElementById('cTLH').textContent=tlh;
+    const bkk=new Date(now.toLocaleString('en-US',{timeZone:'Asia/Bangkok'}));
+    document.getElementById('cBKK').textContent=bkk.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  }
+  tickClocks();
+  setInterval(tickClocks,30000);
+})();
+</script>
+</body>
+</html>

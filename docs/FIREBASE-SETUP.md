@@ -98,6 +98,7 @@ Sign in on a second browser (or phone) with the **same Google account** — data
 - On sign-in: cloud data wins if it’s newer; if cloud is empty, your local Mac data is uploaded once.
 - Tab visibility and custom tabs sync via `data.tabUi` (`hiddenTabs`, `customTabs`) with `tabUiUpdatedAt` (last-write-wins across devices).
 - Open-time slots in Today's bands sync via `dayConfig[date].periodOpenSlots` and `periodOpenSlotHidden` (per-field LWW like other band fields).
+- Life Plan phases and default templates sync via `data.lifePlan` with `lifePlanUpdatedAt` (object-level LWW across devices).
 
 ## Troubleshooting
 

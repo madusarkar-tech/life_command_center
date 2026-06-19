@@ -5,7 +5,7 @@
 
 Use this when you want future work (or a new chat) to treat the app as **known-good** and avoid accidental changes to sync, field-level merge, sudden/band scheduling, or Week calendar unless you explicitly ask otherwise.
 
-**Current `main`:** `cab37ed` — open-time slots in bands, pin fixes, job to-do delete sync. See [Changes since `baseline-2026-06-10`](#changes-since-baseline-2026-06-10-540a3a5-app) below.
+**Current `main`:** `d45ade5` — Life Plan tab (phases, blueprint editor, module toggles). See [Changes since `baseline-2026-06-10`](#changes-since-baseline-2026-06-10-540a3a5-app) below.
 
 ## Git reference (baseline tag)
 
@@ -35,7 +35,7 @@ List what the tag contains:
 git show baseline-2026-06-10 --stat
 ```
 
-**Live site:** GitHub Pages follows `main` (currently `cab37ed`).
+**Live site:** GitHub Pages follows `main` (currently `d45ade5`).
 
 ---
 
@@ -43,6 +43,8 @@ git show baseline-2026-06-10 --stat
 
 | Commit | Summary |
 |--------|---------|
+| `d45ade5` | **Life Plan tab (Phase 1)** — life phases with date ranges; per-phase default band template editor; PMP/Job **module toggles**; `DATA.lifePlan` + `mergeLifePlan`; `basePeriodTemplate()` reads active phase; `blockDurOv` merges phase `defaultDur` |
+| `8e5500b` | Docs update for open-time slots and pin fixes |
 | `cab37ed` | **Cross-band open-slot move** — shifting times into target band window (e.g. workout 1pm → afternoon at 2pm); clears gym pin outside destination band |
 | `8e320cb` | **Open-slot dismiss** — `periodOpenSlotHidden` so ✕ on open time persists (sync no longer recreates dismissed gaps) |
 | `0f04f43` | **Open-slot band UI** — single-row layout (name + times + duration inline) |
@@ -110,11 +112,12 @@ git show baseline-2026-06-10 --stat
 - **Week** — calendar grid (Sun–Sat, 5am–midnight); tap hour → add fixed-window sudden; Flex row for anytime suddens; prev/next/today navigation
 - **Weekly habits** — sleep (≥6h), workout, water (≥5 glasses); Sun–Sat grid with partial progress; tap grid to log; “Log today” panel below grid
 - **Workout log** — Sun–Sat planner (yoga / cardio / lift checkboxes); lift detail panel (exercises, sets, weight/reps); collapsible lift disclosure; monthly max/avg/sessions summary
-- **PMP Prep** / **Job Search** — notes with per-field sync; can be hidden via tab manager
+- **Life Plan** — life phases (date ranges, archive); per-phase **default day template** (bands + default durations + gym/non-fixed defaults); **module toggles** for PMP Prep / Job Search tabs; north-star notes; always visible tab
+- **PMP Prep** / **Job Search** — notes with per-field sync; visibility from Life Plan phase modules + tab manager hide
 - **Custom tabs** — notes-only focus areas added via **⋯** tab manager
 - **Sync** — Google Auth + Firestore; localStorage when signed out
 
-**Tabs:** Today · Week · PMP Prep · Job Search · *(optional custom tabs)* · **⋯** to manage visibility
+**Tabs:** Today · Week · **Life Plan** · PMP Prep · Job Search · *(optional custom tabs)* · **⋯** to manage visibility (Life Plan and Today always on)
 
 > **At tag `540a3a5` only:** Weekend Plan modal + `weekendPeriodTemplate` existed. Removed on `main` at `0fb0441`.
 
@@ -122,8 +125,9 @@ git show baseline-2026-06-10 --stat
 
 | Concept | Storage | Notes |
 |---------|---------|--------|
-| **Default bands** | `periodTemplate` (`preExam` / `postExam`) | Same defaults all days; empty `night: []`; no separate weekend template on current `main` |
-| **Today's bands** | `dayConfig[date]` | `periodOrder`, `periodMoves`, `periodExtras`, `periodSkips`, `periodPinnedStart`, `periodOpenSlots`, `periodOpenSlotHidden`, `blockDur`; suddens as `sudden:st_*`; open slots as `open:os_*` |
+| **Life Plan (blueprint)** | `DATA.lifePlan` | `phases[]` with `bands`, `defaultDur`, `defaultWorkout`, `defaultNonFixedPick`, `modules` (`pmp`, `jobs`), `start`/`end`, `archived`; `uiPhaseId`; `notes`; object LWW via `lifePlanUpdatedAt` |
+| **Default bands** | Active **life phase** → `basePeriodTemplate()` | Seeded: PMP prep (→ Jun 22) + post-PMP job hunt (Jun 23 → Aug 1); legacy `periodTemplate` fallback if no phases |
+| **Today's bands** | `dayConfig[date]` | Today-only overrides on top of active phase blueprint; `periodOrder`, `periodMoves`, … |
 | **Open-time slots** | `dayConfig[date].periodOpenSlots` | Per-band `{ id, kind: 'open'\|'activity', name, start, end, auto? }`; gaps auto-sync; dismiss → `periodOpenSlotHidden` |
 | **Sudden tasks** | `dayConfig[*].suddenTasks` | Any date bucket; `targetDayKey` selects schedule day; Week grid + bands + timeline share data |
 | **Week calendar** | Read/write `suddenTasks` | Fixed-window → grid blocks; anytime → Flex chips |
@@ -134,7 +138,7 @@ git show baseline-2026-06-10 --stat
 | **Habits (legacy)** | `DATA.habits` | Date-set union merge — still used for PMP study habit sync from schedule blocks |
 | **Weekly habits** | `DATA.habitDaily[date]` | Per-date merge: max sleep/water, OR workout (`mergeHabitDailyMap`) |
 | **Workout log** | `DATA.gymLog[date]` | Per-date LWW by `updatedAt` — whole day entry wins (`mergeGymLogMap`) |
-| **tabUi** | `DATA.tabUi` | Object-level LWW by `tabUiUpdatedAt` — hidden built-in tabs + custom tab list/notes (`mergeTabUi`) |
+| **tabUi** | `DATA.tabUi` | Object-level LWW by `tabUiUpdatedAt` — hide Week/PMP/Jobs (not Life Plan); custom tabs (`mergeTabUi`) |
 | **Jobs** | `DATA.jobs` | List-level LWW at `3d15a16+` (`jobsUpdatedAt`); union merge at tag `540a3a5` only |
 
 ### Day rollover & shift inference
@@ -171,6 +175,7 @@ Document-level winner-take-all for most scalar fields. Exceptions merged separat
 | `dayConfig` | Per-date `mergeDayEntry` (field-level LWW) |
 | `todayNotes`, `pmpNotes`, `jobNotes` | Per-field LWW (`mergeNoteFields`) |
 | `tabUi` | Object-level LWW (`mergeTabUi` on `tabUiUpdatedAt`) |
+| `lifePlan` | Object-level LWW (`mergeLifePlan` on `lifePlanUpdatedAt`) |
 | `todos`, `jobTodos`, `jobs` | List-level LWW (`pickListWinner`) — `jobs` added at `3d15a16` |
 | `habits` | Per-habit date union |
 | `habitDaily` | Per-date entry merge (`mergeHabitDailyMap`) — max sleep/water, OR workout |
@@ -200,9 +205,9 @@ Legacy whole-day `_syncAt` still used for `tasks` / `weekendPlan` only.
 
 **At tag `540a3a5`:** workday = 3 bands + Work + Sleep; weekend = 4 bands + Plan templates.
 
-**Current `main` (`cab37ed`):** 4 bands always; `buildPeriodSeq` + `hasWorkShift`; night locked on shift days; **open-time slots** in bands + timeline; pin fixes (`pinToMin`); Weekly habits + Workout log on Today tab; tab manager.
+**Current `main` (`d45ade5`):** 4 bands always; **Life Plan** phases drive default bands + tab modules; open-time slots; pin fixes (`pinToMin`); Weekly habits + Workout log; tab manager.
 
-- **Key functions:** `buildSeq`, `buildPeriodSeq`, `hasWorkShift`, `packPeriodBand`, `effectivePeriodLists`, `syncPeriodOpenSlotsForBand`, `precomputeOpenSlotsForDay`, `moveOpenSlotPeriod`, `removeOpenSlot`, `pinToMin`, `displaceSuddenOverlaps`, `applySuddenTasks`, `getPeriodPinStart`, `setPeriodPinStart`, `renderWeekCalendar`, `openCalEventModal`, `skipPeriodTask`, `repairSuddenBandLinks`, `bandCapacityStatus`, `checkTaskAlarms`, `calendarDayTypeForKey`, `activeDayKey`, `renderHabitWeekly`, `renderGymLog`, `habitTapCell`, `mergeHabitDailyMap`, `mergeGymLogMap`, `applyTabUi`, `renderCustomTabs`, `mergeTabUi`, `isTabVisible`.
+- **Key functions:** `buildSeq`, `buildPeriodSeq`, `hasWorkShift`, `packPeriodBand`, `basePeriodTemplate`, `resolvePhaseForDay`, `isPhaseModuleEnabled`, `renderLifePlan`, `renderBlueprintBands`, `mergeLifePlan`, `migrateLifePlan`, `effectivePeriodLists`, `syncPeriodOpenSlotsForBand`, `moveOpenSlotPeriod`, `pinToMin`, `displaceSuddenOverlaps`, `applySuddenTasks`, `renderWeekCalendar`, `applyTabUi`, `mergeTabUi`, `isTabVisible`.
 
 Full band windows: [DESIGN.md](./DESIGN.md).
 
@@ -223,7 +228,7 @@ Full band windows: [DESIGN.md](./DESIGN.md).
 
 ## For Cursor / new chats
 
-> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, field-level timestamps, sudden/band packing, open-slot sync, or Week calendar unless I ask. Match tag `baseline-2026-06-10` for the frozen contract; current `main` adds open-time slots, pin fixes, 4-band unification, jobs/jobTodos list LWW, weekly habits, workout log, split to-dos, and tab manager.
+> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, field-level timestamps, Life Plan phase/blueprint logic, sudden/band packing, open-slot sync, or Week calendar unless I ask. Match tag `baseline-2026-06-10` for the frozen contract; current `main` adds Life Plan, open-time slots, pin fixes, 4-band unification, jobs/jobTodos list LWW, weekly habits, workout log, split to-dos, and tab manager.
 
 ```text
 When I say "return to baseline" or "restore baseline-2026-06-10", read docs/BASELINE.md and treat it as the contract. Prefer minimal diffs.
@@ -238,6 +243,9 @@ See [HANDOFF.md](./HANDOFF.md).
 - Recurring calendar events
 - Google Calendar / Todoist
 - Multi-user `DATA.profile`
+- Life Plan **constraints** editor (shift days, work hours, timezone still hardcoded)
+- Life Plan **countdown cards** driven by phase goals (still use `PMP` / `JOB` constants)
+- Onboarding template picker for new users
 - Weak merge for `scheduleChecks` (block checkboxes)
 - **Human-like gap replanning** — auto-place displaced gym/PMP/job into open slots before eviction (see DESIGN.md planning notes)
 - Gym spillover across bands when morning is full (partial: sudden displacement + open slots; no full replan loop)

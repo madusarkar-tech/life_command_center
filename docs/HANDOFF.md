@@ -3,13 +3,13 @@
 Use this when starting a new chat or onboarding so work can continue with minimum context.
 
 **Repo:** `~/Desktop/Scheduler` · GitHub `madusarkar-tech/life_command_center`  
-**App:** single file `life-dashboard.html` (~5000 lines)  
+**App:** single file `life-dashboard.html` (~6400 lines)  
 **Live:** https://madusarkar-tech.github.io/life_command_center/life-dashboard.html  
 **Local:** `python3 -m http.server 8765` → http://localhost:8765/life-dashboard.html  
 
 > Update **HEAD** below when `main` moves.
 
-**HEAD:** `cab37ed` on `main` · **Baseline tag:** `baseline-2026-06-10` (app `540a3a5`)
+**HEAD:** `d45ade5` on `main` · **Baseline tag:** `baseline-2026-06-10` (app `540a3a5`)
 
 **Spec:** [DESIGN.md](./DESIGN.md) · **Baseline:** [BASELINE.md](./BASELINE.md) (tag `baseline-2026-06-10`)
 
@@ -20,7 +20,8 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 | Surface | What it is |
 |---------|------------|
 | **Today's Flow** | Computed timeline — `buildSeq()` → `renderSched()` → `#sched`; duration-only labels + checkboxes |
-| **Today's bands** | Four bands every day; today-only reorder/move/duration/skip/pin in `dayConfig[date]`; **sudden tasks (⚡)**; **open-time slots (⏳)** — rename, clock window, move, dismiss; Gym/Home/Skip & Extra on band rows; ⏱ end-warn; 📌 pin start; capacity warnings |
+| **Life Plan** | Always-visible tab — **life phases** (date ranges, archive); per-phase **default day template** (bands, default durations, gym/non-fixed defaults); **module toggles** (PMP Prep / Job Search tabs); north-star notes; syncs via `DATA.lifePlan` |
+| **Today's bands** | Four bands every day; **today-only overrides** on active phase blueprint; reorder/move/duration/skip/pin; **sudden tasks (⚡)**; **open-time slots (⏳)**; Gym/Home/Skip & Extra; ⏱ end-warn; 📌 pin; capacity warnings |
 | **Shift vs off** | Calendar-only — `hasWorkShift(dayKey)`: Sun–Thu = shift; Fri–Sat = off. No day-type picker. |
 | **Night band** | **Shift days:** locked in bands UI (Work 8pm–3am); timeline adds Work + Sleep blocks. **Off days:** editable band 8pm–midnight, packs on timeline. |
 | **Week** | Sun–Sat grid (5am–midnight); fixed-window suddens as blocks; anytime in Flex row; tap slot to add via `calEventModal` |
@@ -32,15 +33,26 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 | **Open-time slots** | `dayConfig[date].periodOpenSlots` + `periodOpenSlotHidden`; keys `open:os_*` in band lists; kinds `open` (unnamed gap) vs `activity` (renamed, counts toward capacity); auto-shrink when schedule changes |
 | **Sudden tasks** | `dayConfig[date].suddenTasks`; band key `sudden:st_*`; Week tab reads/writes same store |
 | **Skip for today** | `periodSkips` — ✕ on band rows or timeline; **↺ unskip all tasks** in bands footer |
-| **Default bands** | Single model — `periodTemplate` preExam/postExam + hardcoded defaults; empty `night: []` by default |
-| **Notes** | `todayNotes` (scratch), `pmpNotes`, `jobNotes` — each field has own `*UpdatedAt` |
-| **Sync** | Firebase + localStorage; field-level LWW for notes + dayConfig; list LWW for todos, jobTodos, **jobs**; per-date merge for `habitDaily` + `gymLog`; object LWW for `tabUi` |
+| **Default bands** | **Active life phase** (`resolvePhaseForDay`) → `basePeriodTemplate()`; seeded PMP prep + post-PMP job hunt on first load; legacy `periodTemplate` fallback |
+| **Notes** | `todayNotes` (scratch), `pmpNotes`, `jobNotes`, `lifePlan.notes` — debounced save; first three per-field LWW |
+| **Sync** | Firebase + localStorage; field-level LWW for notes + dayConfig; object LWW for `tabUi` + **`lifePlan`**; list LWW for todos, jobTodos, jobs; per-date merge for `habitDaily` + `gymLog` |
 
 All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8pm→midnight or locked work on shift nights).
 
 ---
 
 ## Recently shipped (since `baseline-2026-06-10`)
+
+### Life Plan tab — Phase 1 (`d45ade5`)
+
+- **Life Plan tab** — always visible (not in tab manager hide list)
+- **Life phases** — add/edit/archive; date ranges; **active phase** resolved by calendar day
+- **Seeded phases** — `phase_pmp_prep` (→ Jun 22, 2026) + `phase_job_hunt` (Jun 23 → Aug 1, 2026) on first load via `migrateLifePlan()`
+- **Default day template editor** — per-phase band lists, reorder/move, default durations, gym/non-fixed defaults, add/remove built-in tasks, restore phase defaults
+- **Module toggles** — ☑ PMP Prep / ☑ Job Search per phase; `isPhaseModuleEnabled()` drives tab visibility (tab manager hint: “Off in Life Plan phase”)
+- **Scheduling** — `basePeriodTemplate()` reads active phase bands; `blockDurOv()` merges phase `defaultDur` with today `blockDur`; phase workout/non-fixed defaults when day has no override
+- **Sync** — `DATA.lifePlan` + `lifePlanUpdatedAt` via `mergeLifePlan` (object LWW like `tabUi`)
+- **Design mock** — static prototype at `docs/life-plan-mock.html` (not wired to app)
 
 ### Open-time slots + pin fixes (`b0c70fc` → `cab37ed`)
 
@@ -111,7 +123,8 @@ All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8
 ## Not built yet (user wants)
 
 - **Recurring calendar events**
-- **Human-like gap replanning** — when suddens displace tasks, try open slots / afternoon before eviction (`DISPLACE_PRIO` still evicts gym first)
+- **Life Plan Phase 2** — constraints editor (shift/work hours/timezone); countdowns from phase goals; onboarding templates; “apply blueprint to today”
+- **Human-like gap replanning** — when suddens displace tasks, try open slots / afternoon before eviction
 - **Gym spillover** — if morning band full, gym should try afternoon/evening open slots before dropping lower-priority tasks
 - **`scheduleChecks`** — block checkboxes weak merge
 - **Multi-user profiles** — after stable baseline
@@ -134,6 +147,8 @@ All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8
 - Weekly habit **%** is binary per day (goal met or not), while grid shows partial progress
 - Lift panel re-renders skip when `gymLiftPanelActive()` (focused weight/reps inputs)
 - **`gymLiftOpen`** syncs open/closed state for lift disclosure
+- PMP tab visibility follows **Life Plan phase modules**, not only `isPmpActive()` — post-exam, turn off PMP module on job-hunt phase
+- **`uiPhaseId`** selects which phase the template editor shows (may differ from today's active phase)
 - **`tabUi`** must load before `applyTabUi()` — calling it in `init()` before `Store.load()` breaks startup
 
 ---

@@ -66,7 +66,27 @@ Afternoon order: **study2 → jobapps → nonFixed → dinnerprep**.
 
 PMP blocks removed; morning open time is for custom activities (add via band UI).
 
-Defaults live in `DATA.periodTemplate` (`preExam` / `postExam`) with the same lists for shift and off days. Customize per day via **Today's bands** overrides only — there is no separate weekend template store.
+**Defaults on current `main`:** stored in **`DATA.lifePlan.phases[]`** — each phase has `bands`, `defaultDur`, `defaultWorkout`, `defaultNonFixedPick`, and `modules` (PMP / Job tabs). On first load, two phases are seeded (PMP prep → Jun 22; post-PMP job hunt → Aug 1). **`resolvePhaseForDay(dayKey)`** picks the active phase by date range; **`basePeriodTemplate()`** reads that phase's bands. Legacy `DATA.periodTemplate` (`preExam` / `postExam`) is still a fallback if no phases exist.
+
+Customize per day via **Today's bands** overrides only — there is no separate weekend template store.
+
+### Life Plan tab (Phase 1)
+
+Three layers:
+
+| Layer | Where | Purpose |
+|-------|--------|---------|
+| **Life Plan blueprint** | `DATA.lifePlan.phases[]` | Default band lists, default durations, gym/non-fixed defaults, module toggles |
+| **Today's bands** | `dayConfig[date]` | One-day overrides (reorder, move, skip, pin, open slots, suddens) |
+| **Today's Flow** | Computed | Packed timeline from bands + suddens |
+
+**Life Plan UI:** phase cards (edit name/dates/modules, end/reactivate); **Edit template** selects `uiPhaseId`; blueprint editor mirrors band row controls (no pins/open slots/suddens); north-star notes.
+
+**Tab visibility:** PMP Prep and Job Search tabs follow phase `modules.pmp` / `modules.jobs` plus tab manager hide. Life Plan tab is always on.
+
+**Not in Phase 1:** constraints editor (shift days/work hours still hardcoded), countdown cards from phase goals, onboarding wizard, “apply blueprint to today” button.
+
+Static design mock: [docs/life-plan-mock.html](./life-plan-mock.html).
 
 ### Today-only overrides (`dayConfig[date]`)
 
@@ -139,8 +159,9 @@ Band keys: `open:os_*`. Sync fields: `periodOpenSlots`, `periodOpenSlotHidden` (
 ### Tab manager
 
 - **⋯ button** at the right end of the tab bar opens **Manage tabs**.
-- **Built-in tabs** — Week, PMP Prep, Job Search can be shown or hidden via checkboxes. **Today** is always visible.
-- **PMP** still auto-hides after the exam date (`isPmpActive()`); the manager shows “Hidden after exam” when that applies.
+- **Built-in tabs** — Week, PMP Prep, Job Search can be shown or hidden via checkboxes. **Today** and **Life Plan** are always visible.
+- **PMP / Job visibility** — also controlled by active Life Plan phase **module toggles**; manager shows “Off in Life Plan phase” when a module is disabled.
+- **PMP** still loads quiz script through exam day (`isPmpActive()`); tab bar may hide PMP when phase module is off.
 - Hiding **Job Search** also hides the job countdown card; hiding **PMP Prep** hides the PMP countdown.
 - **Custom tabs** — add a name to create a notes-only focus-area tab (max 12). Rename or remove from the same modal.
 - **Storage** — `DATA.tabUi = { hiddenTabs: [], customTabs: [{ id, label, notes }] }` with `tabUiUpdatedAt` for sync.
@@ -220,6 +241,7 @@ Separate from the schedule's gym band — a week planner and lift logger:
 | Task alarms | Start-of-block (default on); ⏱ end warn per task |
 | Pin start time | 📌 on band row → `periodPinnedStart` (via `pinToMin`) |
 | Open-time slots | ⏳ in bands — rename/split, clock window, move, dismiss; auto-shrink |
+| Life Plan | Phases + default template; module toggles for PMP/Job tabs |
 | Week calendar | Sun–Sat grid; tap slot to add fixed-window sudden |
 | Tab manager | **⋯** on tab bar — hide Week/PMP/Jobs; add custom note tabs |
 | Today's bands | Reorder / move / drag across all four bands (night locked on shift days) |
@@ -234,7 +256,8 @@ Separate from the schedule's gym band — a week planner and lift logger:
 - **Push:** `pushCloud` merge-before-push — reads cloud, merges, then writes (avoids stale device overwrite).
 - **dayConfig:** per-date, per-field LWW on `DAY_LWW_FIELDS` (wake, bands, suddens, pins, open slots, etc.).
 - **Notes:** per-field LWW on `todayNotes`, `pmpNotes`, `jobNotes`.
-- **tabUi:** object-level LWW on `tabUiUpdatedAt` — hidden built-in tabs + custom tab list/notes (`mergeTabUi`).
+- **lifePlan:** object-level LWW on `lifePlanUpdatedAt` — phases, blueprint, module toggles, notes (`mergeLifePlan`).
+- **tabUi:** object-level LWW on `tabUiUpdatedAt` — hide Week/PMP/Jobs; custom tabs (`mergeTabUi`).
 - **Todos / job todos / jobs:** list-level LWW — entire array wins by `todosUpdatedAt` / `jobTodosUpdatedAt` / `jobsUpdatedAt`.
 - **Habits (legacy):** date-set union per habit id (PMP study from blocks).
 - **habitDaily:** per-date merge — max sleep/water, OR workout (`mergeHabitDailyMap`).
@@ -245,6 +268,7 @@ Separate from the schedule's gym band — a week planner and lift logger:
 - Cloud backup beyond Firebase sign-in
 - Google Calendar / Todoist integration
 - **Recurring calendar events**
+- **Life Plan Phase 2** — editable constraints (shift pattern, work hours, timezone); goal-driven countdowns; onboarding templates
 - **Human-like gap replanning** — displaced tasks should try open slots before eviction (partial: open slots exist; sudden path still uses band-to-band displacement)
 - **Gym spillover** — if morning band is full, gym should try afternoon/evening open slots before dropping lower-priority tasks (partial: displacement on sudden add + manual open-slot moves)
 - Separate weekly Fri/Sat band templates (removed — use Today's bands per day instead)

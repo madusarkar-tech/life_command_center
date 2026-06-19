@@ -117,6 +117,8 @@ After the initial repo import, development continued in Cursor:
 | `0f04f43` | Open-slot band UI — compact single-row layout (name + times + duration) |
 | `8e320cb` | Open-slot dismiss — `periodOpenSlotHidden` prevents sync from recreating dismissed gaps |
 | `cab37ed` | Cross-band open-slot move — shift clock times into target band window; clear gym pin outside band |
+| `8e5500b` | Docs update for open-time slots and pin fixes |
+| `d45ade5` | **Life Plan tab (Phase 1)** — life phases, per-phase default template editor, PMP/Job module toggles, `DATA.lifePlan` sync, `basePeriodTemplate()` from active phase |
 
 Baseline tag: `baseline-2026-06-10` at app `540a3a5`. Prior: `baseline-2026-06-09` at `884cd10`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
 
@@ -130,6 +132,7 @@ Baseline tag: `baseline-2026-06-10` at app `540a3a5`. Prior: `baseline-2026-06-0
 | `docs/HANDOFF.md` | Short onboarding for new chats |
 | `docs/BUILD-HISTORY.md` | This file |
 | `docs/workout log.drawio` | Workout log UI mockup (yoga/cardio/lift grid) |
+| `docs/life-plan-mock.html` | Static Life Plan tab design mock (Phase 1 reference) |
 | `README.md` | How to run and what’s included |
 
 ## Possible future enhancements (from chat, not built)
