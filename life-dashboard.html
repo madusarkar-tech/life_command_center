@@ -73,6 +73,30 @@
   .tab-mgr-row label.disabled{color:var(--muted2);cursor:default}
   .tab-mgr-row .tab-mgr-hint{font-size:12px;color:var(--muted2);font-weight:500}
   .tab-mgr-custom .tab-mgr-row input[type=text]{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:'Hanken Grotesk';font-size:14px;color:var(--text)}
+  .lp-phase-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+  .lp-phase-card{border:1px solid var(--line-soft);border-radius:12px;padding:14px 16px;background:var(--surface);display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 14px}
+  .lp-phase-card.active{border-color:rgba(74,122,61,.45);background:rgba(74,122,61,.06);box-shadow:inset 3px 0 0 var(--sage)}
+  .lp-phase-card.archived{opacity:.78}
+  .lp-phase-card.editing-template{border-color:rgba(184,120,12,.45);box-shadow:inset 3px 0 0 var(--gold)}
+  .lp-phase-dot{width:10px;height:10px;border-radius:50%;background:var(--line);margin-top:5px;flex-shrink:0}
+  .lp-phase-card.active .lp-phase-dot{background:var(--sage)}
+  .lp-phase-body{flex:1;min-width:180px}
+  .lp-phase-title{font-weight:700;font-size:15px;margin-bottom:4px}
+  .lp-phase-meta{font-size:12px;color:var(--muted);line-height:1.5}
+  .lp-phase-actions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .lp-phase-edit{display:none;width:100%;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-soft);flex-direction:column;gap:10px}
+  .lp-phase-card.editing .lp-phase-edit{display:flex}
+  .lp-field-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;width:100%}
+  .lp-field-row label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted2);min-width:72px}
+  .lp-field-row input,.lp-field-row select{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:13px;color:var(--text)}
+  .lp-chk-row{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;font-weight:600}
+  .lp-chk-row label{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .lp-template-foot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:12px;padding-top:8px}
+  .lp-add-task-row{display:flex;gap:8px;flex-wrap:wrap;padding:8px 12px;border-top:1px dashed var(--line-soft);align-items:center}
+  .lp-add-task-row select{flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--bg2)}
+  .lp-notes textarea{width:100%;min-height:100px;border:1px solid var(--line-soft);border-radius:11px;background:var(--bg2);padding:12px 14px;font-family:inherit;font-size:14px;line-height:1.55;color:var(--text);resize:vertical;outline:none}
+  .lp-notes textarea:focus{border-color:var(--gold)}
+  .period-task.pt-blueprint .pt-drag{visibility:hidden;width:0;padding:0}
   .custom-tab-notes{width:100%;min-height:280px;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px;color:var(--text);font-family:'Hanken Grotesk';font-size:14px;line-height:1.55;resize:vertical}
   .view{display:none;animation:fade .35s ease}
   .view.active{display:block}
@@ -548,6 +572,7 @@
 <nav class="tabs">
   <button class="active" data-v="today">Today</button>
   <button data-v="week" id="tabWeek">Week</button>
+  <button data-v="lifeplan" id="tabLifePlan">Life Plan</button>
   <button data-v="pmp" id="tabPmp">PMP Prep</button>
   <button data-v="jobs" id="tabJobs">Job Search</button>
   <span id="tabNavCustom" class="tab-nav-custom"></span>
@@ -567,6 +592,31 @@
     </div>
     <div class="week-cal-wrap" id="weekGridWrap">
       <div id="weekGrid" class="week-cal" role="grid" aria-label="Week calendar"></div>
+    </div>
+  </div>
+</section>
+
+<section class="view" id="v-lifeplan">
+  <div class="card" style="margin-bottom:18px">
+    <h2>🎯 Life phase</h2>
+    <div class="h-sub">What you're optimizing for — drives Today's default bands and which goal tabs appear.</div>
+    <div class="lp-phase-list" id="lpPhaseList"></div>
+    <button type="button" class="btn ghost sm" id="lpAddPhase">+ Add life phase</button>
+  </div>
+  <div class="grid g-2">
+    <div class="card">
+      <h2>📋 Default day template</h2>
+      <div class="h-sub" id="lpTemplateSub">Band tasks and default durations for the selected phase — feeds Today's bands until you override a day.</div>
+      <div id="lpBlueprintBands"></div>
+      <div class="lp-template-foot">
+        <div class="lp-add-task-row" id="lpAddTaskRow" style="border-top:none;padding-left:0;padding-right:0;width:100%"></div>
+        <button type="button" class="resetlink" id="lpRestorePhase">↺ Restore phase defaults</button>
+      </div>
+    </div>
+    <div class="card lp-notes">
+      <h2>📌 North star</h2>
+      <div class="h-sub">Long-form intent for your current chapter. Saves automatically.</div>
+      <textarea id="lpNotes" placeholder="What matters in this phase — priorities, boundaries, how you want days to feel…"></textarea>
     </div>
   </div>
 </section>
@@ -1212,6 +1262,18 @@ function mergeTabUi(out,local,cloud,localTime,cloudTime){
   if(ts>0)out.tabUiUpdatedAt=ts;
   else if(out.tabUiUpdatedAt!=null)delete out.tabUiUpdatedAt;
 }
+function mergeLifePlan(out,local,cloud,localTime,cloudTime){
+  const lTs=typeof local?.lifePlanUpdatedAt==='number'?local.lifePlanUpdatedAt:0;
+  const cTs=typeof cloud?.lifePlanUpdatedAt==='number'?cloud.lifePlanUpdatedAt:0;
+  const pick=lTs>=cTs?local:cloud;
+  const other=lTs>=cTs?cloud:local;
+  if(pick?.lifePlan)out.lifePlan=JSON.parse(JSON.stringify(pick.lifePlan));
+  else if(other?.lifePlan)out.lifePlan=JSON.parse(JSON.stringify(other.lifePlan));
+  else out.lifePlan=null;
+  const ts=Math.max(lTs,cTs);
+  if(ts>0)out.lifePlanUpdatedAt=ts;
+  else if(out.lifePlanUpdatedAt!=null)delete out.lifePlanUpdatedAt;
+}
 function commitNoteField(textKey,value){
   if((DATA[textKey]||'')===value)return;
   DATA[textKey]=value;
@@ -1230,6 +1292,7 @@ function mergeAppData(local,cloud,localTime,cloudTime){
   mergeArrayFields(out,local,cloud,localTime,cloudTime);
   mergeNoteFields(out,local,cloud,localTime,cloudTime);
   mergeTabUi(out,local,cloud,localTime,cloudTime);
+  mergeLifePlan(out,local,cloud,localTime,cloudTime);
   return out;
 }
 function dataSnapshotEqual(a,b){
@@ -1351,7 +1414,10 @@ const Store={
   }
 };
 let DATA=null;
-function defaults(){return{scheduleChecks:{},habits:{},habitDaily:{},gymLog:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,gymLiftOpen:true,periodPlanOpen:false,periodTemplate:null,alarmOn:true,alarmEndOn:true,alarmEndTasks:null,tabUi:{hiddenTabs:[],customTabs:[]}};}
+function defaults(){return{scheduleChecks:{},habits:{},habitDaily:{},gymLog:{},sessions:[],jobs:[],domains:{people:0,process:0,business:0},dayConfig:{},templateDur:{},mealPrep:[],todos:[],jobTodos:[],pmpNotes:'',jobNotes:'',todayNotes:'',pmpQuiz:{},quizPanelOpen:false,scratchpadOpen:false,gymLiftOpen:true,periodPlanOpen:false,periodTemplate:null,lifePlan:null,alarmOn:true,alarmEndOn:true,alarmEndTasks:null,tabUi:{hiddenTabs:[],customTabs:[]}};}
+const LP_PHASE_PMP='phase_pmp_prep';
+const LP_PHASE_JOB='phase_job_hunt';
+const BLUEPRINT_TASK_KEYS=['breakfast','study1','study2','gym','jobapps','jobapps2','nonFixed','dinnerprep','dog1','dinner','garden','wake','review','lunch','mealprep','chores','dog2','read','aiwork','qgis'];
 const MANAGED_BUILTIN_TABS=[
   {id:'week',label:'Week'},
   {id:'pmp',label:'PMP Prep'},
@@ -1448,6 +1514,8 @@ function migrateData(){
     if(!Array.isArray(d.exercises))d.exercises=[];
   });
   ensureTabUi();
+  ensureLifePlan();
+  migrateLifePlan();
 }
 function ensureTabUi(){
   if(!DATA)return;
@@ -1470,14 +1538,17 @@ function isTabHidden(id){
 function isTabVisible(id){
   if(id==='today')return true;
   if(!DATA){
+    if(id==='lifeplan')return true;
     if(id==='pmp')return isPmpActive();
     if(id==='week'||id==='jobs')return true;
     return false;
   }
   ensureTabUi();
+  if(id==='lifeplan')return true;
   if(id.startsWith('ct_'))return DATA.tabUi.customTabs.some(t=>t.id===id);
-  if(id==='pmp')return isPmpActive()&&!isTabHidden('pmp');
-  if(id==='week'||id==='jobs')return !isTabHidden(id);
+  if(id==='pmp')return isPhaseModuleEnabled('pmp')&&!isTabHidden('pmp');
+  if(id==='jobs')return isPhaseModuleEnabled('jobs')&&!isTabHidden('jobs');
+  if(id==='week')return !isTabHidden('week');
   return false;
 }
 function setTabHidden(id,hidden){
@@ -1487,6 +1558,430 @@ function setTabHidden(id,hidden){
   if(hidden&&i<0)h.push(id);
   else if(!hidden&&i>=0)h.splice(i,1);
   touchTabUi();
+}
+function factoryBandsPreExam(){
+  return{morning:['breakfast','study1','gym'],afternoon:['study2','jobapps','nonFixed','dinnerprep'],evening:['dog1','dinner','garden'],night:[]};
+}
+function factoryBandsPostExam(){
+  return{morning:['breakfast','gym'],afternoon:['jobapps','jobapps2','nonFixed','dinnerprep'],evening:['dog1','dinner','garden'],night:[]};
+}
+function factoryPhaseSeed(id,label,start,end,archived,modules,bandsKind){
+  const bands=bandsKind==='pre'?factoryBandsPreExam():factoryBandsPostExam();
+  return{
+    id,label,start,end,archived:!!archived,
+    modules:{pmp:!!modules.pmp,jobs:modules.jobs!==false},
+    bands:JSON.parse(JSON.stringify(bands)),
+    defaultDur:{},
+    defaultWorkout:null,
+    defaultNonFixedPick:null
+  };
+}
+function ensureLifePlan(){
+  if(!DATA)return;
+  if(!DATA.lifePlan||typeof DATA.lifePlan!=='object'){
+    DATA.lifePlan={phases:[],uiPhaseId:null,activePhaseId:null,notes:''};
+  }
+  if(!Array.isArray(DATA.lifePlan.phases))DATA.lifePlan.phases=[];
+  if(DATA.lifePlan.uiPhaseId===undefined)DATA.lifePlan.uiPhaseId=null;
+  if(DATA.lifePlan.activePhaseId===undefined)DATA.lifePlan.activePhaseId=null;
+  if(typeof DATA.lifePlan.notes!=='string')DATA.lifePlan.notes='';
+  DATA.lifePlan.phases.forEach(p=>{
+    if(!p.id)p.id='phase_'+Date.now()+Math.random().toString(36).slice(2,6);
+    if(!p.bands)p.bands=factoryBandsPostExam();
+    PERIOD_KEYS.forEach(k=>{if(!p.bands[k])p.bands[k]=[];});
+    if(!p.modules)p.modules={pmp:false,jobs:true};
+    if(!p.defaultDur)p.defaultDur={};
+  });
+}
+function touchLifePlan(){DATA.lifePlanUpdatedAt=Date.now();}
+function migrateLifePlan(){
+  if(!DATA)return;
+  ensureLifePlan();
+  if(DATA.lifePlan.phases.length)return;
+  DATA.lifePlan.phases=[
+    factoryPhaseSeed(LP_PHASE_PMP,'PMP exam prep',null,PMP_EXAM_KEY,false,{pmp:true,jobs:true},'pre'),
+    factoryPhaseSeed(LP_PHASE_JOB,'Post-PMP job hunt',addDaysToKey(PMP_EXAM_KEY,1),'2026-08-01',false,{pmp:false,jobs:true},'post')
+  ];
+  DATA.lifePlan.uiPhaseId=resolvePhaseForDay(activeDayKey())?.id||LP_PHASE_PMP;
+  touchLifePlan();
+}
+function resolvePhaseForDay(dayKey){
+  ensureLifePlan();
+  const k=dayKey||activeDayKey();
+  const phases=DATA.lifePlan.phases.filter(p=>!p.archived);
+  const dated=phases.filter(p=>{
+    const okStart=!p.start||k>=p.start;
+    const okEnd=!p.end||k<=p.end;
+    return okStart&&okEnd;
+  });
+  if(dated.length)return dated[dated.length-1];
+  if(DATA.lifePlan.activePhaseId){
+    const manual=DATA.lifePlan.phases.find(p=>p.id===DATA.lifePlan.activePhaseId&&!p.archived);
+    if(manual)return manual;
+  }
+  return phases[0]||null;
+}
+function getPhaseById(id){
+  ensureLifePlan();
+  return DATA.lifePlan.phases.find(p=>p.id===id)||null;
+}
+function getUiPhase(){
+  ensureLifePlan();
+  const id=DATA.lifePlan.uiPhaseId;
+  if(id&&getPhaseById(id))return getPhaseById(id);
+  return resolvePhaseForDay(activeDayKey())||DATA.lifePlan.phases.find(p=>!p.archived)||DATA.lifePlan.phases[0]||null;
+}
+function setUiPhase(id){
+  ensureLifePlan();
+  DATA.lifePlan.uiPhaseId=id;
+  touchLifePlan();
+}
+function isPhaseModuleEnabled(module,dayKey){
+  const phase=resolvePhaseForDay(dayKey||activeDayKey());
+  if(!phase){
+    if(module==='pmp')return isPmpActive(dayKey);
+    return true;
+  }
+  if(module==='pmp')return !!phase.modules?.pmp;
+  if(module==='jobs')return phase.modules?.jobs!==false;
+  return true;
+}
+function phaseDateLabel(p){
+  if(!p)return '';
+  const a=p.start||'…';
+  const b=p.end||'ongoing';
+  return a+' → '+b;
+}
+function restoreFactoryBandsForPhase(phase){
+  if(!phase)return;
+  const pre=phase.id===LP_PHASE_PMP||!!phase.modules?.pmp&&!phase.modules?.jobs;
+  phase.bands=JSON.parse(JSON.stringify(pre?factoryBandsPreExam():factoryBandsPostExam()));
+  phase.defaultDur={};
+  phase.defaultWorkout=null;
+  phase.defaultNonFixedPick=null;
+}
+function blueprintDurOv(phase){
+  return phase&&phase.defaultDur?phase.defaultDur:{};
+}
+function blueprintTaskMinutes(taskKey,phase,previewWake){
+  if(!phase)return 0;
+  const ov=blueprintDurOv(phase);
+  const fakeDay=activeDayKey();
+  const fakeC={workout:phase.defaultWorkout||'gym',nonFixedPick:phase.defaultNonFixedPick,wake:previewWake||'10:00'};
+  const ws=fakeC.workout||'gym';
+  const mergedOv={...ov};
+  const block=resolvePeriodBlock(taskKey,fakeC,ws,mergedOv,fakeDay,null);
+  return block?block.dur:0;
+}
+function blueprintBandLists(phase){
+  const out={};
+  PERIOD_KEYS.forEach(p=>{out[p]=(phase.bands&&phase.bands[p])?phase.bands[p].slice():[];});
+  return out;
+}
+function blueprintReorder(phase,period,taskKey,dir){
+  const list=phase.bands[period]||[];
+  const idx=list.indexOf(taskKey);
+  if(idx<0)return;
+  const ni=idx+dir;
+  if(ni<0||ni>=list.length)return;
+  list.splice(ni,1);
+  list.splice(ni,0,taskKey);
+  phase.bands[period]=list;
+}
+function blueprintMove(phase,taskKey,fromPeriod,toPeriod){
+  if(!PERIOD_KEYS.includes(toPeriod))return;
+  PERIOD_KEYS.forEach(p=>{
+    phase.bands[p]=(phase.bands[p]||[]).filter(t=>t!==taskKey);
+  });
+  if(!phase.bands[toPeriod])phase.bands[toPeriod]=[];
+  phase.bands[toPeriod].push(taskKey);
+}
+function blueprintRemoveTask(phase,period,taskKey){
+  phase.bands[period]=(phase.bands[period]||[]).filter(t=>t!==taskKey);
+  if(phase.defaultDur&&phase.defaultDur[taskKey]!=null)delete phase.defaultDur[taskKey];
+}
+function blueprintAddTask(phase,period,taskKey){
+  if(!PERIOD_KEYS.includes(period)||!BLUEPRINT_TASK_KEYS.includes(taskKey))return;
+  PERIOD_KEYS.forEach(p=>{
+    phase.bands[p]=(phase.bands[p]||[]).filter(t=>t!==taskKey);
+  });
+  if(!phase.bands[period])phase.bands[period]=[];
+  phase.bands[period].push(taskKey);
+}
+function blueprintDurDelta(phase,taskKey,delta){
+  if(!phase.defaultDur)phase.defaultDur={};
+  const fakeDay=activeDayKey();
+  const ov=blueprintDurOv(phase);
+  const fakeC={workout:phase.defaultWorkout||'gym',nonFixedPick:phase.defaultNonFixedPick,wake:'10:00'};
+  const block=resolvePeriodBlock(taskKey,fakeC,fakeC.workout||'gym',ov,fakeDay,null);
+  if(!block)return;
+  if(taskKey==='gym'){
+    const cur=ov.gym!=null?ov.gym:blueprintTaskMinutes(taskKey,phase,'10:00');
+    phase.defaultDur.gym=Math.max(GYM_MIN,cur+delta);
+    return;
+  }
+  const cur=ov[block.id]!=null?ov[block.id]:block.dur;
+  phase.defaultDur[block.id]=Math.max(5,cur+delta);
+}
+function allBlueprintTasks(phase){
+  const s=new Set();
+  PERIOD_KEYS.forEach(p=>(phase.bands[p]||[]).forEach(t=>s.add(t)));
+  return s;
+}
+function renderBlueprintBands(wrap,phase){
+  if(!wrap||!phase){if(wrap)wrap.innerHTML='';return;}
+  const ctx={mode:'blueprint',phase,previewWake:'10:00',dayKey:activeDayKey()};
+  const lists=blueprintBandLists(phase);
+  wrap.innerHTML='';
+  PERIOD_KEYS.forEach(period=>{
+    const band=document.createElement('div');
+    band.className='period-band';
+    const shiftNight=period==='night'&&hasWorkShift(activeDayKey());
+    const items=shiftNight?[]:(lists[period]||[]);
+    const used=shiftNight?0:items.reduce((s,k)=>s+blueprintTaskMinutes(k,phase,ctx.previewWake),0);
+    const cap=bandCapacityMinutes(period,null,ctx.previewWake);
+    const over=cap>0&&used>cap;
+    const hdr=document.createElement('div');
+    hdr.className='period-band-hdr'+(over?' overfull':'');
+    let fillHtml='';
+    if(cap>0&&!shiftNight){
+      fillHtml=`<span class="band-fill ${over?'warn':'ok'}">${used}/${cap}m</span>`;
+    }
+    const winLbl=shiftNight?(PERIOD_WINDOWS[period]+' · work shift locked'):(PERIOD_WINDOWS[period]||'');
+    hdr.innerHTML=`<span>${PERIOD_LABELS[period]}</span><span class="win">${winLbl}${fillHtml?(' '+fillHtml):''}</span>`;
+    band.appendChild(hdr);
+    if(shiftNight){
+      const locked=document.createElement('div');
+      locked.className='period-task pt-locked';
+      locked.innerHTML='<span class="pt-ico">💻</span><span class="pt-lab">Work shift · locked on shift nights</span>';
+      band.appendChild(locked);
+      wrap.appendChild(band);
+      return;
+    }
+    items.forEach((taskKey,idx)=>{
+      const row=document.createElement('div');
+      row.className='period-task pt-blueprint'+(taskKey==='gym'||taskKey==='nonFixed'?' has-pick':'');
+      const mins=blueprintTaskMinutes(taskKey,phase,ctx.previewWake);
+      row.innerHTML=`<span class="pt-ico">${periodTaskIco(taskKey,activeDayKey())}</span><span class="pt-lab">${periodTaskLabel(taskKey,activeDayKey())}</span><span class="pt-dur"></span><span class="pt-act"></span>`;
+      const durEl=row.querySelector('.pt-dur');
+      const skipGym=taskKey==='gym'&&phase.defaultWorkout==='skip';
+      const skipNf=taskKey==='nonFixed'&&phase.defaultNonFixedPick==='none';
+      if(skipGym||skipNf)durEl.textContent='Skipped';
+      else{
+        durEl.innerHTML=`<span class="stepper"><button type="button" data-step="-1">−</button><span class="val">${mins}m</span><button type="button" data-step="1">+</button></span>`;
+        durEl.querySelectorAll('.stepper button').forEach(btn=>{
+          btn.onclick=e=>{
+            e.stopPropagation();
+            blueprintDurDelta(phase,taskKey,parseInt(btn.dataset.step,10)*5);
+            saveLifePlanAndRefresh();
+          };
+        });
+      }
+      const act=row.querySelector('.pt-act');
+      if(idx>0){
+        const up=document.createElement('button');
+        up.type='button';up.textContent='↑';
+        up.onclick=()=>{blueprintReorder(phase,period,taskKey,-1);saveLifePlanAndRefresh();};
+        act.appendChild(up);
+      }
+      if(idx<items.length-1){
+        const dn=document.createElement('button');
+        dn.type='button';dn.textContent='↓';
+        dn.onclick=()=>{blueprintReorder(phase,period,taskKey,1);saveLifePlanAndRefresh();};
+        act.appendChild(dn);
+      }
+      PERIOD_KEYS.filter(p=>p!==period&&!(p==='night'&&hasWorkShift(activeDayKey()))).forEach(p=>{
+        if(!MOVABLE_SHIFT_TASKS.has(taskKey)&&!MOVABLE_OFF_SHIFT_EXTRA.has(taskKey))return;
+        const mb=document.createElement('button');
+        mb.type='button';
+        mb.textContent='→ '+PERIOD_LABELS[p].slice(0,3);
+        mb.onclick=()=>{blueprintMove(phase,taskKey,period,p);saveLifePlanAndRefresh();flash('Moved to '+PERIOD_LABELS[p]);};
+        act.appendChild(mb);
+      });
+      const rm=document.createElement('button');
+      rm.type='button';rm.className='pt-rm';rm.textContent='✕';
+      rm.title='Remove from template';
+      rm.onclick=()=>{blueprintRemoveTask(phase,period,taskKey);saveLifePlanAndRefresh();};
+      act.appendChild(rm);
+      if(taskKey==='gym'){
+        const pick=document.createElement('div');
+        pick.className='pt-pick';
+        const seg=document.createElement('div');
+        seg.className='pt-seg seg';
+        const sel=phase.defaultWorkout||'gym';
+        ['gym','home','skip'].forEach(v=>{
+          const b=document.createElement('button');
+          b.type='button';b.textContent=v==='gym'?'Gym':v==='home'?'Home':'Skip';
+          if(sel===v||(v==='gym'&&!phase.defaultWorkout))b.classList.add('on');
+          b.onclick=()=>{phase.defaultWorkout=v==='gym'?null:v;saveLifePlanAndRefresh();};
+          seg.appendChild(b);
+        });
+        pick.appendChild(seg);
+        row.appendChild(pick);
+      }else if(taskKey==='nonFixed'){
+        const pick=document.createElement('div');
+        pick.className='pt-pick';
+        const seg=document.createElement('div');
+        seg.className='pt-seg seg sky';
+        const sel=phase.defaultNonFixedPick==null?'auto':phase.defaultNonFixedPick;
+        [{v:'auto',l:'Auto'},{v:'read',l:'Read'},{v:'aiwork',l:'AI'},{v:'qgis',l:'QGIS'},{v:'none',l:'Skip'}].forEach(o=>{
+          const b=document.createElement('button');
+          b.type='button';b.textContent=o.l;
+          if(sel===o.v)b.classList.add('on');
+          b.onclick=()=>{phase.defaultNonFixedPick=o.v==='auto'?null:o.v;saveLifePlanAndRefresh();};
+          seg.appendChild(b);
+        });
+        pick.appendChild(seg);
+        row.appendChild(pick);
+      }
+      band.appendChild(row);
+    });
+    wrap.appendChild(band);
+  });
+}
+let lpNotesTimer=null;
+function renderLifePlan(){
+  if(!DATA)return;
+  ensureLifePlan();
+  const phase=getUiPhase();
+  const listEl=document.getElementById('lpPhaseList');
+  const bandsEl=document.getElementById('lpBlueprintBands');
+  const subEl=document.getElementById('lpTemplateSub');
+  const addRow=document.getElementById('lpAddTaskRow');
+  const notesEl=document.getElementById('lpNotes');
+  if(notesEl&&document.activeElement!==notesEl&&notesEl.value!==(DATA.lifePlan.notes||'')){
+    notesEl.value=DATA.lifePlan.notes||'';
+  }
+  if(listEl){
+    listEl.innerHTML='';
+    const todayPhase=resolvePhaseForDay(activeDayKey());
+    DATA.lifePlan.phases.forEach(p=>{
+      const card=document.createElement('div');
+      const isToday=todayPhase&&todayPhase.id===p.id;
+      const isUi=phase&&phase.id===p.id;
+      card.className='lp-phase-card'+(isToday&&!p.archived?' active':'')+(p.archived?' archived':'')+(isUi?' editing-template':'');
+      card.dataset.phaseId=p.id;
+      const modTxt='Modules: '+(p.modules?.jobs!==false?'Job Search ☑':'Job Search ☐')+' · '+(p.modules?.pmp?'PMP Prep ☑':'PMP Prep ☐');
+      card.innerHTML=`<span class="lp-phase-dot" aria-hidden="true"></span>
+        <div class="lp-phase-body">
+          <div class="lp-phase-title">${escapeHtml(p.label||'Phase')}</div>
+          <div class="lp-phase-meta">${phaseDateLabel(p)}${p.archived?' · archived':''}<br>${modTxt}${isToday&&!p.archived?' · <strong>active today</strong>':''}</div>
+          <div class="lp-phase-edit" data-edit-panel>
+            <div class="lp-field-row"><label>Name</label><input type="text" class="lp-in-label"></div>
+            <div class="lp-field-row"><label>Dates</label><input type="date" class="lp-in-start"> → <input type="date" class="lp-in-end"></div>
+            <div class="lp-chk-row">
+              <label><input type="checkbox" class="lp-in-jobs"> Job Search tab</label>
+              <label><input type="checkbox" class="lp-in-pmp"> PMP Prep tab</label>
+            </div>
+            <button type="button" class="btn sm lp-save-phase">Save phase</button>
+          </div>
+        </div>
+        <div class="lp-phase-actions"></div>`;
+      card.querySelector('.lp-in-label').value=p.label||'';
+      if(p.start)card.querySelector('.lp-in-start').value=p.start;
+      if(p.end)card.querySelector('.lp-in-end').value=p.end;
+      card.querySelector('.lp-in-jobs').checked=p.modules?.jobs!==false;
+      card.querySelector('.lp-in-pmp').checked=!!p.modules?.pmp;
+      const actions=card.querySelector('.lp-phase-actions');
+      const mkBtn=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.className='ghostbtn sm';b.textContent=txt;b.onclick=fn;return b;};
+      actions.appendChild(mkBtn('Edit template',()=>{setUiPhase(p.id);renderLifePlan();}));
+      actions.appendChild(mkBtn('Edit',()=>{card.classList.toggle('editing');}));
+      if(!p.archived){
+        actions.appendChild(mkBtn('End',()=>{
+          p.archived=true;
+          if(!p.end)p.end=activeDayKey();
+          if(DATA.lifePlan.activePhaseId===p.id)DATA.lifePlan.activePhaseId=null;
+          saveLifePlanAndRefresh();flash('Phase archived');
+        }));
+      }else{
+        actions.appendChild(mkBtn('Reactivate',()=>{
+          p.archived=false;
+          saveLifePlanAndRefresh();flash('Phase reactivated');
+        }));
+      }
+      card.querySelector('.lp-save-phase').onclick=()=>{
+        p.label=card.querySelector('.lp-in-label').value.trim()||p.label;
+        p.start=card.querySelector('.lp-in-start').value||null;
+        p.end=card.querySelector('.lp-in-end').value||null;
+        p.modules={pmp:card.querySelector('.lp-in-pmp').checked,jobs:card.querySelector('.lp-in-jobs').checked};
+        card.classList.remove('editing');
+        saveLifePlanAndRefresh();flash('Phase saved');
+      };
+      listEl.appendChild(card);
+    });
+  }
+  if(subEl&&phase){
+    subEl.innerHTML=`Editing <strong>${escapeHtml(phase.label)}</strong> — feeds Today's bands until you override a day.`;
+  }
+  renderBlueprintBands(bandsEl,phase);
+  if(addRow&&phase){
+    addRow.innerHTML='';
+    const sel=document.createElement('select');
+    const used=allBlueprintTasks(phase);
+    sel.innerHTML='<option value="">+ Add task to band…</option>';
+    BLUEPRINT_TASK_KEYS.filter(t=>!used.has(t)).forEach(t=>{
+      const o=document.createElement('option');
+      o.value=t;o.textContent=periodTaskLabel(t,activeDayKey());
+      sel.appendChild(o);
+    });
+    const bandSel=document.createElement('select');
+    PERIOD_KEYS.forEach(p=>{
+      const o=document.createElement('option');
+      o.value=p;o.textContent=PERIOD_LABELS[p];
+      bandSel.appendChild(o);
+    });
+    const addBtn=document.createElement('button');
+    addBtn.type='button';addBtn.className='btn sm';addBtn.textContent='Add';
+    addBtn.onclick=()=>{
+      if(!sel.value){sel.focus();return;}
+      blueprintAddTask(phase,bandSel.value,sel.value);
+      saveLifePlanAndRefresh();flash('Added to template');
+    };
+    addRow.appendChild(sel);addRow.appendChild(bandSel);addRow.appendChild(addBtn);
+  }
+}
+function saveLifePlanAndRefresh(){
+  touchLifePlan();
+  save();
+  renderSched();
+  renderNowBanner();
+  applyTabUi();
+  renderLifePlan();
+}
+function wireLifePlan(){
+  const addBtn=document.getElementById('lpAddPhase');
+  if(addBtn&&!addBtn.dataset.wired){
+    addBtn.dataset.wired='1';
+    addBtn.onclick=()=>{
+      ensureLifePlan();
+      const p=factoryPhaseSeed('phase_'+Date.now(),'New life phase',activeDayKey(),null,false,{pmp:false,jobs:true},'post');
+      DATA.lifePlan.phases.push(p);
+      DATA.lifePlan.uiPhaseId=p.id;
+      saveLifePlanAndRefresh();flash('Phase added — edit name and dates');
+    };
+  }
+  const restore=document.getElementById('lpRestorePhase');
+  if(restore&&!restore.dataset.wired){
+    restore.dataset.wired='1';
+    restore.onclick=()=>{
+      const phase=getUiPhase();
+      if(!phase)return;
+      restoreFactoryBandsForPhase(phase);
+      saveLifePlanAndRefresh();flash('Phase template restored');
+    };
+  }
+  const notes=document.getElementById('lpNotes');
+  if(notes&&!notes.dataset.wired){
+    notes.dataset.wired='1';
+    notes.addEventListener('input',()=>{
+      clearTimeout(lpNotesTimer);
+      lpNotesTimer=setTimeout(()=>{
+        if((DATA.lifePlan.notes||'')===notes.value)return;
+        DATA.lifePlan.notes=notes.value;
+        touchLifePlan();save();
+      },400);
+    });
+  }
 }
 function switchToTodayTab(){activateTab('today');}
 function activateTab(tabId){
@@ -1498,6 +1993,7 @@ function activateTab(tabId){
   const view=document.getElementById('v-'+tabId);
   if(view)view.classList.add('active');
   if(tabId==='week')renderWeekCalendar();
+  if(tabId==='lifeplan')renderLifePlan();
 }
 function applyTabUi(){
   if(!DATA)return;
@@ -1589,10 +2085,10 @@ function renderTabManagerPanel(){
   MANAGED_BUILTIN_TABS.forEach(({id,label})=>{
     const row=document.createElement('div');
     row.className='tab-mgr-row';
-    const autoOff=id==='pmp'&&!isPmpActive();
+    const autoOff=id==='pmp'&&!isPhaseModuleEnabled('pmp');
     const checked=!isTabHidden(id)&&!autoOff;
     row.innerHTML=`<label class="${autoOff?'disabled':''}"><input type="checkbox" data-tab="${id}" ${checked?'checked':''} ${autoOff?'disabled':''}><span>${label}</span></label>`;
-    if(autoOff)row.innerHTML+='<span class="tab-mgr-hint">Hidden after exam</span>';
+    if(autoOff)row.innerHTML+='<span class="tab-mgr-hint">Off in Life Plan phase</span>';
     const inp=row.querySelector('input');
     if(inp&&!autoOff)inp.onchange=()=>{
       setTabHidden(id,!inp.checked);
@@ -1761,6 +2257,13 @@ function isMovablePeriodTask(taskKey,dayKey){
   return MOVABLE_SHIFT_TASKS.has(taskKey)||MOVABLE_OFF_SHIFT_EXTRA.has(taskKey);
 }
 function basePeriodTemplate(dayKey){
+  const phase=resolvePhaseForDay(dayKey);
+  if(phase&&phase.bands){
+    const out={};
+    PERIOD_KEYS.forEach(p=>{out[p]=(phase.bands[p]||[]).slice();});
+    if(!out.night)out.night=[];
+    return out;
+  }
   const tpl=DATA&&DATA.periodTemplate;
   const branch=isPmpActive(dayKey)?'preExam':'postExam';
   let out;
@@ -2292,7 +2795,10 @@ function taskKeyFromPackedBlock(b,dayKey){
 }
 function workoutStateForDay(dayKey){
   const c=dayCfg(dayKey);
-  return c.workout||'gym';
+  if(c.workout)return c.workout;
+  const phase=resolvePhaseForDay(dayKey);
+  if(phase&&phase.defaultWorkout)return phase.defaultWorkout;
+  return 'gym';
 }
 function packScheduleBlocksOnly(dayKey,c,ws,ov){
   const lists=effectivePeriodLists(dayKey);
@@ -2924,7 +3430,10 @@ function dayCfg(k){
   return c;
 }
 function blockDurOv(dayKey){
-  return dayCfg(dayKey).blockDur||{};
+  const day=dayCfg(dayKey).blockDur||{};
+  const phase=resolvePhaseForDay(dayKey);
+  const base=phase&&phase.defaultDur?{...phase.defaultDur}:{};
+  return{...base,...day};
 }
 function calendarDayTypeForKey(k){
   const p=k.split('-').map(Number);
@@ -3923,6 +4432,12 @@ function pickNonFixed(dayKey,c){
   if(c.nonFixedPick==='none')return null;
   if(c.nonFixedPick){
     const hit=NON_FIXED_POOL.find(x=>x.id===c.nonFixedPick);
+    if(hit)return hit;
+  }
+  const phase=resolvePhaseForDay(dayKey);
+  if(phase&&phase.defaultNonFixedPick){
+    if(phase.defaultNonFixedPick==='none')return null;
+    const hit=NON_FIXED_POOL.find(x=>x.id===phase.defaultNonFixedPick);
     if(hit)return hit;
   }
   let h=0;
@@ -5536,6 +6051,7 @@ function mergeDefaults(){
 function renderAll(){
   applyTabUi();
   renderClocks();renderCountdowns();renderNowBanner();renderSched();renderHabitWeekly();renderGymLog();renderTodos();renderScratchpad();
+  if(isTabVisible('lifeplan'))renderLifePlan();
   if(isTabVisible('pmp'))renderPMP();
   if(isTabVisible('jobs'))renderJobs();
   renderCustomTabs();
@@ -5820,6 +6336,7 @@ function wire(){
   if(tabMgrAdd)tabMgrAdd.onclick=addCustomTabFromInput;
   if(tabMgrNewName)tabMgrNewName.addEventListener('keydown',e=>{if(e.key==='Enter'&&tabMgrAdd)tabMgrAdd.click();});
   if(tabManagerModal)tabManagerModal.addEventListener('click',e=>{if(e.target===tabManagerModal)closeTabManagerModal();});
+  wireLifePlan();
 }
 
 async function init(){
