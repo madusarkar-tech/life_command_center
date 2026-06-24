@@ -5,7 +5,7 @@
 
 Use this when you want future work (or a new chat) to treat the app as **known-good** and avoid accidental changes to sync, field-level merge, sudden/band scheduling, or Week calendar unless you explicitly ask otherwise.
 
-**Current `main`:** `4d596e9` — weekly habits sleep sync hardening (`sleepHrsUpdatedAt`, merge patches, focus guards). See [Changes since `baseline-2026-06-24`](#changes-since-baseline-2026-06-24-4d596e9-app) below.
+**Current `main`:** `a5f1f09` (docs) · **App at baseline tag:** `4d596e9` — weekly habits sleep sync hardening. See [Changes since `baseline-2026-06-24`](#changes-since-baseline-2026-06-24-4d596e9-app) below.
 
 ## Git reference (baseline tag)
 
@@ -35,7 +35,7 @@ List what the tag contains:
 git show baseline-2026-06-24 --stat
 ```
 
-**Live site:** GitHub Pages follows `main` (currently `4d596e9`).
+**Live site:** GitHub Pages follows `main` (currently `a5f1f09`; app baseline `4d596e9`).
 
 ---
 
@@ -43,7 +43,7 @@ git show baseline-2026-06-24 --stat
 
 | Commit | Summary |
 |--------|---------|
-| *(none yet)* | Tag established at habit sleep sync fix |
+| `a5f1f09` | Docs update for `baseline-2026-06-24` (habit sleep sync contract) |
 
 ---
 
