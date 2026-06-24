@@ -971,6 +971,16 @@ function mergeLocal(){
       if(dTs>0)out[ts]=dTs;
     }
   });
+  const memHd=DATA.habitDaily&&typeof DATA.habitDaily==='object'?DATA.habitDaily:{};
+  const outHd=out.habitDaily&&typeof out.habitDaily==='object'?out.habitDaily:{};
+  out.habitDaily={...outHd};
+  Object.keys(memHd).forEach(k=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
+    const mTs=memHd[k]?.updatedAt||0;
+    const sTs=outHd[k]?.updatedAt||0;
+    if(mTs>sTs||(mTs>0&&mTs===sTs))
+      out.habitDaily[k]=JSON.parse(JSON.stringify(memHd[k]));
+  });
   return out;
 }
 function gymLiftPanelActive(){
@@ -978,6 +988,10 @@ function gymLiftPanelActive(){
   if(!panel||panel.style.display==='none')return false;
   const el=document.activeElement;
   return !!(el&&panel.contains(el)&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA'));
+}
+function habitSleepInputActive(){
+  const el=document.activeElement;
+  return !!(el&&el.classList&&el.classList.contains('hf-sleep'));
 }
 function isFirebaseConfigured(){
   const c=window.FIREBASE_CONFIG;
@@ -1084,29 +1098,47 @@ function mergeHabitsMap(local,cloud){
   });
   return out;
 }
-function mergeHabitDailyEntry(l,c){
+function habitSleepHasValue(side){
+  if(!side||side.sleepHrs==null||side.sleepHrs==='')return false;
+  const h=parseFloat(side.sleepHrs);
+  return !isNaN(h);
+}
+function mergeHabitDailyEntry(l,c,localTime,cloudTime){
   const lo=l&&typeof l==='object'?l:{};
   const cl=c&&typeof c==='object'?c:{};
   const out={};
-  const lSleep=parseFloat(lo.sleepHrs);
-  const cSleep=parseFloat(cl.sleepHrs);
-  const maxSleep=Math.max(isNaN(lSleep)?0:lSleep,isNaN(cSleep)?0:cSleep);
-  if(maxSleep>0)out.sleepHrs=maxSleep;
-  else if(lo.sleepHrs!=null&&lo.sleepHrs!=='')out.sleepHrs=lo.sleepHrs;
-  else if(cl.sleepHrs!=null&&cl.sleepHrs!=='')out.sleepHrs=cl.sleepHrs;
+  const lTs=lo.updatedAt||0;
+  const cTs=cl.updatedAt||0;
+  const lHas=habitSleepHasValue(lo);
+  const cHas=habitSleepHasValue(cl);
+  if(lHas||cHas){
+    if(lTs>cTs&&lHas)out.sleepHrs=parseFloat(lo.sleepHrs);
+    else if(cTs>lTs&&cHas)out.sleepHrs=parseFloat(cl.sleepHrs);
+    else if(lHas&&!cHas)out.sleepHrs=parseFloat(lo.sleepHrs);
+    else if(cHas&&!lHas)out.sleepHrs=parseFloat(cl.sleepHrs);
+    else if(cloudTime>localTime&&cHas)out.sleepHrs=parseFloat(cl.sleepHrs);
+    else if(localTime>cloudTime&&lHas)out.sleepHrs=parseFloat(lo.sleepHrs);
+    else if(cHas)out.sleepHrs=parseFloat(cl.sleepHrs);
+    else if(lHas)out.sleepHrs=parseFloat(lo.sleepHrs);
+  }
   out.water=Math.max(parseInt(lo.water,10)||0,parseInt(cl.water,10)||0);
   if(out.water===0&&(lo.water!=null||cl.water!=null))out.water=0;
   out.workout=!!(lo.workout||cl.workout);
+  if(!out.workout&&(lo.workoutOff||cl.workoutOff))out.workoutOff=true;
+  const ts=Math.max(lTs,cTs);
+  if(ts>0)out.updatedAt=ts;
+  else if(lHas||cHas||lo.water!=null||cl.water!=null||lo.workout||cl.workout)
+    out.updatedAt=Math.max(localTime||0,cloudTime||0);
   return out;
 }
-function mergeHabitDailyMap(local,cloud){
+function mergeHabitDailyMap(local,cloud,localTime,cloudTime){
   const loc=local&&typeof local==='object'?local:{};
   const clo=cloud&&typeof cloud==='object'?cloud:{};
   const keys=new Set([...Object.keys(loc),...Object.keys(clo)]);
   const out={};
   keys.forEach(k=>{
     if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
-    out[k]=mergeHabitDailyEntry(loc[k],clo[k]);
+    out[k]=mergeHabitDailyEntry(loc[k],clo[k],localTime||0,cloudTime||0);
   });
   return out;
 }
@@ -1211,7 +1243,7 @@ function mergeListFields(out,local,cloud,localTime,cloudTime){
 function mergeArrayFields(out,local,cloud,localTime,cloudTime){
   mergeListFields(out,local,cloud,localTime,cloudTime);
   out.habits=mergeHabitsMap(local.habits,cloud.habits);
-  out.habitDaily=mergeHabitDailyMap(local.habitDaily,cloud.habitDaily);
+  out.habitDaily=mergeHabitDailyMap(local.habitDaily,cloud.habitDaily,localTime,cloudTime);
   out.gymLog=mergeGymLogMap(local.gymLog,cloud.gymLog,localTime,cloudTime);
 }
 const NOTE_LWW_FIELDS=[
@@ -1302,7 +1334,7 @@ function dataSnapshotEqual(a,b){
 const Store={
   applyRemoteData(cloud,cloudTime){
     if(!cloud)return false;
-    if(gymLiftPanelActive())return false;
+    if(gymLiftPanelActive()||habitSleepInputActive())return false;
     const local=mergeLocal();
     const localTime=localUpdatedAt();
     const merged=mergeAppData(local,cloud,localTime,cloudTime||0);
@@ -3562,6 +3594,13 @@ function habitEntryForDay(dayKey,create){
   if(!DATA.habitDaily[dayKey]&&create)DATA.habitDaily[dayKey]={};
   return DATA.habitDaily[dayKey]||{};
 }
+function touchHabitDay(dayKey){
+  touchHabitDayEntry(habitEntryForDay(dayKey,true));
+}
+function touchHabitDayEntry(entry){
+  if(!entry)return;
+  entry.updatedAt=Date.now();
+}
 function habitTrackMet(trackId,entry){
   const e=entry||{};
   if(trackId==='sleep')return parseFloat(e.sleepHrs)>=SLEEP_HABIT_MIN;
@@ -3608,6 +3647,7 @@ function habitTapCell(trackId,dayKey){
   const entry=habitEntryForDay(dayKey,true);
   if(trackId==='water'){
     entry.water=(entry.water|0)+1;
+    touchHabitDayEntry(entry);
     save();renderHabitWeekly();habitScrollPanel();
     return;
   }
@@ -3615,6 +3655,7 @@ function habitTapCell(trackId,dayKey){
     entry.workout=!entry.workout;
     if(entry.workout)delete entry.workoutOff;
     else entry.workoutOff=true;
+    touchHabitDayEntry(entry);
     save();renderHabitWeekly();habitScrollPanel();
     return;
   }
@@ -3630,10 +3671,12 @@ function habitScrollPanel(){
 function commitSleepHrs(entry,inputEl,live){
   const v=parseFloat(inputEl.value);
   entry.sleepHrs=isNaN(v)||inputEl.value===''?null:v;
+  touchHabitDayEntry(entry);
+  writeLocal(DATA);
   if(live){
     refreshHabitGrid();
     clearTimeout(commitSleepTimer);
-    commitSleepTimer=setTimeout(()=>save(),400);
+    commitSleepTimer=setTimeout(()=>save({silent:true}),400);
     return;
   }
   clearTimeout(commitSleepTimer);
@@ -3717,6 +3760,7 @@ function monthlyLiftStats(ym,dayKeys){
 }
 function renderHabitWeekly(){
   maybeSyncWorkoutHabit(activeDayKey());
+  if(habitSleepInputActive()){refreshHabitGrid();return;}
   const rangeEl=document.getElementById('habitWeekRange');
   const summaryEl=document.getElementById('habitWeekSummary');
   const gridEl=document.getElementById('habitWeekGrid');
@@ -3819,6 +3863,7 @@ function renderHabitWeekly(){
     entry.workout=!entry.workout;
     if(entry.workout)delete entry.workoutOff;
     else entry.workoutOff=true;
+    touchHabitDayEntry(entry);
     save();renderHabitWeekly();
   };
   woRow.appendChild(woBtn);
@@ -3832,10 +3877,10 @@ function renderHabitWeekly(){
   wVal.className='val';wVal.textContent=String(entry.water|0);
   const wMinus=document.createElement('button');
   wMinus.type='button';wMinus.textContent='−';
-  wMinus.onclick=()=>{entry.water=Math.max(0,(entry.water|0)-1);save();renderHabitWeekly();};
+  wMinus.onclick=()=>{entry.water=Math.max(0,(entry.water|0)-1);touchHabitDayEntry(entry);save();renderHabitWeekly();};
   const wPlus=document.createElement('button');
   wPlus.type='button';wPlus.textContent='+';
-  wPlus.onclick=()=>{entry.water=(entry.water|0)+1;save();renderHabitWeekly();};
+  wPlus.onclick=()=>{entry.water=(entry.water|0)+1;touchHabitDayEntry(entry);save();renderHabitWeekly();};
   step.appendChild(wMinus);step.appendChild(wVal);step.appendChild(wPlus);
   waterRow.appendChild(step);
   editBox.appendChild(waterRow);
@@ -6063,7 +6108,7 @@ function renderScratchpad(){
   setDetailsOpen(disc,!!DATA.scratchpadOpen);
 }
 async function reloadData(opts){
-  if(gymLiftPanelActive())return;
+  if(gymLiftPanelActive()||habitSleepInputActive())return;
   const prevDay=DATA?JSON.stringify(cfg()):'';
   DATA=await Store.load(opts);
   if(!DATA)DATA=defaults();
@@ -6371,11 +6416,11 @@ async function init(){
   setInterval(checkTaskAlarms,15000);
   setInterval(()=>{
     const day=activeDayKey();
-    if(day!==lastActiveDay){lastActiveDay=day;reloadData();}
+    if(day!==lastActiveDay){lastActiveDay=day;habitEditDayKey=null;reloadData();}
     if(document.visibilityState==='visible'&&firebaseReady&&firebase.auth().currentUser){
       userDoc(firebase.auth().currentUser.uid).get().then(snap=>{
         if(!snap.exists||!snap.data()?.data||snap.metadata?.hasPendingWrites)return;
-        if(gymLiftPanelActive())return;
+        if(gymLiftPanelActive()||habitSleepInputActive())return;
         Store.applyRemoteData(snap.data().data,snap.data().updatedAt?.toMillis?.()||0);
       }).catch(()=>{});
     }
