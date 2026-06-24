@@ -978,10 +978,36 @@ function mergeLocal(){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
     const mTs=memHd[k]?.updatedAt||0;
     const sTs=outHd[k]?.updatedAt||0;
-    if(mTs>sTs||(mTs>0&&mTs===sTs))
+    const mSleepTs=memHd[k]?.sleepHrsUpdatedAt||0;
+    const sSleepTs=outHd[k]?.sleepHrsUpdatedAt||0;
+    if(mTs>sTs||mSleepTs>sSleepTs||(mTs>0&&mTs===sTs)||(mSleepTs>0&&mSleepTs===sSleepTs))
       out.habitDaily[k]=JSON.parse(JSON.stringify(memHd[k]));
   });
   return out;
+}
+function habitSleepTs(side){
+  if(!side||typeof side!=='object')return 0;
+  if(typeof side.sleepHrsUpdatedAt==='number'&&side.sleepHrsUpdatedAt>0)return side.sleepHrsUpdatedAt;
+  if(habitSleepHasValue(side)&&typeof side.updatedAt==='number'&&side.updatedAt>0)return side.updatedAt;
+  return 0;
+}
+function patchHabitSleepFromSource(target,source){
+  if(!target||!source||!source.habitDaily||typeof source.habitDaily!=='object')return;
+  if(!target.habitDaily||typeof target.habitDaily!=='object')target.habitDaily={};
+  Object.keys(source.habitDaily).forEach(k=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(k))return;
+    const s=source.habitDaily[k];
+    if(!s||typeof s.sleepHrsUpdatedAt!=='number'||s.sleepHrsUpdatedAt<=0)return;
+    const t=target.habitDaily[k];
+    const tSleepTs=habitSleepTs(t);
+    if(s.sleepHrsUpdatedAt>=tSleepTs){
+      if(!target.habitDaily[k])target.habitDaily[k]={};
+      const out=target.habitDaily[k];
+      out.sleepHrs=s.sleepHrs;
+      out.sleepHrsUpdatedAt=s.sleepHrsUpdatedAt;
+      if(typeof s.updatedAt==='number'&&s.updatedAt>0)out.updatedAt=Math.max(out.updatedAt||0,s.updatedAt);
+    }
+  });
 }
 function gymLiftPanelActive(){
   const panel=document.getElementById('gymLiftPanel');
@@ -1107,20 +1133,25 @@ function mergeHabitDailyEntry(l,c,localTime,cloudTime){
   const lo=l&&typeof l==='object'?l:{};
   const cl=c&&typeof c==='object'?c:{};
   const out={};
-  const lTs=lo.updatedAt||0;
-  const cTs=cl.updatedAt||0;
+  const lSleepTs=habitSleepTs(lo);
+  const cSleepTs=habitSleepTs(cl);
   const lHas=habitSleepHasValue(lo);
   const cHas=habitSleepHasValue(cl);
   if(lHas||cHas){
-    if(lTs>cTs&&lHas)out.sleepHrs=parseFloat(lo.sleepHrs);
-    else if(cTs>lTs&&cHas)out.sleepHrs=parseFloat(cl.sleepHrs);
+    if(lSleepTs>cSleepTs&&lHas)out.sleepHrs=parseFloat(lo.sleepHrs);
+    else if(cSleepTs>lSleepTs&&cHas)out.sleepHrs=parseFloat(cl.sleepHrs);
     else if(lHas&&!cHas)out.sleepHrs=parseFloat(lo.sleepHrs);
     else if(cHas&&!lHas)out.sleepHrs=parseFloat(cl.sleepHrs);
     else if(cloudTime>localTime&&cHas)out.sleepHrs=parseFloat(cl.sleepHrs);
     else if(localTime>cloudTime&&lHas)out.sleepHrs=parseFloat(lo.sleepHrs);
     else if(cHas)out.sleepHrs=parseFloat(cl.sleepHrs);
     else if(lHas)out.sleepHrs=parseFloat(lo.sleepHrs);
+    const sleepTs=Math.max(lSleepTs,cSleepTs);
+    if(sleepTs>0)out.sleepHrsUpdatedAt=sleepTs;
+    else if(out.sleepHrs!=null)out.sleepHrsUpdatedAt=Math.max(localTime||0,cloudTime||0);
   }
+  const lTs=lo.updatedAt||0;
+  const cTs=cl.updatedAt||0;
   out.water=Math.max(parseInt(lo.water,10)||0,parseInt(cl.water,10)||0);
   if(out.water===0&&(lo.water!=null||cl.water!=null))out.water=0;
   out.workout=!!(lo.workout||cl.workout);
@@ -1338,6 +1369,7 @@ const Store={
     const local=mergeLocal();
     const localTime=localUpdatedAt();
     const merged=mergeAppData(local,cloud,localTime,cloudTime||0);
+    if(DATA)patchHabitSleepFromSource(merged,DATA);
     if(DATA&&dataSnapshotEqual(merged,DATA))return false;
     DATA=merged;
     writeLocalAfterSync(DATA,localTime,cloudTime||0);
@@ -1378,6 +1410,7 @@ const Store={
         const localTime=localUpdatedAt();
         if(!local){writeLocalAfterSync(cloud,0,cloudTime);return cloud;}
         const merged=mergeAppData(local,cloud,localTime,cloudTime);
+        patchHabitSleepFromSource(merged,local);
         writeLocalAfterSync(merged,localTime,cloudTime);
         return merged;
       }
@@ -1414,6 +1447,7 @@ const Store={
           const localTime=localUpdatedAt();
           const local=mergeLocal()||d;
           toPush=mergeAppData(local,cloud,localTime,cloudTime)||d;
+          patchHabitSleepFromSource(toPush,DATA||d);
           if(DATA&&dataSnapshotEqual(DATA,toPush)===false){
             DATA=toPush;
             writeLocalAfterSync(DATA,localTime,cloudTime);
@@ -3601,6 +3635,12 @@ function touchHabitDayEntry(entry){
   if(!entry)return;
   entry.updatedAt=Date.now();
 }
+function touchHabitSleep(dayKey){
+  const entry=habitEntryForDay(dayKey,true);
+  entry.sleepHrsUpdatedAt=Date.now();
+  entry.updatedAt=Math.max(entry.updatedAt||0,entry.sleepHrsUpdatedAt);
+  return entry;
+}
 function habitTrackMet(trackId,entry){
   const e=entry||{};
   if(trackId==='sleep')return parseFloat(e.sleepHrs)>=SLEEP_HABIT_MIN;
@@ -3668,19 +3708,21 @@ function habitScrollPanel(){
   const panel=document.getElementById('habitTodayPanel');
   if(panel)requestAnimationFrame(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}));
 }
-function commitSleepHrs(entry,inputEl,live){
+function commitSleepHrs(dayKey,inputEl,live){
+  const entry=habitEntryForDay(dayKey,true);
   const v=parseFloat(inputEl.value);
   entry.sleepHrs=isNaN(v)||inputEl.value===''?null:v;
-  touchHabitDayEntry(entry);
+  touchHabitSleep(dayKey);
   writeLocal(DATA);
+  suppressCloudApply=Date.now()+2500;
   if(live){
     refreshHabitGrid();
     clearTimeout(commitSleepTimer);
-    commitSleepTimer=setTimeout(()=>save({silent:true}),400);
+    commitSleepTimer=setTimeout(()=>save({urgent:true,silent:true}),400);
     return;
   }
   clearTimeout(commitSleepTimer);
-  save();renderHabitWeekly();
+  save({urgent:true});renderHabitWeekly();
 }
 let commitSleepTimer;
 function refreshHabitGrid(){
@@ -3768,6 +3810,7 @@ function renderHabitWeekly(){
   if(!gridEl||!panelEl)return;
   const dayKeys=weekDayKeys(0);
   const editKey=habitEditDayKey&&dayKeys.includes(habitEditDayKey)?habitEditDayKey:activeDayKey();
+  if(!habitEditDayKey||!dayKeys.includes(habitEditDayKey))habitEditDayKey=editKey;
   if(rangeEl)rangeEl.textContent=weekRangeLabel(0)+' · tap grid to log';
   if(summaryEl){
     summaryEl.innerHTML='';
@@ -3837,7 +3880,7 @@ function renderHabitWeekly(){
   editBox.className='habit-edit-box';
   const head=document.createElement('div');
   head.className='ht-label';
-  head.textContent='Log '+editLbl.toLowerCase();
+  head.textContent='Log '+editLbl.toLowerCase()+(editKey!==activeDayKey()?' (not today)':'');
   const hint=document.createElement('div');
   hint.className='ht-hint';
   hint.textContent='Tap the grid above for quick log · use fields below for sleep hours and water adjustments';
@@ -3848,9 +3891,11 @@ function renderHabitWeekly(){
   sleepRow.innerHTML=`<div class="hf-name">😴 Sleep<small>Hours slept (≥ ${SLEEP_HABIT_MIN})</small></div>`;
   const sleepIn=document.createElement('input');
   sleepIn.type='number';sleepIn.className='hf-sleep';sleepIn.min='0';sleepIn.max='24';sleepIn.step='0.5';
-  sleepIn.placeholder='hrs';sleepIn.value=entry.sleepHrs!=null?entry.sleepHrs:'';
-  sleepIn.oninput=()=>commitSleepHrs(entry,sleepIn,true);
-  sleepIn.onchange=()=>commitSleepHrs(entry,sleepIn,false);
+  sleepIn.placeholder='hrs';
+  sleepIn.dataset.habitDay=editKey;
+  sleepIn.value=entry.sleepHrs!=null?entry.sleepHrs:'';
+  sleepIn.oninput=()=>commitSleepHrs(sleepIn.dataset.habitDay,sleepIn,true);
+  sleepIn.onchange=()=>commitSleepHrs(sleepIn.dataset.habitDay,sleepIn,false);
   sleepRow.appendChild(sleepIn);
   editBox.appendChild(sleepRow);
   const woRow=document.createElement('div');
@@ -3860,10 +3905,11 @@ function renderHabitWeekly(){
   woBtn.type='button';woBtn.className='habit-toggle'+(entry.workout?' on':'');
   woBtn.textContent=entry.workout?'✓ Done':'Mark done';
   woBtn.onclick=()=>{
-    entry.workout=!entry.workout;
-    if(entry.workout)delete entry.workoutOff;
-    else entry.workoutOff=true;
-    touchHabitDayEntry(entry);
+    const e=habitEntryForDay(editKey,true);
+    e.workout=!e.workout;
+    if(e.workout)delete e.workoutOff;
+    else e.workoutOff=true;
+    touchHabitDayEntry(e);
     save();renderHabitWeekly();
   };
   woRow.appendChild(woBtn);
@@ -3877,10 +3923,10 @@ function renderHabitWeekly(){
   wVal.className='val';wVal.textContent=String(entry.water|0);
   const wMinus=document.createElement('button');
   wMinus.type='button';wMinus.textContent='−';
-  wMinus.onclick=()=>{entry.water=Math.max(0,(entry.water|0)-1);touchHabitDayEntry(entry);save();renderHabitWeekly();};
+  wMinus.onclick=()=>{const e=habitEntryForDay(editKey,true);e.water=Math.max(0,(e.water|0)-1);touchHabitDayEntry(e);save();renderHabitWeekly();};
   const wPlus=document.createElement('button');
   wPlus.type='button';wPlus.textContent='+';
-  wPlus.onclick=()=>{entry.water=(entry.water|0)+1;touchHabitDayEntry(entry);save();renderHabitWeekly();};
+  wPlus.onclick=()=>{const e=habitEntryForDay(editKey,true);e.water=(e.water|0)+1;touchHabitDayEntry(e);save();renderHabitWeekly();};
   step.appendChild(wMinus);step.appendChild(wVal);step.appendChild(wPlus);
   waterRow.appendChild(step);
   editBox.appendChild(waterRow);
@@ -6424,7 +6470,8 @@ async function init(){
         Store.applyRemoteData(snap.data().data,snap.data().updatedAt?.toMillis?.()||0);
       }).catch(()=>{});
     }
-    renderClocks();renderNowBanner();renderSched();renderHabitWeekly();
+    renderClocks();renderNowBanner();renderSched();
+    if(!gymLiftPanelActive()&&!habitSleepInputActive())renderHabitWeekly();
     if(!gymLiftPanelActive())renderGymLog();
     renderCountdowns();
   },30000);
