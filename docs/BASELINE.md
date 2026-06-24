@@ -1,18 +1,18 @@
 # Baseline checkpoint
 
-**Established:** 2026-06-10 (current) · **Archive:** 2026-06-09 (`884cd10`)  
-**Return phrase:** `Return to baseline` or `Restore baseline-2026-06-10`
+**Established:** 2026-06-24 (current) · **Archive:** 2026-06-10 (`540a3a5` app at tag)  
+**Return phrase:** `Return to baseline` or `Restore baseline-2026-06-24`
 
 Use this when you want future work (or a new chat) to treat the app as **known-good** and avoid accidental changes to sync, field-level merge, sudden/band scheduling, or Week calendar unless you explicitly ask otherwise.
 
-**Current `main`:** `d45ade5` — Life Plan tab (phases, blueprint editor, module toggles). See [Changes since `baseline-2026-06-10`](#changes-since-baseline-2026-06-10-540a3a5-app) below.
+**Current `main`:** `4d596e9` — weekly habits sleep sync hardening (`sleepHrsUpdatedAt`, merge patches, focus guards). See [Changes since `baseline-2026-06-24`](#changes-since-baseline-2026-06-24-4d596e9-app) below.
 
 ## Git reference (baseline tag)
 
 | Item | Value |
 |------|--------|
-| Tag | `baseline-2026-06-10` |
-| App at tag | `540a3a5` — field-level sync (notes, dayConfig, todos), Week tab, pinned starts, merge-before-push, reload tie-breaks |
+| Tag | `baseline-2026-06-24` |
+| App at tag | `4d596e9` — Life Plan Phase 1 + open-time slots + pin fixes + tab manager + workout log LWW + **habit sleep sync** (`sleepHrsUpdatedAt`, `patchHabitSleepFromSource`, `habitSleepInputActive`) |
 | Docs | Updated on `main` in the docs commit following the tag |
 
 ### Restore code to this baseline
@@ -20,22 +20,30 @@ Use this when you want future work (or a new chat) to treat the app as **known-g
 ```bash
 cd ~/Desktop/Scheduler
 git fetch --tags
-git checkout baseline-2026-06-10
+git checkout baseline-2026-06-24
 ```
 
 Restore only the app file (stay on your current branch):
 
 ```bash
-git checkout baseline-2026-06-10 -- life-dashboard.html
+git checkout baseline-2026-06-24 -- life-dashboard.html
 ```
 
 List what the tag contains:
 
 ```bash
-git show baseline-2026-06-10 --stat
+git show baseline-2026-06-24 --stat
 ```
 
-**Live site:** GitHub Pages follows `main` (currently `d45ade5`).
+**Live site:** GitHub Pages follows `main` (currently `4d596e9`).
+
+---
+
+## Changes since `baseline-2026-06-24` (`4d596e9` app)
+
+| Commit | Summary |
+|--------|---------|
+| *(none yet)* | Tag established at habit sleep sync fix |
 
 ---
 
@@ -43,6 +51,9 @@ git show baseline-2026-06-10 --stat
 
 | Commit | Summary |
 |--------|---------|
+| `4d596e9` | **Habit sleep sync hardening** — `sleepHrsUpdatedAt` LWW (separate from water/workout `updatedAt`); `commitSleepHrs(dayKey,…)` fresh lookup (no stale closure); `patchHabitSleepFromSource` on load/push/snapshot; `mergeLocal()` prefers in-memory `habitDaily` + `sleepHrsUpdatedAt`; `habitSleepInputActive()` skips remote apply + full habit re-render; urgent push on sleep; panel label **(not today)** when editing another column |
+| `e282320` | **Habit sleep revert fix** — replaced `Math.max` sleep merge with per-day LWW; immediate `writeLocal` on sleep input; `mergeLocal()` habitDaily preference |
+| `d7dcdea` | Docs update for Life Plan Phase 1 |
 | `d45ade5` | **Life Plan tab (Phase 1)** — life phases with date ranges; per-phase default band template editor; PMP/Job **module toggles**; `DATA.lifePlan` + `mergeLifePlan`; `basePeriodTemplate()` reads active phase; `blockDurOv` merges phase `defaultDur` |
 | `8e5500b` | Docs update for open-time slots and pin fixes |
 | `cab37ed` | **Cross-band open-slot move** — shifting times into target band window (e.g. workout 1pm → afternoon at 2pm); clears gym pin outside destination band |
@@ -136,7 +147,7 @@ git show baseline-2026-06-10 --stat
 | **Alarms** | `DATA.alarmOn`, `alarmEndOn`, `alarmEndTasks` | Start-of-block default on; 5m end warn per ⏱ |
 | **To-Do** | `DATA.todos`, `DATA.jobTodos` | List-level LWW — whole list wins by `todosUpdatedAt` / `jobTodosUpdatedAt`; Today todos split by `list: 'work' \| 'other'` |
 | **Habits (legacy)** | `DATA.habits` | Date-set union merge — still used for PMP study habit sync from schedule blocks |
-| **Weekly habits** | `DATA.habitDaily[date]` | Per-date merge: max sleep/water, OR workout (`mergeHabitDailyMap`) |
+| **Weekly habits** | `DATA.habitDaily[date]` | Per-date merge (`mergeHabitDailyMap`): **sleep** LWW on `sleepHrsUpdatedAt`; max water; OR workout; `patchHabitSleepFromSource` on load/push/snapshot |
 | **Workout log** | `DATA.gymLog[date]` | Per-date LWW by `updatedAt` — whole day entry wins (`mergeGymLogMap`) |
 | **tabUi** | `DATA.tabUi` | Object-level LWW by `tabUiUpdatedAt` — hide Week/PMP/Jobs (not Life Plan); custom tabs (`mergeTabUi`) |
 | **Jobs** | `DATA.jobs` | List-level LWW at `3d15a16+` (`jobsUpdatedAt`); union merge at tag `540a3a5` only |
@@ -163,7 +174,7 @@ Implementation: `life-dashboard.html` — `Store`, `mergeAppData`, `mergeDayConf
 
 - `Store.load` → read cloud + local → `mergeAppData` → `writeLocalAfterSync`
 - `Store.save` → local + debounced/urgent `pushCloud`
-- `onSnapshot` → `applyRemoteData` with `suppressCloudApply` guard
+- `onSnapshot` → `applyRemoteData` with `suppressCloudApply` guard; skipped while `gymLiftPanelActive()` or `habitSleepInputActive()`
 - `suppressUiSave` — programmatic `<details>` open (bands, scratch, quiz) does not trigger `save()` on reload
 
 ### Top-level merge (`mergeAppData`)
@@ -178,7 +189,7 @@ Document-level winner-take-all for most scalar fields. Exceptions merged separat
 | `lifePlan` | Object-level LWW (`mergeLifePlan` on `lifePlanUpdatedAt`) |
 | `todos`, `jobTodos`, `jobs` | List-level LWW (`pickListWinner`) — `jobs` added at `3d15a16` |
 | `habits` | Per-habit date union |
-| `habitDaily` | Per-date entry merge (`mergeHabitDailyMap`) — max sleep/water, OR workout |
+| `habitDaily` | Per-date merge (`mergeHabitDailyMap`) — **sleep** LWW on `sleepHrsUpdatedAt` (`habitSleepTs`); max water; OR workout; `patchHabitSleepFromSource` after merge; `mergeLocal()` prefers in-memory entries when `updatedAt` / `sleepHrsUpdatedAt` newer |
 | `gymLog` | Per-date LWW by `updatedAt` (`mergeGymLogMap`) — whole day wins; tie → document time |
 
 ### Per-day merge (`mergeDayEntry`)
@@ -193,7 +204,7 @@ Legacy whole-day `_syncAt` still used for `tasks` / `weekendPlan` only.
 
 ### Merge-before-push
 
-`Store.pushCloud` reads cloud doc, runs `mergeAppData(local, cloud)`, then writes merged payload — prevents stale laptop push from overwriting newer iPhone field edits.
+`Store.pushCloud` reads cloud doc, runs `mergeAppData(local, cloud)`, **`patchHabitSleepFromSource`**, then writes merged payload — prevents stale laptop push from overwriting newer iPhone field edits.
 
 ### Meta after sync
 
@@ -205,15 +216,22 @@ Legacy whole-day `_syncAt` still used for `tasks` / `weekendPlan` only.
 
 **At tag `540a3a5`:** workday = 3 bands + Work + Sleep; weekend = 4 bands + Plan templates.
 
-**Current `main` (`d45ade5`):** 4 bands always; **Life Plan** phases drive default bands + tab modules; open-time slots; pin fixes (`pinToMin`); Weekly habits + Workout log; tab manager.
+**Current `main` (`4d596e9`):** 4 bands always; **Life Plan** phases; open-time slots; pin fixes; Weekly habits + Workout log; tab manager; **habit sleep sync** (`sleepHrsUpdatedAt`, focus guards).
 
-- **Key functions:** `buildSeq`, `buildPeriodSeq`, `hasWorkShift`, `packPeriodBand`, `basePeriodTemplate`, `resolvePhaseForDay`, `isPhaseModuleEnabled`, `renderLifePlan`, `renderBlueprintBands`, `mergeLifePlan`, `migrateLifePlan`, `effectivePeriodLists`, `syncPeriodOpenSlotsForBand`, `moveOpenSlotPeriod`, `pinToMin`, `displaceSuddenOverlaps`, `applySuddenTasks`, `renderWeekCalendar`, `applyTabUi`, `mergeTabUi`, `isTabVisible`.
+- **Key functions:** `buildSeq`, `buildPeriodSeq`, `hasWorkShift`, `packPeriodBand`, `basePeriodTemplate`, `resolvePhaseForDay`, `isPhaseModuleEnabled`, `renderLifePlan`, `renderBlueprintBands`, `mergeLifePlan`, `migrateLifePlan`, `effectivePeriodLists`, `syncPeriodOpenSlotsForBand`, `moveOpenSlotPeriod`, `pinToMin`, `displaceSuddenOverlaps`, `applySuddenTasks`, `renderWeekCalendar`, `applyTabUi`, `mergeTabUi`, `isTabVisible`, `mergeHabitDailyMap`, `patchHabitSleepFromSource`, `commitSleepHrs`, `habitSleepInputActive`.
 
 Full band windows: [DESIGN.md](./DESIGN.md).
 
 ---
 
-## Fixes included in baseline code (`540a3a5`)
+## Fixes included in baseline code (`4d596e9`)
+
+- Everything from tag `baseline-2026-06-10` (Life Plan, open slots, pins, tab manager, workout log LWW, weekly habits UX, 4-band schedule, jobs/jobTodos list LWW)
+- **Habit sleep sync** — `sleepHrsUpdatedAt` per date; sleep LWW separate from water/workout bumps; `commitSleepHrs` resolves entry by `dayKey`; `patchHabitSleepFromSource` on load/push/snapshot; `habitSleepInputActive()` + `mergeLocal()` habitDaily preference; urgent cloud push on sleep edit
+
+---
+
+## Fixes included in baseline code (`540a3a5`) — archive
 
 - Everything from `baseline-2026-06-09` (sudden ↔ bands, skip-for-today, capacity warnings)
 - Pinned band start times + overflow packing for user extras
@@ -228,10 +246,10 @@ Full band windows: [DESIGN.md](./DESIGN.md).
 
 ## For Cursor / new chats
 
-> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, field-level timestamps, Life Plan phase/blueprint logic, sudden/band packing, open-slot sync, or Week calendar unless I ask. Match tag `baseline-2026-06-10` for the frozen contract; current `main` adds Life Plan, open-time slots, pin fixes, 4-band unification, jobs/jobTodos list LWW, weekly habits, workout log, split to-dos, and tab manager.
+> **Return to baseline.** Read `docs/BASELINE.md`. Do not change sync merge, field-level timestamps, habit sleep LWW (`sleepHrsUpdatedAt`), Life Plan phase/blueprint logic, sudden/band packing, open-slot sync, or Week calendar unless I ask. Match tag `baseline-2026-06-24` for the frozen contract.
 
 ```text
-When I say "return to baseline" or "restore baseline-2026-06-10", read docs/BASELINE.md and treat it as the contract. Prefer minimal diffs.
+When I say "return to baseline" or "restore baseline-2026-06-24", read docs/BASELINE.md and treat it as the contract. Prefer minimal diffs.
 ```
 
 See [HANDOFF.md](./HANDOFF.md).
@@ -252,6 +270,14 @@ See [HANDOFF.md](./HANDOFF.md).
 - Reliable background alarms (tab/permission dependent)
 
 ---
+
+## Archive: `baseline-2026-06-10`
+
+Prior checkpoint before habit sleep sync hardening. App at `540a3a5`.
+
+```bash
+git checkout baseline-2026-06-10 -- life-dashboard.html
+```
 
 ## Archive: `baseline-2026-06-09`
 

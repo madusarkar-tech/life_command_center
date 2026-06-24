@@ -45,12 +45,12 @@ No output = local only. See [docs/GITHUB-SETUP.md](docs/GITHUB-SETUP.md) to push
 
 Design details: [docs/DESIGN.md](docs/DESIGN.md) · Build history: [docs/BUILD-HISTORY.md](docs/BUILD-HISTORY.md) · Onboarding: [docs/HANDOFF.md](docs/HANDOFF.md)
 
-**Stable baseline:** tag `baseline-2026-06-10` (app `540a3a5`) — contract in [docs/BASELINE.md](docs/BASELINE.md). Current `main` is `d45ade5` (Life Plan phases + blueprint editor, open-time slots, pin fixes). Say *"Return to baseline"* in a new chat to anchor agents at the tag.
+**Stable baseline:** tag `baseline-2026-06-24` (app `4d596e9`) — contract in [docs/BASELINE.md](docs/BASELINE.md). Includes Life Plan Phase 1, open-time slots, pin fixes, and **habit sleep sync** (`sleepHrsUpdatedAt`). Say *"Return to baseline"* in a new chat to anchor agents at the tag.
 
 ## Data persistence
 
 - **Signed out:** saves to browser `localStorage` on that device only.
-- **Signed in:** syncs to your Firebase account (Mac + phone + iPad share one dataset). Field-level merge for bands (including open-time slots), notes, and pins; object-level LWW for **Life Plan** (`lifePlan`) and tab visibility (`tabUi`); list-level merge for todos, job todos, and job pipeline; per-date merge for weekly habits and workout log; merge-before-push on save.
+- **Signed in:** syncs to your Firebase account (Mac + phone + iPad share one dataset). Field-level merge for bands (including open-time slots), notes, and pins; object-level LWW for **Life Plan** (`lifePlan`) and tab visibility (`tabUi`); list-level merge for todos, job todos, and job pipeline; per-date merge for weekly habits (sleep LWW on `sleepHrsUpdatedAt`, max water, OR workout) and workout log; merge-before-push on save.
 
 ## Project layout
 

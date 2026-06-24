@@ -119,8 +119,11 @@ After the initial repo import, development continued in Cursor:
 | `cab37ed` | Cross-band open-slot move — shift clock times into target band window; clear gym pin outside band |
 | `8e5500b` | Docs update for open-time slots and pin fixes |
 | `d45ade5` | **Life Plan tab (Phase 1)** — life phases, per-phase default template editor, PMP/Job module toggles, `DATA.lifePlan` sync, `basePeriodTemplate()` from active phase |
+| `d7dcdea` | Docs update for Life Plan Phase 1 |
+| `e282320` | **Habit sleep sync** — replaced `Math.max` sleep merge with per-day LWW; immediate local write on sleep input |
+| `4d596e9` | **Habit sleep hardening** — `sleepHrsUpdatedAt`, `patchHabitSleepFromSource`, `habitSleepInputActive`, urgent push on sleep |
 
-Baseline tag: `baseline-2026-06-10` at app `540a3a5`. Prior: `baseline-2026-06-09` at `884cd10`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
+Baseline tag: `baseline-2026-06-24` at app `4d596e9`. Prior: `baseline-2026-06-10` at `540a3a5`. See [BASELINE.md](BASELINE.md) and [HANDOFF.md](HANDOFF.md).
 
 ## Files in this repo
 

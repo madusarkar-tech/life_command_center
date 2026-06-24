@@ -180,14 +180,14 @@ Tracks three daily habits with a Sun–Sat week grid and weekly completion perce
 
 | Habit | Goal | Storage |
 |-------|------|---------|
-| Sleep | ≥ 6 hours | `DATA.habitDaily[date].sleepHrs` |
+| Sleep | ≥ 6 hours | `DATA.habitDaily[date].sleepHrs` + `sleepHrsUpdatedAt` |
 | Workout | Mark done | `DATA.habitDaily[date].workout` |
 | Water | ≥ 5 glasses | `DATA.habitDaily[date].water` |
 
 - **Grid** — shows partial progress (`3/5`, sleep hours) or `✓` when goal met; **tap a cell** to log (water +1, workout toggle, sleep selects day).
 - **Log panel** — bordered box below grid with sleep input, workout button, water −/+ stepper.
 - **Workout auto-sync** — checking today's gym schedule block can set workout true; manual un-mark uses `workoutOff` to block re-sync on that device.
-- **Sync** — `mergeHabitDailyMap`: max sleep/water per date, OR workout across devices.
+- **Sync** — `mergeHabitDailyMap`: **sleep** LWW on `sleepHrsUpdatedAt` (`patchHabitSleepFromSource` after merge); max water per date; OR workout across devices.
 
 Legacy `DATA.habits` (date-set union) still powers PMP study habit from schedule block completion.
 
@@ -260,7 +260,7 @@ Separate from the schedule's gym band — a week planner and lift logger:
 - **tabUi:** object-level LWW on `tabUiUpdatedAt` — hide Week/PMP/Jobs; custom tabs (`mergeTabUi`).
 - **Todos / job todos / jobs:** list-level LWW — entire array wins by `todosUpdatedAt` / `jobTodosUpdatedAt` / `jobsUpdatedAt`.
 - **Habits (legacy):** date-set union per habit id (PMP study from blocks).
-- **habitDaily:** per-date merge — max sleep/water, OR workout (`mergeHabitDailyMap`).
+- **habitDaily:** per-date merge — **sleep** LWW on `sleepHrsUpdatedAt`; max water; OR workout (`mergeHabitDailyMap` + `patchHabitSleepFromSource`).
 - **gymLog:** per-date LWW by `updatedAt` — whole day wins (`mergeGymLogMap`).
 
 ## What the dashboard does *not* do (yet)

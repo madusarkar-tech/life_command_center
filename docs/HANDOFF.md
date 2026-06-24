@@ -9,9 +9,9 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 
 > Update **HEAD** below when `main` moves.
 
-**HEAD:** `d45ade5` on `main` · **Baseline tag:** `baseline-2026-06-10` (app `540a3a5`)
+**HEAD:** `4d596e9` on `main` · **Baseline tag:** `baseline-2026-06-24` (app `4d596e9`)
 
-**Spec:** [DESIGN.md](./DESIGN.md) · **Baseline:** [BASELINE.md](./BASELINE.md) (tag `baseline-2026-06-10`)
+**Spec:** [DESIGN.md](./DESIGN.md) · **Baseline:** [BASELINE.md](./BASELINE.md) (tag `baseline-2026-06-24`)
 
 ---
 
@@ -25,7 +25,7 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 | **Shift vs off** | Calendar-only — `hasWorkShift(dayKey)`: Sun–Thu = shift; Fri–Sat = off. No day-type picker. |
 | **Night band** | **Shift days:** locked in bands UI (Work 8pm–3am); timeline adds Work + Sleep blocks. **Off days:** editable band 8pm–midnight, packs on timeline. |
 | **Week** | Sun–Sat grid (5am–midnight); fixed-window suddens as blocks; anytime in Flex row; tap slot to add via `calEventModal` |
-| **Weekly habits** | Sidebar card — `DATA.habitDaily[date]`; sleep ≥6h, workout toggle, water ≥5 glasses; Sun–Sat grid with partial progress; tap grid to log; “Log today” panel |
+| **Weekly habits** | Sidebar card — `DATA.habitDaily[date]`; sleep ≥6h (`sleepHrs` + `sleepHrsUpdatedAt`), workout toggle, water ≥5 glasses; Sun–Sat grid; tap grid to log; “Log today” panel (shows **not today** when another column selected) |
 | **Workout log** | Full-width card below Today grid — `DATA.gymLog[date]`; yoga/cardio/lift week planner; lift detail panel (exercises, sets, weight/reps); collapsible lift disclosure (`gymLiftOpen`); monthly max/avg/sessions |
 | **Tab manager** | **⋯** on tab bar — `DATA.tabUi` (`hiddenTabs`, `customTabs`); hide Week/PMP/Jobs; add custom notes-only tabs; `tabUiUpdatedAt` LWW sync; `applyTabUi()` after DATA load |
 | **To-Do (Today)** | Split **Work** and **Other** lists (`list: 'work' \| 'other'` on `DATA.todos`); `mostUrgentTodo()` in now banner |
@@ -35,9 +35,23 @@ Use this when starting a new chat or onboarding so work can continue with minimu
 | **Skip for today** | `periodSkips` — ✕ on band rows or timeline; **↺ unskip all tasks** in bands footer |
 | **Default bands** | **Active life phase** (`resolvePhaseForDay`) → `basePeriodTemplate()`; seeded PMP prep + post-PMP job hunt on first load; legacy `periodTemplate` fallback |
 | **Notes** | `todayNotes` (scratch), `pmpNotes`, `jobNotes`, `lifePlan.notes` — debounced save; first three per-field LWW |
-| **Sync** | Firebase + localStorage; field-level LWW for notes + dayConfig; object LWW for `tabUi` + **`lifePlan`**; list LWW for todos, jobTodos, jobs; per-date merge for `habitDaily` + `gymLog` |
+| **Sync** | Firebase + localStorage; field-level LWW for notes + dayConfig; object LWW for `tabUi` + **`lifePlan`**; list LWW for todos, jobTodos, jobs; per-date merge for `habitDaily` (sleep LWW on `sleepHrsUpdatedAt`, max water, OR workout) + `gymLog` |
 
 All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8pm→midnight or locked work on shift nights).
+
+---
+
+## Recently shipped (since `baseline-2026-06-24`)
+
+### Habit sleep sync (`e282320`, `4d596e9`)
+
+- **`sleepHrsUpdatedAt`** — sleep merges by its own timestamp (water/workout bumps no longer override sleep)
+- **`commitSleepHrs(dayKey,…)`** — always reads/writes `DATA.habitDaily[dayKey]` (fixes stale closure after cloud apply)
+- **`patchHabitSleepFromSource`** — after `mergeAppData` on load, push, and snapshot; in-memory sleep wins when newer
+- **`mergeLocal()`** — prefers in-memory `habitDaily` when `updatedAt` or `sleepHrsUpdatedAt` is newer
+- **`habitSleepInputActive()`** — skips remote apply and full habit panel rebuild while sleep input focused
+- **Urgent push** on sleep edit; immediate `writeLocal` while typing
+- **Panel label** — `(not today)` when editing a non-active calendar column
 
 ---
 
@@ -88,13 +102,13 @@ All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8
 - Bordered **“Log today”** panel (replaces easy-to-miss gray “Edit · Today” label)
 - **Tap grid to log** — water +1, workout toggle, sleep selects day + focuses input
 - **Partial progress in grid** — e.g. `3/5` water, sleep hours until goal, then `✓`
-- Live sleep input (`oninput` + debounced save) without losing focus
+- Live sleep input (`oninput` + debounced urgent save) without losing focus when signed in
 - **`workoutOff`** — manual workout un-mark is not overridden by gym schedule block auto-sync
 
 ### Weekly habits + workout log + split to-dos (`94a8aba`)
 
 - **Removed Quick Glance** — replaced with Weekly habits sidebar card
-- **`DATA.habitDaily`** — `{ sleepHrs, workout, water }` per date; `mergeHabitDailyMap`
+- **`DATA.habitDaily`** — `{ sleepHrs, sleepHrsUpdatedAt, workout, water, updatedAt }` per date; `mergeHabitDailyMap`
 - **Workout log** — Sun–Sat yoga/cardio/lift grid; lift logging in detail panel; monthly lift stats (max, avg, sessions)
 - **`DATA.gymLog`** — `{ plan, exercises, updatedAt }` per date; `mergeGymLogMap` (LWW by `updatedAt`)
 - **Split to-dos** — Work vs Other on Today (`list` field; legacy items default `other`)
@@ -150,6 +164,8 @@ All days: morning (wake→2pm), afternoon (2–5pm), evening (5–8pm), night (8
 - PMP tab visibility follows **Life Plan phase modules**, not only `isPmpActive()` — post-exam, turn off PMP module on job-hunt phase
 - **`uiPhaseId`** selects which phase the template editor shows (may differ from today's active phase)
 - **`tabUi`** must load before `applyTabUi()` — calling it in `init()` before `Store.load()` breaks startup
+- **`habitEditDayKey`** — tap a column header or grid cell to choose which day the Log panel edits; defaults to `activeDayKey()`; resets on day rollover
+- **`habitSleepInputActive()`** — remote sync and 30s habit re-render skip while sleep field is focused (like gym lift panel)
 
 ---
 

@@ -99,6 +99,7 @@ Sign in on a second browser (or phone) with the **same Google account** — data
 - Tab visibility and custom tabs sync via `data.tabUi` (`hiddenTabs`, `customTabs`) with `tabUiUpdatedAt` (last-write-wins across devices).
 - Open-time slots in Today's bands sync via `dayConfig[date].periodOpenSlots` and `periodOpenSlotHidden` (per-field LWW like other band fields).
 - Life Plan phases and default templates sync via `data.lifePlan` with `lifePlanUpdatedAt` (object-level LWW across devices).
+- Weekly habit **sleep** syncs per date via `data.habitDaily[date].sleepHrs` with `sleepHrsUpdatedAt` (last-write-wins for sleep; water still merges as max across devices).
 
 ## Troubleshooting
 
