@@ -1,0 +1,585 @@
+{
+  "generated_at": "2026-07-15T15:54:23.803Z",
+  "account": "madusarkar@gmail.com",
+  "period_days": 90,
+  "messages_analyzed": 500,
+  "unread_estimate": 201,
+  "inbox_estimate": 201,
+  "label_distribution": {
+    "Read/Newsletters": 112,
+    "Priority/People": 62,
+    "Work/Career": 79,
+    "Read/AI and Tech": 205,
+    "System/Promotions": 15,
+    "Priority/Action Required": 5,
+    "Transactions/Finance": 1
+  },
+  "top_senders": [
+    {
+      "email": "jobalerts-noreply@linkedin.com",
+      "count": 36,
+      "domain": "linkedin.com"
+    },
+    {
+      "email": "noreply@skool.com",
+      "count": 18,
+      "domain": "skool.com"
+    },
+    {
+      "email": "googlealerts-noreply@google.com",
+      "count": 16,
+      "domain": "google.com"
+    },
+    {
+      "email": "newsletters-noreply@linkedin.com",
+      "count": 16,
+      "domain": "linkedin.com"
+    },
+    {
+      "email": "today@dailyom.com",
+      "count": 13,
+      "domain": "dailyom.com"
+    },
+    {
+      "email": "eviemagazine@substack.com",
+      "count": 12,
+      "domain": "substack.com"
+    },
+    {
+      "email": "messages-noreply@linkedin.com",
+      "count": 12,
+      "domain": "linkedin.com"
+    },
+    {
+      "email": "madusarkar@gmail.com",
+      "count": 11,
+      "domain": "gmail.com"
+    },
+    {
+      "email": "alerts@liveauctioneers.com",
+      "count": 10,
+      "domain": "liveauctioneers.com"
+    },
+    {
+      "email": "hello@every.to",
+      "count": 9,
+      "domain": "every.to"
+    },
+    {
+      "email": "hirensarkar@hotmail.com",
+      "count": 8,
+      "domain": "hotmail.com"
+    },
+    {
+      "email": "noreply@redditmail.com",
+      "count": 8,
+      "domain": "redditmail.com"
+    },
+    {
+      "email": "notifications-noreply@linkedin.com",
+      "count": 7,
+      "domain": "linkedin.com"
+    },
+    {
+      "email": "jobs-noreply@linkedin.com",
+      "count": 7,
+      "domain": "linkedin.com"
+    },
+    {
+      "email": "messaging-digest-noreply@linkedin.com",
+      "count": 6,
+      "domain": "linkedin.com"
+    },
+    {
+      "email": "hello@lr.academy",
+      "count": 6,
+      "domain": "lr.academy"
+    },
+    {
+      "email": "hello@care.com",
+      "count": 5,
+      "domain": "care.com"
+    },
+    {
+      "email": "info@goodkarmathailand.com",
+      "count": 5,
+      "domain": "goodkarmathailand.com"
+    },
+    {
+      "email": "radicalhealth@heartandsoil.co",
+      "count": 5,
+      "domain": "heartandsoil.co"
+    },
+    {
+      "email": "hello@mail.quince.com",
+      "count": 5,
+      "domain": "mail.quince.com"
+    },
+    {
+      "email": "invitations@linkedin.com",
+      "count": 5,
+      "domain": "linkedin.com"
+    },
+    {
+      "email": "shredhappens@substack.com",
+      "count": 4,
+      "domain": "substack.com"
+    },
+    {
+      "email": "dan@tldrnewsletter.com",
+      "count": 4,
+      "domain": "tldrnewsletter.com"
+    },
+    {
+      "email": "join@mealprepblueprint.com",
+      "count": 4,
+      "domain": "mealprepblueprint.com"
+    },
+    {
+      "email": "scbeasynet@scb.co.th",
+      "count": 4,
+      "domain": "scb.co.th"
+    },
+    {
+      "email": "hit-reply@linkedin.com",
+      "count": 4,
+      "domain": "linkedin.com"
+    },
+    {
+      "email": "hello@kjbm.mademoisellespends.com",
+      "count": 4,
+      "domain": "kjbm.mademoisellespends.com"
+    },
+    {
+      "email": "mail@eg.expedia.com",
+      "count": 4,
+      "domain": "eg.expedia.com"
+    },
+    {
+      "email": "premium@academia-mail.com",
+      "count": 4,
+      "domain": "academia-mail.com"
+    },
+    {
+      "email": "info@members.netflix.com",
+      "count": 4,
+      "domain": "members.netflix.com"
+    },
+    {
+      "email": "pageupdates@facebookmail.com",
+      "count": 4,
+      "domain": "facebookmail.com"
+    },
+    {
+      "email": "support@royalchange.fit",
+      "count": 4,
+      "domain": "royalchange.fit"
+    },
+    {
+      "email": "no-reply@substack.com",
+      "count": 4,
+      "domain": "substack.com"
+    },
+    {
+      "email": "team@mail.cursor.com",
+      "count": 4,
+      "domain": "mail.cursor.com"
+    },
+    {
+      "email": "newsletter@seedoilscout.com",
+      "count": 3,
+      "domain": "seedoilscout.com"
+    },
+    {
+      "email": "news@daily.therundown.ai",
+      "count": 3,
+      "domain": "daily.therundown.ai"
+    },
+    {
+      "email": "academy-support@anthropic.com",
+      "count": 3,
+      "domain": "anthropic.com"
+    },
+    {
+      "email": "support@seedtime.us",
+      "count": 3,
+      "domain": "seedtime.us"
+    },
+    {
+      "email": "no_reply@marketing.us.moomoo.com",
+      "count": 3,
+      "domain": "marketing.us.moomoo.com"
+    },
+    {
+      "email": "john@talsearchgroup.com",
+      "count": 3,
+      "domain": "talsearchgroup.com"
+    },
+    {
+      "email": "unfcu@email.unfcu.com",
+      "count": 3,
+      "domain": "email.unfcu.com"
+    },
+    {
+      "email": "noreply@liveauctioneers.com",
+      "count": 3,
+      "domain": "liveauctioneers.com"
+    },
+    {
+      "email": "info@seajunction.org",
+      "count": 3,
+      "domain": "seajunction.org"
+    },
+    {
+      "email": "no-reply@is.email.nextdoor.com",
+      "count": 3,
+      "domain": "is.email.nextdoor.com"
+    },
+    {
+      "email": "groupupdates@facebookmail.com",
+      "count": 3,
+      "domain": "facebookmail.com"
+    },
+    {
+      "email": "generalist-world@mail.beehiiv.com",
+      "count": 3,
+      "domain": "mail.beehiiv.com"
+    },
+    {
+      "email": "history@e.history.com",
+      "count": 3,
+      "domain": "e.history.com"
+    },
+    {
+      "email": "stephanie=vitalityoet.com@d.kajabimail.net",
+      "count": 3,
+      "domain": "d.kajabimail.net"
+    },
+    {
+      "email": "no-reply@researchgatemail.net",
+      "count": 3,
+      "domain": "researchgatemail.net"
+    },
+    {
+      "email": "noreply@patient-message.com",
+      "count": 2,
+      "domain": "patient-message.com"
+    }
+  ],
+  "ambiguous_count": 21,
+  "ambiguous_samples": [
+    {
+      "from": "Your portal <noreply@patient-message.com>",
+      "subject": "Your Patient Portal password has been updated",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "Your portal <noreply@patient-message.com>",
+      "subject": "Password reset requested",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "\"Clief Notes (Skool)\" <noreply@skool.com>",
+      "subject": "1 event happening tomorrow",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "Recruiting at Deloitte <donotreply@deloitte.com>",
+      "subject": "Thank you for applying to Deloitte!",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "\"North & Central Florida Region Volunteer Services\" <noreply@volunteer.redcross.org>",
+      "subject": "You're confirmed for Group Information & Screening Session  (Hosted by Adhira)  on 2026-07-16 11:00 AM",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "American Red Cross <no-reply@percipio.com>",
+      "subject": "Jumpstart Your Learning in 2026!",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "\"Clief Notes (Skool)\" <noreply@skool.com>",
+      "subject": "10 new notifications since 4:29 pm (Jul 8, 2026)",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "<postmaster@accesshub.onmicrosoft.com>",
+      "subject": "Undeliverable: Infrastructure Resilience at Guidehouse",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "LiveAuctioneers <noreply@liveauctioneers.com>",
+      "subject": "51 New Auctions from Auctioneers You Follow",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "Grab <no-reply@grab.com>",
+      "subject": "Viu Premium ลดสูงสุด 30% โปรพิเศษ ห้ามพลาด!",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "\"Amazon.com\" <digital-no-reply@amazon.com>",
+      "subject": "Amazon.com order of National Treasure: Book of Secrets.",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "\"Clief Notes (Skool)\" <noreply@skool.com>",
+      "subject": "Weekly digest for Sun, Jun 28 2026",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "Clief Notes <noreply@skool.com>",
+      "subject": "Jake Van Clief posted \"📣 New: one onboarding session, every week\"",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "Google Play <googleplay-noreply@google.com>",
+      "subject": "Correction: Updates to Google Play Terms of Service",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "LiveAuctioneers <noreply@liveauctioneers.com>",
+      "subject": "15 New Auctions from Auctioneers You Follow",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "\"Clief Notes (Skool)\" <noreply@skool.com>",
+      "subject": "1 new notification since 4:21 pm (Jul 1, 2026)",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "University of Michigan <no-reply@m.learn.coursera.org>",
+      "subject": "Build Towards Mastery, Push Toward the Future",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "LiveAuctioneers <noreply@liveauctioneers.com>",
+      "subject": "18 New Auctions from Auctioneers You Follow",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "DevNetJobs <do-not-reply@devnetjobs.org>",
+      "subject": "26 Jun 2026 - 2,200+ International NGO, UN & Development Jobs — Updated This Week",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "Google <google-noreply@google.com>",
+      "subject": "Learn more about our updated Terms of Service",
+      "reason": "ambiguous"
+    },
+    {
+      "from": "Google Play <googleplay-noreply@google.com>",
+      "subject": "Updates to Google Play Terms of Service",
+      "reason": "ambiguous"
+    }
+  ],
+  "label_samples": {
+    "Read/Newsletters": [
+      {
+        "from": "Seed Oil Scout <newsletter@seedoilscout.com>",
+        "subject": "How to survive the parasite outbreak"
+      },
+      {
+        "from": "\"Care.com\" <hello@care.com>",
+        "subject": "Still thinking it over?"
+      },
+      {
+        "from": "APIAHF <info@apiahf.org>",
+        "subject": "The Health Forum Insider | July 2026"
+      },
+      {
+        "from": "\"Miller's Bio Farm\" <noreply@notification.grazecart.com>",
+        "subject": "✨Order Reminder: NEW Raw Strawberry Ice Cream, Strawberry Greek Yogurt, NEW Pork"
+      },
+      {
+        "from": "Supabase <welcome@supabase.com>",
+        "subject": "Supa Update July 2026"
+      }
+    ],
+    "Priority/People": [
+      {
+        "from": "M Sar <madusarkar@gmail.com>",
+        "subject": "Re: Connecting on climate risk"
+      },
+      {
+        "from": "Chase <no.reply.alerts@chase.com>",
+        "subject": "Your credit card payment is scheduled"
+      },
+      {
+        "from": "UNFCU Contact Center <unfcu@transfers.unfcu.com>",
+        "subject": "Confirmed: Your payment to Daniel Swaisgood"
+      },
+      {
+        "from": "Vincent Hoen <vincent.hoen@guidehouse.com>",
+        "subject": "Connecting on climate risk"
+      },
+      {
+        "from": "Hiren Sarkar <hirensarkar@hotmail.com>",
+        "subject": "Fwd: Certification letter Hiren SARKAR.pdf"
+      }
+    ],
+    "Work/Career": [
+      {
+        "from": "LinkedIn Job Alerts <jobalerts-noreply@linkedin.com>",
+        "subject": "Director, Center for Global Engagement at NAFSA: Association of International Ed"
+      },
+      {
+        "from": "Kelly Dong via LinkedIn <messaging-digest-noreply@linkedin.com>",
+        "subject": "Kelly just messaged you"
+      },
+      {
+        "from": "LinkedIn <messages-noreply@linkedin.com>",
+        "subject": "62 people viewed your profile"
+      },
+      {
+        "from": "LinkedIn <notifications-noreply@linkedin.com>",
+        "subject": "You have 1 new invitation"
+      },
+      {
+        "from": "LinkedIn Job Recommendations <jobs-noreply@linkedin.com>",
+        "subject": "New jobs similar to Expert Opportunity - Program Manager / PMO Lead ($70/hr, up "
+      }
+    ],
+    "Read/AI and Tech": [
+      {
+        "from": "Arash from Shredhappens <shredhappens@substack.com>",
+        "subject": "5 things I want you to have"
+      },
+      {
+        "from": "Evie Magazine <eviemagazine@substack.com>",
+        "subject": "10 Australian Clothing Brands To Shop For Feminine Pieces This Summer"
+      },
+      {
+        "from": "Evie Magazine <eviemagazine@substack.com>",
+        "subject": "Netflix's Little House on the Prairie Is the Most Pro-American Show in Years"
+      },
+      {
+        "from": "LinkedIn Job Alerts <jobalerts-noreply@linkedin.com>",
+        "subject": "Environmental Lead at OpenAI: up to $285K/year"
+      },
+      {
+        "from": "Thorium Valley <thoriumvalley@mail.beehiiv.com>",
+        "subject": "🌐 AI at work: use it, but don't tell your boss"
+      }
+    ],
+    "System/Promotions": [
+      {
+        "from": "FAHERTY <fahertybros@fahertybrand.com>",
+        "subject": "The Semi-Annual Sale Starts Now"
+      },
+      {
+        "from": "\"Care.com\" <hello@care.com>",
+        "subject": "20% off ends soon 🎆"
+      },
+      {
+        "from": "Sunrise Flour Mill <info@sunriseflourmill.com>",
+        "subject": "The Harvest Is On—And So Is the Sale"
+      },
+      {
+        "from": "Lumosity <info@updates.lumosity.com>",
+        "subject": "Independence Day Sale: 35% off Lumosity Premium"
+      },
+      {
+        "from": "Sydney Cummings <support@royalchange.fit>",
+        "subject": "Don't Miss Our 4TH SUMMER SALE! 40% OFF SITEWIDE!"
+      }
+    ],
+    "Priority/Action Required": [
+      {
+        "from": "blackrock@otp.workday.com",
+        "subject": "Verify your candidate account"
+      },
+      {
+        "from": "Good Karma <info@goodkarmathailand.com>",
+        "subject": "10% OFF + FREE SHIPPING on Bank Transfers! Offer Expires on Sunday Midnight!"
+      },
+      {
+        "from": "Google <no-reply@accounts.google.com>",
+        "subject": "Critical security alert"
+      },
+      {
+        "from": "Google <no-reply@accounts.google.com>",
+        "subject": "Security alert"
+      },
+      {
+        "from": "ALTA <jenny@mail.altadaily.com>",
+        "subject": "Verify your Alta email"
+      }
+    ],
+    "Transactions/Finance": [
+      {
+        "from": "\"Hannah Alcoseba Fernandez | Eco-Business\" <newsletter@eco-business.com>",
+        "subject": "World Bank’s China exit: Asia’s climate finance map is being redrawn"
+      }
+    ]
+  },
+  "domains": {
+    "seedoilscout.com": "Read/Newsletters",
+    "gmail.com": "Priority/People",
+    "linkedin.com": "Work/Career",
+    "care.com": "System/Promotions",
+    "substack.com": "Read/AI and Tech",
+    "notification.grazecart.com": "Read/Newsletters",
+    "mail.beehiiv.com": "Read/AI and Tech",
+    "skool.com": "Read/AI and Tech",
+    "hotmail.com": "Priority/People",
+    "daily.therundown.ai": "Read/AI and Tech",
+    "dailyom.com": "Read/AI and Tech",
+    "ss.email.nextdoor.com": "Priority/People",
+    "google.com": "Read/AI and Tech",
+    "goodkarmathailand.com": "Priority/People",
+    "redditmail.com": "Read/AI and Tech",
+    "heartandsoil.co": "Read/Newsletters",
+    "facebookmail.com": "Read/AI and Tech",
+    "every.to": "Read/Newsletters",
+    "anthropic.com": "Priority/People",
+    "seedtime.us": "Read/Newsletters",
+    "mail.quince.com": "Read/AI and Tech",
+    "news.weather.com": "Read/Newsletters",
+    "noreply55.jobs2web.com": "Read/Newsletters",
+    "marketing.us.moomoo.com": "Read/Newsletters",
+    "talsearchgroup.com": "Priority/People",
+    "tldrnewsletter.com": "Read/AI and Tech",
+    "email.unfcu.com": "Read/AI and Tech",
+    "email.aerie.ae.com": "Read/AI and Tech",
+    "mealprepblueprint.com": "Read/Newsletters",
+    "reminder.eventbrite.com": "Read/Newsletters",
+    "scb.co.th": "Priority/People",
+    "academia-mail.com": "Read/AI and Tech",
+    "notification.elsevier.com": "Priority/People",
+    "nature.com": "Read/Newsletters",
+    "myworkday.com": "Work/Career",
+    "drwoofapparel.com.au": "Read/Newsletters",
+    "mail.creditkarma.com": "Read/AI and Tech",
+    "myindyx.com": "Read/Newsletters",
+    "wobo.ai": "Read/AI and Tech",
+    "kjbm.mademoisellespends.com": "Read/Newsletters",
+    "eg.expedia.com": "Read/AI and Tech",
+    "em.linkedin.com": "Work/Career",
+    "seajunction.org": "Read/Newsletters",
+    "duolingo.com": "Read/Newsletters",
+    "members.netflix.com": "Read/Newsletters",
+    "is.email.nextdoor.com": "Read/AI and Tech",
+    "redhillssfa.com": "Read/Newsletters",
+    "yogawithadriene.com": "Read/Newsletters",
+    "express.medallia.com": "Read/Newsletters",
+    "lr.academy": "Read/Newsletters",
+    "myvet2pet.com": "Priority/People",
+    "popflexactive.com": "Read/AI and Tech",
+    "e.history.com": "Read/Newsletters",
+    "accounts.google.com": "Priority/Action Required",
+    "d.kajabimail.net": "Read/AI and Tech",
+    "kjbm.mealprepblueprint.com": "Read/Newsletters",
+    "researchgatemail.net": "Read/AI and Tech",
+    "un.org": "Read/Newsletters",
+    "mail.cursor.com": "Read/AI and Tech",
+    "mail.harvardonline.harvard.edu": "Read/AI and Tech",
+    "shared1.ccsend.com": "Read/Newsletters",
+    "aiautomationsociety.ai": "Read/AI and Tech",
+    "pinpoint.email": "Priority/People"
+  },
+  "senders": {},
+  "status": "approved",
+  "notes": "Review and set status to 'approved' before running cleanup."
+}

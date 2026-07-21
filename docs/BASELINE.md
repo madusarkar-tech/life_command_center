@@ -18,7 +18,7 @@ Use this when you want future work (or a new chat) to treat the app as **known-g
 ### Restore code to this baseline
 
 ```bash
-cd ~/Desktop/Scheduler
+cd ~/Projects/life-command-center
 git fetch --tags
 git checkout baseline-2026-06-24
 ```

@@ -1,0 +1,245 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-07-15",
+  "account": "madusarkar@gmail.com",
+  "description": "Fine-tune Gmail labeling. Edit overrides and keywords, then run: ./gmail cleanup --dry-run",
+
+  "labels": {
+    "Priority/People": {
+      "inbox": true,
+      "description": "Real humans — never auto-archive"
+    },
+    "Priority/Action Required": {
+      "inbox": true,
+      "description": "Deadlines, confirmations, RSVPs, security alerts"
+    },
+    "Read/AI and Tech": {
+      "inbox": true,
+      "description": "AI newsletters and tools you want to read daily"
+    },
+    "Read/Newsletters": {
+      "inbox": false,
+      "description": "Other subscriptions worth keeping, lower priority"
+    },
+    "Transactions/Purchases": {
+      "inbox": false,
+      "description": "Orders, shipping, receipts"
+    },
+    "Transactions/Finance": {
+      "inbox": false,
+      "description": "Banks, bills, tax, payments"
+    },
+    "Work/Career": {
+      "inbox": false,
+      "description": "Job alerts, recruiters, applications"
+    },
+    "System/Notifications": {
+      "inbox": false,
+      "description": "GitHub, LinkedIn alerts, app notifications"
+    },
+    "System/Promotions": {
+      "inbox": false,
+      "description": "Marketing, sales, coupons"
+    },
+    "System/Processed": {
+      "inbox": false,
+      "internal": true,
+      "description": "Agent audit trail — do not edit manually"
+    }
+  },
+
+  "priority_order": [
+    "ignore",
+    "sender_exact",
+    "sender_pattern",
+    "domain",
+    "subject_pattern",
+    "people_heuristic",
+    "action_keywords",
+    "ai_keywords",
+    "transaction_keywords",
+    "career_keywords",
+    "finance_keywords",
+    "newsletter_bulk",
+    "notification_domain",
+    "promo_keywords",
+    "default_ambiguous"
+  ],
+
+  "overrides": {
+    "ignore_senders": [
+      "madusarkar@gmail.com"
+    ],
+    "senders": {
+      "hirensarkar@hotmail.com": "Priority/People",
+      "eviemagazine@substack.com": "Read/AI and Tech",
+      "hello@every.to": "Read/AI and Tech",
+      "hello@lr.academy": "Read/AI and Tech",
+      "team@mail.cursor.com": "Read/AI and Tech",
+      "news@daily.therundown.ai": "Read/AI and Tech",
+      "academy-support@anthropic.com": "Read/AI and Tech",
+      "dan@tldrnewsletter.com": "Read/AI and Tech",
+      "noreply@skool.com": "Read/AI and Tech",
+      "jobalerts-noreply@linkedin.com": "Work/Career",
+      "jobs-noreply@linkedin.com": "Work/Career",
+      "notifications-noreply@linkedin.com": "System/Notifications",
+      "messages-noreply@linkedin.com": "System/Notifications",
+      "messaging-digest-noreply@linkedin.com": "System/Notifications",
+      "newsletters-noreply@linkedin.com": "Read/Newsletters",
+      "googlealerts-noreply@google.com": "Read/AI and Tech",
+      "john@talsearchgroup.com": "Work/Career",
+      "info@goodkarmathailand.com": "Priority/People"
+    },
+    "domains": {
+      "substack.com": "Read/AI and Tech",
+      "mail.cursor.com": "Read/AI and Tech",
+      "daily.therundown.ai": "Read/AI and Tech",
+      "anthropic.com": "Read/AI and Tech",
+      "tldrnewsletter.com": "Read/AI and Tech",
+      "wobo.ai": "Read/AI and Tech",
+      "aiautomationsociety.ai": "Read/AI and Tech",
+      "skool.com": "Read/AI and Tech",
+      "linkedin.com": "Work/Career",
+      "em.linkedin.com": "Work/Career",
+      "myworkday.com": "Work/Career",
+      "hotmail.com": "Priority/People",
+      "gmail.com": "Priority/People",
+      "dailyom.com": "Read/Newsletters",
+      "heartandsoil.co": "Read/Newsletters",
+      "members.netflix.com": "Read/Newsletters",
+      "facebookmail.com": "System/Notifications",
+      "redditmail.com": "Read/Newsletters",
+      "care.com": "System/Promotions"
+    },
+    "sender_patterns": [
+      {
+        "match": "job*@linkedin.com",
+        "label": "Work/Career",
+        "note": "LinkedIn job alerts"
+      },
+      {
+        "match": "*-noreply@linkedin.com",
+        "label": "System/Notifications",
+        "note": "LinkedIn system notifications"
+      },
+      {
+        "match": "noreply@*",
+        "label": null,
+        "note": "Wildcard only — use senders/domains for specifics; null = skip pattern"
+      }
+    ],
+    "subject_patterns": [
+      {
+        "match": "job alert",
+        "label": "Work/Career",
+        "case_insensitive": true
+      },
+      {
+        "match": "application received",
+        "label": "Work/Career",
+        "case_insensitive": true
+      },
+      {
+        "match": "security alert",
+        "label": "Priority/Action Required",
+        "case_insensitive": true
+      },
+      {
+        "match": "verify your",
+        "label": "Priority/Action Required",
+        "case_insensitive": true
+      },
+      {
+        "match": "order confirmation",
+        "label": "Transactions/Purchases",
+        "case_insensitive": true
+      }
+    ]
+  },
+
+  "keywords": {
+    "ai": [
+      "ai", "artificial intelligence", "openai", "anthropic", "claude", "cursor",
+      "hugging face", "huggingface", "gemini", "copilot", "llm", "machine learning",
+      "deep learning", "arxiv", "substack", "mistral", "perplexity", "midjourney",
+      "stability ai", "langchain", "nvidia ai", "google ai", "meta ai", "therundown"
+    ],
+    "action": [
+      "action required", "confirm your", "verify your", "deadline", "rsvp",
+      "signature needed", "please respond", "response required", "expires",
+      "invitation:", "accepted:", "declined:", "security alert"
+    ],
+    "career": [
+      "job alert", "application received", "interview", "recruiter",
+      "greenhouse", "lever.co", "workday", "indeed", "linkedin jobs",
+      "careers@", "hiring"
+    ],
+    "transaction": [
+      "order confirmation", "your order", "receipt", "invoice", "shipment",
+      "tracking number", "delivered", "payment received", "purchase"
+    ],
+    "finance": [
+      "bank", "statement", "bill", "payment due", "tax", "wire transfer",
+      "account balance", "credit card"
+    ],
+    "promo": [
+      "unsubscribe", "sale", "discount", "% off", "limited time", "deal",
+      "promo", "coupon", "flash sale", "shop now"
+    ],
+    "notification_domains": [
+      "github.com", "facebookmail.com", "accounts.google.com",
+      "noreply.github.com", "slack.com", "discord.com", "twitter.com", "x.com"
+    ]
+  },
+
+  "heuristics": {
+    "people": {
+      "enabled": true,
+      "free_email_domains": [
+        "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com"
+      ],
+      "exclude_if_keywords_from": ["promo", "career"]
+    },
+    "linkedin": {
+      "comment": "Blanket linkedin.com domain rule; use sender overrides for exceptions",
+      "domain_default": "Work/Career",
+      "notification_senders": [
+        "notifications-noreply@linkedin.com",
+        "messages-noreply@linkedin.com",
+        "messaging-digest-noreply@linkedin.com",
+        "invitations@linkedin.com"
+      ],
+      "job_senders": [
+        "jobalerts-noreply@linkedin.com",
+        "jobs-noreply@linkedin.com"
+      ]
+    }
+  },
+
+  "review_queue": {
+    "comment": "Ambiguous senders — decide label here, then move to overrides.senders",
+    "pending": [
+      {
+        "email": "alerts@liveauctioneers.com",
+        "count": 10,
+        "current_guess": "ambiguous",
+        "suggested_label": "Read/Newsletters",
+        "notes": "Auction alerts — archive?"
+      },
+      {
+        "email": "noreply@liveauctioneers.com",
+        "count": 3,
+        "current_guess": "ambiguous",
+        "suggested_label": "Read/Newsletters",
+        "notes": "Same domain as alerts@"
+      },
+      {
+        "email": "hello@care.com",
+        "count": 5,
+        "current_guess": "System/Promotions",
+        "suggested_label": null,
+        "notes": "Confirm promo vs service"
+      }
+    ]
+  }
+}

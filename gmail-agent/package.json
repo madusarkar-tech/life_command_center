@@ -1,0 +1,20 @@
+{
+  "name": "gmail-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "gmail": "./bin/gmail.js"
+  },
+  "scripts": {
+    "status": "node bin/gmail.js status",
+    "auth": "node bin/gmail.js auth",
+    "labels": "node bin/gmail.js labels",
+    "audit": "node bin/gmail.js audit",
+    "cleanup": "node bin/gmail.js cleanup",
+    "daily": "node bin/gmail.js daily"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  }
+}

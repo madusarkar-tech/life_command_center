@@ -1,2 +1,9 @@
 .DS_Store
 *.log
+gmail-agent/node_modules/
+gmail-agent/.venv/
+gmail-agent/logs/
+credentials.json
+token.json
+gcp-oauth.keys.json
+client_secret*.json

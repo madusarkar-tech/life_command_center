@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Gmail agent wrapper
+set -euo pipefail
+DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$DIR"
+if [[ ! -d node_modules ]]; then
+  npm install --silent
+fi
+exec node bin/gmail.js "$@"

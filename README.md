@@ -3,7 +3,7 @@
 A single-page personal dashboard for managing a remote night-shift schedule, PMP exam prep, job search, daily habits, and a rolling to-do list.
 
 **Sync:** Sign in with Google to keep the same data on Mac and phone (Firebase).  
-**Setup:** [Firebase](docs/FIREBASE-SETUP.md) · [GitHub Pages](docs/GITHUB-SETUP.md)
+**Setup:** [Firebase](docs/FIREBASE-SETUP.md) · [GitHub Pages](docs/GITHUB-SETUP.md) · [Gmail Agent](docs/GMAIL-SETUP.md)
 
 ## Quick start (Mac)
 
@@ -12,7 +12,7 @@ A single-page personal dashboard for managing a remote night-shift schedule, PMP
 **Browser:**
 
 ```bash
-cd ~/Desktop/Scheduler
+cd ~/Projects/life-command-center
 python3 -m http.server 8765
 ```
 
@@ -52,10 +52,26 @@ Design details: [docs/DESIGN.md](docs/DESIGN.md) · Build history: [docs/BUILD-H
 - **Signed out:** saves to browser `localStorage` on that device only.
 - **Signed in:** syncs to your Firebase account (Mac + phone + iPad share one dataset). Field-level merge for bands (including open-time slots), notes, and pins; object-level LWW for **Life Plan** (`lifePlan`) and tab visibility (`tabUi`); list-level merge for todos, job todos, and job pipeline; per-date merge for weekly habits (sleep LWW on `sleepHrsUpdatedAt`, max water, OR workout) and workout log; merge-before-push on save.
 
+## Gmail Daily Cleanup Agent
+
+Automated inbox sorting for `madusarkar@gmail.com` — labels mail, keeps People/Action/AI in Inbox, archives the rest, writes a morning brief.
+
+```bash
+cd gmail-agent
+./setup.sh          # One-time OAuth + audit + cleanup
+./gmail daily       # Manual daily run
+./gmail status      # Check connection
+```
+
+Docs: [GMAIL-SETUP.md](docs/GMAIL-SETUP.md) · [GMAIL-RULES.md](docs/GMAIL-RULES.md)
+
+Daily schedule: LaunchAgent at 7:00 AM (`com.madusarkar.gmail-daily.plist`)
+
 ## Project layout
 
 ```
 life-dashboard.html      # The app
+gmail-agent/             # Gmail cleanup CLI (Node.js)
 firebase-config.js       # Your Firebase keys (edit before sync works)
 firebase-config.example.js
 index.html               # Redirect for GitHub Pages root URL

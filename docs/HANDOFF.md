@@ -2,7 +2,7 @@
 
 Use this when starting a new chat or onboarding so work can continue with minimum context.
 
-**Repo:** `~/Desktop/Scheduler` · GitHub `madusarkar-tech/life_command_center`  
+**Repo:** `~/Projects/life-command-center` · GitHub `madusarkar-tech/life_command_center`  
 **App:** single file `life-dashboard.html` (~6400 lines)  
 **Live:** https://madusarkar-tech.github.io/life_command_center/life-dashboard.html  
 **Local:** `python3 -m http.server 8765` → http://localhost:8765/life-dashboard.html  

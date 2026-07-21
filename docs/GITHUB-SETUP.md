@@ -5,7 +5,7 @@
 In Terminal:
 
 ```bash
-cd ~/Desktop/Scheduler
+cd ~/Projects/life-command-center
 git remote -v
 ```
 
@@ -33,7 +33,7 @@ Also open [github.com](https://github.com) → your profile → **Repositories**
 Replace `YOUR_USERNAME` and `REPO_NAME`:
 
 ```bash
-cd ~/Desktop/Scheduler
+cd ~/Projects/life-command-center
 git remote add origin https://github.com/YOUR_USERNAME/REPO_NAME.git
 git branch -M main
 git push -u origin main
@@ -85,7 +85,7 @@ Refresh your repo on github.com — you should see `life-dashboard.html`, `docs/
 ## Update the site after changes
 
 ```bash
-cd ~/Desktop/Scheduler
+cd ~/Projects/life-command-center
 git add -A
 git commit -m "Describe your change"
 git push

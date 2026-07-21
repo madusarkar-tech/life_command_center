@@ -83,7 +83,7 @@ If sign-in still fails on your Mac, open the dashboard at exactly:
 ## 8. Test locally
 
 ```bash
-cd ~/Desktop/Scheduler
+cd ~/Projects/life-command-center
 python3 -m http.server 8765
 ```
 
